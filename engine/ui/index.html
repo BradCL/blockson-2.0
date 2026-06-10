@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- engine/ui/index.html — Owner editor shell (v4, Task 2).
+     One static page: candidate preview iframe + editing panel.
+     All dynamic content is rendered by ui.js via DOM APIs (textContent
+     only — values are never interpolated into markup). -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site editor</title>
+  <link rel="stylesheet" href="/ui/ui.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="preview-pane">
+      <iframe id="preview" src="/preview/index.html" title="Site preview"></iframe>
+    </section>
+
+    <aside class="panel">
+      <header class="panel-head">
+        <h1 id="client-name">…</h1>
+        <p class="hint">Click anything highlighted in the preview to edit it.</p>
+      </header>
+
+      <div id="message" class="message" hidden></div>
+
+      <section id="pending-card" class="card pending" hidden>
+        <h2>Pending change</h2>
+        <p id="pending-summary" class="pending-summary"></p>
+        <div class="diff">
+          <div class="diff-row"><span class="diff-label">Now</span><span id="pending-old" class="diff-value old"></span></div>
+          <div class="diff-row"><span class="diff-label">After</span><span id="pending-new" class="diff-value new"></span></div>
+        </div>
+        <div class="btn-row">
+          <button id="btn-approve" class="btn primary">Approve &amp; publish</button>
+          <button id="btn-discard" class="btn">Discard</button>
+        </div>
+      </section>
+
+      <section id="editor" class="card" hidden></section>
+
+      <section id="brand-colors" class="card">
+        <h2>Brand colors</h2>
+        <p class="hint">Safe to experiment — anything unreadable is rejected before it can reach the site.</p>
+        <div id="token-list"></div>
+      </section>
+
+      <footer class="panel-foot">
+        <div id="publish-status" class="hint"></div>
+        <div id="contact-line" class="hint"></div>
+        <button id="btn-restore" class="btn subtle">Undo last publish</button>
+      </footer>
+    </aside>
+  </main>
+
+  <script src="/ui/ui.js"></script>
+</body>
+</html>

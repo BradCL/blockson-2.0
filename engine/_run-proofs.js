@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all seven end-to-end proofs in sequence and prints results.
+// Runs all eight end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
 //   annotation for every editable field the edit map reports.
 // Proofs 5–6: the v2 token-editing path (allowlist + format + contrast guards).
 // Proof 7:    resolver value guards — valueless writes are rejected.
+// Proof 8:    owner-editor request handlers (engine/lib/owner.js) exercised
+//             directly: edit → candidate-only write + annotated rebuild →
+//             approve → live write + clean live build; one-pending-change
+//             gate, resolver guards on the UI path, image upload, discard.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -100,7 +104,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 7;
+const TOTAL = 8;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -308,6 +312,118 @@ console.log('\n═══ PROOF 7 — Resolver value guards: valueless writes are
     passed++;
   } else {
     console.log('FAIL —', { noValuePlain, noValueMatch, untouched });
+  }
+}
+
+// ── PROOF 8 ─────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: edit → candidate → approve ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-owner';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const candIndexPath = path.join(ROOT, 'dist', CLIENT + '__candidate__annotated', 'index.html');
+  const failures = [];
+
+  try {
+    // Setup: throwaway client cloned from example-restaurant, publishing off
+    // (the proof must never create git commits).
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+
+    const session = owner.createSession(CLIENT);
+
+    // (a) Session start: candidate equals live and its ANNOTATED preview built.
+    if (!fs.readFileSync(candIndexPath, 'utf8').includes('data-bk-block="home-hero"')) {
+      failures.push('candidate preview build is not annotated');
+    }
+
+    // (b) describeField reports the current candidate value + editor kind.
+    const d = owner.describeField(session, { block: 'home-hero', field: 'headline' });
+    if (!d.ok || d.kind !== 'text' || d.value !== 'Comfort food, wood-fired.') {
+      failures.push(`describeField wrong: ${JSON.stringify(d)}`);
+    }
+
+    // (c) Edit: candidate-only write; change card old → new derived from the
+    //     resolved patch; candidate preview rebuilt with the new value.
+    const NEW = 'Wood-fired, all winter.';
+    const e1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: NEW });
+    if (!e1.ok) failures.push(`edit failed: ${e1.error}`);
+    else {
+      if (e1.pending.old !== 'Comfort food, wood-fired.' || e1.pending.new !== NEW) {
+        failures.push(`change card old→new wrong: ${JSON.stringify(e1.pending)}`);
+      }
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (cand.pages[0].blocks[0].fields.headline !== NEW) failures.push('candidate content was not updated');
+      if (live.pages[0].blocks[0].fields.headline === NEW) failures.push('LIVE content was touched before approve');
+      if (!fs.readFileSync(candIndexPath, 'utf8').includes(NEW)) failures.push('candidate preview was not rebuilt');
+    }
+
+    // (d) Exactly one pending change at a time.
+    const e2 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: 'x' });
+    if (e2.ok) failures.push('a second edit was accepted while one was pending');
+
+    // (e) Approve: live content written from the candidate, live build clean
+    //     of annotations, publish skipped (publish: "none").
+    const a = owner.approve(session);
+    if (!a.ok) failures.push(`approve failed: ${a.error}`);
+    else {
+      if (!a.publish.skipped) failures.push('publish ran despite publish:"none"');
+      const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (live2.pages[0].blocks[0].fields.headline !== NEW) failures.push('approve did not write live content.json');
+      const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!liveHtml.includes(NEW)) failures.push('live build is missing the approved value');
+      if (liveHtml.includes('data-bk-')) failures.push('live build contains data-bk-* after approve');
+    }
+
+    // (f) The resolver guards run unchanged on the UI path: forbidden field
+    //     and unsafe token value both bounce, nothing staged.
+    const g1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'id', value: 'x' });
+    const g2 = owner.applyEdit(session, { action: 'set-token', token: '--color-primary', value: 'red;background:url(evil)' });
+    if (g1.ok || g2.ok || session.pending) failures.push('a guarded write slipped through the edit handler');
+
+    // (g) Image upload: file lands in candidate img/ under a handler-assigned
+    //     path; discard then resets the candidate from live, removing it.
+    const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const e3 = owner.applyEdit(session,
+      { action: 'set', block: 'home-team', item: 'member-chef', field: 'photo' },
+      { name: 'new portrait.png', dataBase64: PNG_1PX });
+    if (!e3.ok) failures.push(`image edit failed: ${e3.error}`);
+    else {
+      if (e3.pending.new !== 'img/new-portrait.png') failures.push(`image path not assigned by the handler: ${e3.pending.new}`);
+      if (!fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('uploaded image missing from candidate img/');
+    }
+    const disc = owner.discard(session);
+    const candText = fs.readFileSync(path.join(candDir, 'content.json'), 'utf8');
+    const liveText = fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8');
+    if (!disc.ok || candText !== liveText) failures.push('discard did not reset the candidate from live');
+    if (fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('discard left the uploaded image in the candidate');
+    if (fs.existsSync(path.join(liveDir, 'img', 'new-portrait.png'))) failures.push('a discarded upload leaked into live img/');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — handlers exercised directly: an edit writes ONLY the candidate and');
+    console.log('       rebuilds its annotated preview; the change card derives old → new from');
+    console.log('       the resolved patch; a second edit is held until approve/discard; approve');
+    console.log('       writes live + builds clean HTML; guards hold; uploads stay candidate-side');
+    console.log('       until approve and vanish on discard.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
   }
 }
 

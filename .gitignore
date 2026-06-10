@@ -2,5 +2,6 @@ node_modules/
 dist/
 test-results/
 clients/_candidate/
+clients/*__candidate/
 *.bak
 .DS_Store

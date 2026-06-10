@@ -64,9 +64,12 @@ before touching the live site. The owner sees a preview and issues an explicit A
 engine/
   build.js              Build script (Node, no external deps beyond a JSON schema validator)
   apply-patch.js        Patch CLI (content + token patches)
+  serve.js              Owner-editor server (localhost; HTTP plumbing over lib/owner.js)
   sitemap.js            Edit-map inspection CLI
   new-client.js         Client scaffolder
-  _run-proofs.js        Proof suite (7 proofs)
+  _run-proofs.js        Proof suite (8 proofs)
+  ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
+                        (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, fonts, favicon, token :root)
@@ -79,6 +82,8 @@ engine/
     icons.js            Named inline-SVG set (icon blocks reference these by name)
     patch.js            Canonical patch resolver — single source of truth for write allowlist
                         AND the safeTokens allowlist + token value guards (§9)
+    owner.js            Owner-editor request handlers: candidate copy, pending change,
+                        approve/discard/restore, publish (§13)
     sitemap.js          Edit-map generator — compact per-client map of editable fields
   schema/
     content.schema.json JSON Schema (draft 2020-12) for content.json
@@ -93,6 +98,10 @@ clients/
   <client-name>/
     content.json        The entire site as data
     img/                Client images (logos, hero, gallery photos)
+    owner-config.json   Optional owner-editor config (§13): display name, publish
+                        command, contact, host/port
+  <client-name>__candidate/   Working copy used by the owner editor (gitignored;
+                        recreated from live on session start and on Discard)
 
 attic/                  Archived v3 model-tier modules (repair, patch-schema, triage,
                         AGENT_INSTRUCTIONS.md, test harness, scorecards); not imported
@@ -225,7 +234,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Seven proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Eight proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -233,7 +242,12 @@ write is blocked at the resolver, (4) an id-addressed item edit applies end-to-e
 (5) a valid `set-token` persists in `themeOverrides` and reaches the page `:root`,
 (6) invalid `set-token` patches — unknown token, unsafe value, plain-`set` bypass, and
 a contrast collision — are all rejected with nothing written, (7) the resolver rejects
-valueless writes (plain set and match form) and leaves content untouched. All seven must
+valueless writes (plain set and match form) and leaves content untouched, (8) the
+owner-editor request handlers (§13), exercised directly: an edit writes only the
+candidate and rebuilds its annotated preview, the change card derives old → new from
+the resolved patch, a second edit is held while one is pending, approve writes live
+and produces annotation-free HTML, resolver guards hold on the UI path, and uploads
+stay candidate-side until approve and vanish on discard. All eight must
 pass on a clean tree.
 
 ---
@@ -335,3 +349,45 @@ site config fields rendered only into `<head>`/attributes (`baseUrl`, `theme`,
 share one rendered element (e.g. `button.label`/`button.href`/`button.style` on one
 `<a>`), reached via the field-group editor. The edit map remains the single source of
 truth for both surfaces.
+
+---
+
+## 13. Click-to-Edit Owner Editor (v4)
+
+`node engine/serve.js <client>` runs a local server (stdlib `http`, bound to
+`127.0.0.1` by default) serving one page: the client's ANNOTATED candidate build in an
+iframe beside a pending-change panel. All editing logic lives in `engine/lib/owner.js`
+as plain handler functions; `engine/serve.js` is HTTP plumbing only, so proof 8
+exercises the handlers directly.
+
+- **Candidate copy.** The session works on `clients/<client>__candidate/` (gitignored),
+  a full copy of the live client reset from live at session start and on Discard. It is
+  built annotated to `dist/<client>__candidate__annotated/`; that build IS the preview.
+  Only Approve writes inside `clients/<client>/`.
+- **Overlay.** `engine/ui/overlay.js` is injected at serve time into preview HTML (never
+  written to disk, never into live builds). It highlights `data-bk-*` elements on hover
+  and posts the clicked (block, item?, field, index?) reference to the editor app.
+- **Editors by field shape** (decided server-side from the candidate's current value):
+  short text → input; long text → textarea; text-list line → edit/remove that line
+  (match-form patch built from the exact current line) or append a new one; image →
+  file picker (the server validates, stores into the candidate's `img/`, and assigns
+  the path itself); gallery image list → append/remove; brand colors → picker bound to
+  `SAFE_TOKENS`, running the format + contrast guards live (`/api/token-check`) with
+  the resolver's own plain-language explanation shown inline on rejection.
+- **Flow.** Edit → patch constructed deterministically → `applyPatch` on the candidate
+  (every guard runs; UI input is untrusted input) → candidate rebuild (annotated;
+  a failing build rolls the candidate back) → iframe refresh + change card whose
+  old → new values are read by resolving the patch address against the candidate
+  content. Exactly one pending change at a time. Approve → live `content.json` (+ any
+  uploaded image) written, live rebuilt WITHOUT annotations, publish command run.
+  Discard → candidate reset from live. Restore → revert the last publish commit
+  (found via the `[blockson-publish <client>]` marker), rebuild, republish.
+- **Publish.** Configured per client in `owner-config.json`: `"git"` (default —
+  add/commit/push with a templated message), `"none"`, or a custom command string with
+  `{message}`/`{client}` placeholders. Missing git or a failing command is reported in
+  plain language; the live site stays updated locally either way.
+- **Security.** Non-local requests are rejected (socket + Host header) unless
+  explicitly configured; POSTs require a custom header no cross-origin page can send
+  without a CORS preflight (which the server never grants); static paths are confined
+  to their roots; upload names are sanitized against an image-extension allowlist and
+  size cap; the UI renders all values via `textContent`.

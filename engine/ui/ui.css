@@ -1,0 +1,165 @@
+/* engine/ui/ui.css — Owner editor styles (v4, Task 2).
+   Self-contained: system fonts only, no external resources. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  color: #1f2430;
+  background: #eef0f4;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* ── Preview ── */
+.preview-pane {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0 12px 12px;
+}
+#preview {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d4d8e0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* ── Panel ── */
+.panel {
+  width: 380px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  overflow-y: auto;
+}
+.panel-head h1 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+.hint {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #5b6372;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #d4d8e0;
+  border-radius: 8px;
+  padding: 14px;
+}
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.card.pending { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, .12); }
+
+.pending-summary { margin: 0 0 10px; font-weight: 600; }
+
+.diff { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.diff-row { display: flex; gap: 8px; align-items: baseline; }
+.diff-label {
+  flex: none; width: 42px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; color: #8a93a5;
+}
+.diff-value {
+  flex: 1; min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.diff-value.old { background: #fbeaea; color: #8c2f2f; text-decoration: line-through; }
+.diff-value.new { background: #e8f5ec; color: #1f6b3a; }
+.diff-value.empty { background: #f1f3f7; color: #8a93a5; font-style: italic; text-decoration: none; }
+
+/* ── Buttons / inputs ── */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 8px 14px;
+  border: 1px solid #c6ccd8;
+  border-radius: 6px;
+  background: #f6f7fa;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn:hover { background: #eceef3; }
+.btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.btn.primary:hover { background: #1d4fd1; }
+.btn.danger { color: #a02525; border-color: #d9a0a0; }
+.btn.subtle { font-size: 13px; color: #5b6372; background: none; border: none; text-decoration: underline; padding: 4px 0; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+input[type="text"], textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #c6ccd8;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  margin: 4px 0 10px;
+}
+textarea { min-height: 110px; resize: vertical; }
+
+.field-label { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #8a93a5; }
+
+/* ── Messages ── */
+.message {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.message.error { background: #fbeaea; border: 1px solid #e3b6b6; color: #8c2f2f; }
+.message.ok    { background: #e8f5ec; border: 1px solid #b3d9c0; color: #1f6b3a; }
+.message.info  { background: #e9f0fd; border: 1px solid #bcd0f5; color: #274f9e; }
+
+/* ── Lists (text lists / gallery) ── */
+.line-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.line-row { display: flex; gap: 6px; align-items: center; }
+.line-row .line-text {
+  flex: 1; min-width: 0;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+  padding: 6px 8px;
+  background: #f6f7fa;
+  border-radius: 6px;
+}
+.line-row .btn { padding: 4px 10px; font-size: 12.5px; flex: none; }
+
+/* ── Brand colors ── */
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid #eceef3;
+}
+.token-row:first-child { border-top: none; }
+.token-name { flex: 1; font-size: 13.5px; }
+.token-value { font-size: 12px; color: #8a93a5; }
+.token-row input[type="color"] {
+  width: 34px; height: 28px;
+  padding: 0; border: 1px solid #c6ccd8; border-radius: 6px;
+  background: none; cursor: pointer;
+}
+.token-row input[type="range"] { width: 110px; }
+.token-editor { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eceef3; }
+.token-editor input[type="text"] { margin-bottom: 6px; }
+.token-feedback { font-size: 13px; margin: 4px 0 8px; }
+.token-feedback.bad { color: #8c2f2f; }
+.token-feedback.good { color: #1f6b3a; }
+
+.panel-foot { margin-top: auto; padding: 4px 2px; }
