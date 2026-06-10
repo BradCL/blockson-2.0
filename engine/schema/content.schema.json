@@ -467,12 +467,33 @@
     },
     "contactFormFields": {
       "type": "object",
-      "required": ["formAction", "fields"],
+      "required": ["fields"],
       "additionalProperties": false,
+      "if": {
+        "required": ["delivery"],
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": { "mode": { "const": "netlify" } }
+          }
+        }
+      },
+      "else": { "required": ["formAction"] },
       "properties": {
         "tag":         { "type": "string" },
         "heading":     { "type": "string" },
         "formAction":  { "type": "string", "pattern": "^https://" },
+        "delivery": {
+          "type": "object",
+          "required": ["mode"],
+          "additionalProperties": false,
+          "properties": {
+            "mode":        { "type": "string", "enum": ["endpoint", "netlify"] },
+            "formName":    { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+            "successPath": { "type": "string", "pattern": "^[^:]*$" }
+          }
+        },
         "subjectLine": { "type": "string" },
         "submitLabel": { "type": "string" },
         "fields": {

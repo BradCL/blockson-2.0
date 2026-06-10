@@ -142,7 +142,7 @@
           "fields": {
             "tag": "Send a message",
             "heading": "How can we help?",
-            "formAction": "https://formspree.io/f/your-form-id",
+            "formAction": "https://UNCONFIGURED",
             "subjectLine": "Website enquiry — Blueprint Gallery",
             "fields": [
               {

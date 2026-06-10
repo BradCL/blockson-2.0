@@ -82,6 +82,8 @@ function scanLinkTargets(node, where, errors) {
         errors.push(`${where}.${k}: "${v}" uses a disallowed URL scheme (allowed: https, http, mailto, tel, sms, or a relative path)`);
       } else if (HTTPS_ONLY_KEYS.has(k) && typeof v === 'string' && !/^https:\/\//.test(v)) {
         errors.push(`${where}.${k}: "${v}" must be an https:// URL`);
+      } else if (k === 'successPath' && typeof v === 'string' && v.includes(':')) {
+        errors.push(`${where}.${k}: "${v}" must be a relative path (no URL scheme)`);
       }
       scanLinkTargets(v, `${where}.${k}`, errors);
     }

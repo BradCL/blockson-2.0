@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all fourteen end-to-end proofs in sequence and prints results.
+// Runs all fifteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -35,6 +35,13 @@
 // Proof 14:   build-time image weight advisory (engine/build.js): a >500 KB
 //             file in img/ is named on stderr with its size, a >2 MB folder
 //             gets a one-line total, and the build still succeeds (exit 0).
+// Proof 15:   contact-form delivery modes: endpoint-mode output is the old
+//             output plus exactly the honeypot line (and the honeypot never
+//             carries an annotation); netlify mode emits the Netlify form
+//             attributes and makes formAction optional in the schema while
+//             the https:// guard holds everywhere else; the documented
+//             https://UNCONFIGURED placeholder warns at build without
+//             failing it.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -128,7 +135,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 14;
+const TOTAL = 15;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1022,6 +1029,167 @@ console.log('\n═══ PROOF 14 — Image weight advisory: heavy files are nam
     console.log('PASS — a >500 KB image is named on stderr with its size and a one-sentence');
     console.log('       fix, a >2 MB img/ folder gets the one-line total, files under the');
     console.log('       limit are never named, and the build succeeds unchanged either way.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 15 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 15 — contact-form delivery: endpoint unchanged + honeypot, netlify mode, placeholder warning ═══');
+{
+  const contactForm = require('./blocks/contact-form');
+  const { NOOP_BLOCK } = require('./lib/annotate');
+  const { validate } = require('./lib/validate');
+  const CLIENT  = '__proof-forms';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const failures = [];
+
+  const HP = '<div class="form-hp" aria-hidden="true"><input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></div>';
+  const count = (haystack, needle) => haystack.split(needle).length - 1;
+
+  try {
+    // (a) Endpoint mode is byte-identical to the pre-change renderer except
+    //     the single honeypot line. `oldGolden` is the old module's exact
+    //     output for this fixture; the new output must equal it with the
+    //     honeypot line spliced in after the subject input — nothing else.
+    const fixture = {
+      tag: 'Say hello', heading: 'How can we help?',
+      formAction: 'https://relay.example/f', subjectLine: 'Website enquiry',
+      fields: [
+        { name: 'email', label: 'Email', type: 'email', required: true },
+        { name: 'phone', label: 'Phone', type: 'tel' },
+      ],
+      submitLabel: 'Go',
+    };
+    const oldGolden = [
+      '<section class="contact-form-section">',
+      '  <div class="container">',
+      '    <div class="section-tag">Say hello</div>',
+      '    <h2>How can we help?</h2>',
+      '    <form class="contact-form" method="POST" action="https://relay.example/f">',
+      '      <input type="hidden" name="_subject" value="Website enquiry">',
+      '      <div class="form-group">',
+      '        <label for="field-email">Email <span class="form-required" aria-hidden="true">*</span></label>',
+      '        <input type="email" name="email" id="field-email" required>',
+      '      </div>',
+      '      <div class="form-group">',
+      '        <label for="field-phone">Phone <span class="form-optional">(optional)</span></label>',
+      '        <input type="tel" name="phone" id="field-phone">',
+      '      </div>',
+      '      <div class="form-submit">',
+      '        <button type="submit" class="btn btn-primary">Go</button>',
+      '      </div>',
+      '    </form>',
+      '  </div>',
+      '</section>',
+    ];
+    const newGolden = oldGolden.slice(0, 6).concat(['      ' + HP], oldGolden.slice(6)).join('\n');
+    const endpointHtml = contactForm(fixture, {}, NOOP_BLOCK);
+    if (endpointHtml !== newGolden) {
+      failures.push('endpoint-mode output is not the old output + exactly the honeypot line');
+    }
+
+    // …and on a real example client's live build: same form tag as before,
+    // exactly one honeypot, and none of the netlify-mode attributes.
+    build('example-contractor');
+    const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', 'example-contractor', 'contact.html'), 'utf8');
+    if (!liveHtml.includes('<form class="contact-form" method="POST" action="https://formspree.io/f/xxxxxxx">')) {
+      failures.push('example-contractor form tag changed in endpoint mode');
+    }
+    if (count(liveHtml, HP) !== 1) failures.push('example-contractor contact page does not carry exactly one honeypot');
+    if (liveHtml.includes('data-netlify') || liveHtml.includes('form-name')) {
+      failures.push('netlify attributes leaked into an endpoint-mode build');
+    }
+
+    // (b) Netlify mode emits the expected attributes: form name,
+    //     data-netlify, netlify-honeypot wiring, the hidden form-name
+    //     input, and the success-redirect action only when configured.
+    const nf = contactForm({
+      delivery: { mode: 'netlify', formName: 'enquiries', successPath: 'thanks.html' },
+      fields: [{ name: 'email', label: 'Email', type: 'email', required: true }],
+    }, {}, NOOP_BLOCK);
+    if (!nf.includes('<form class="contact-form" method="POST" name="enquiries" data-netlify="true" netlify-honeypot="_gotcha" action="thanks.html">')) {
+      failures.push('netlify mode did not emit the expected form attributes');
+    }
+    if (!nf.includes('<input type="hidden" name="form-name" value="enquiries">')) {
+      failures.push('netlify mode is missing the hidden form-name input');
+    }
+    if (count(nf, HP) !== 1) failures.push('netlify mode does not carry exactly one honeypot');
+    const nfDefaults = contactForm({
+      delivery: { mode: 'netlify' },
+      fields: [{ name: 'email', label: 'Email', type: 'email', required: true }],
+    }, {}, NOOP_BLOCK);
+    if (!nfDefaults.includes('name="contact" data-netlify="true" netlify-honeypot="_gotcha">')) {
+      failures.push('netlify mode defaults (formName "contact", no action) are wrong');
+    }
+
+    // Schema: formAction is optional ONLY under netlify mode; the https://
+    // requirement and the no-scheme successPath guard hold everywhere else.
+    const base = readContent('example-contractor');
+    const formBlock = c => c.pages.flatMap(p => p.blocks).find(b => b.type === 'contact-form');
+    const variant = mutate => { const c = JSON.parse(JSON.stringify(base)); mutate(formBlock(c).fields); return validate(c); };
+    if (!variant(f => { delete f.formAction; f.delivery = { mode: 'netlify' }; }).ok) {
+      failures.push('schema rejected netlify mode without formAction');
+    }
+    if (variant(f => { delete f.formAction; }).ok) failures.push('schema accepted a missing formAction with no delivery mode');
+    if (variant(f => { delete f.formAction; f.delivery = { mode: 'endpoint' }; }).ok) {
+      failures.push('schema accepted endpoint mode without formAction');
+    }
+    if (variant(f => { f.formAction = 'http://insecure.example/f'; }).ok) failures.push('schema accepted a non-https formAction');
+    if (variant(f => { f.delivery = { mode: 'netlify', successPath: 'javascript:alert(1)' }; }).ok) {
+      failures.push('schema accepted a successPath carrying a URL scheme');
+    }
+    if (variant(f => { f.delivery = { mode: 'paid-relay' }; }).ok) failures.push('schema accepted an unknown delivery mode');
+
+    // (c) The honeypot never carries an annotation: in the ANNOTATED build it
+    //     appears verbatim (no data-bk-* inside), while the form's real
+    //     fields stay annotated. Proof 1 (already run above) covers the rest
+    //     of the annotation contract whole.
+    build('example-contractor', ['--annotate']);
+    const annHtml = fs.readFileSync(path.join(ROOT, 'dist', 'example-contractor__annotated', 'contact.html'), 'utf8');
+    if (count(annHtml, HP) !== 1) failures.push('annotated build: honeypot missing or carrying annotations');
+    if (!annHtml.includes('data-bk-field="formAction"')) failures.push('annotated build lost the formAction annotation');
+
+    // (d) The placeholder warns at build time and the build still succeeds;
+    //     a netlify-mode client builds end-to-end with the attributes live.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const c1 = JSON.parse(JSON.stringify(base));
+    formBlock(c1).fields.formAction = 'https://UNCONFIGURED';
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(c1, null, 2) + '\n', 'utf8');
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`placeholder formAction failed the build (it must only warn):\n${b1.out}`);
+    if (!/still points at the placeholder endpoint https:\/\/UNCONFIGURED/.test(b1.out) || !b1.out.includes('"contact-form"')) {
+      failures.push(`placeholder warning missing or does not name the block: ${b1.out}`);
+    }
+    const c2 = JSON.parse(JSON.stringify(base));
+    delete formBlock(c2).fields.formAction;
+    formBlock(c2).fields.delivery = { mode: 'netlify', successPath: 'thanks.html' };
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(c2, null, 2) + '\n', 'utf8');
+    const b2 = build(CLIENT);
+    if (!b2.ok) failures.push(`netlify-mode client failed to build:\n${b2.out}`);
+    else {
+      const nfLive = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'contact.html'), 'utf8');
+      if (!nfLive.includes('data-netlify="true"') || !nfLive.includes('netlify-honeypot="_gotcha"')) {
+        failures.push('netlify attributes missing from the built page');
+      }
+      if (/still points at the placeholder/.test(b2.out)) failures.push('placeholder warning fired without the placeholder');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', CLIENT), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — endpoint-mode rendering equals the previous output plus exactly the');
+    console.log('       honeypot line (verified against a byte-level golden and a real client);');
+    console.log('       netlify mode emits name/data-netlify/netlify-honeypot/form-name and the');
+    console.log('       configured success redirect, with formAction optional ONLY there; the');
+    console.log('       honeypot is never annotated; https://UNCONFIGURED warns and never fails.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

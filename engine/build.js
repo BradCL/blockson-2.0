@@ -200,7 +200,26 @@ console.log(`Built ${content.pages.length} page(s) → dist/${clientName + distS
 // only — it never changes the exit code or the build output.
 warnOnHeavyImages(imgSrc);
 
+// ── Unconfigured contact-form advisory ─────────────────────────
+// "https://UNCONFIGURED" is the documented placeholder for a contact-form
+// endpoint that has not been wired up yet (BLOCK_CATALOG.md): it passes the
+// schema's https:// guard so the site builds, and this warns loudly until
+// it is replaced. Advisory only — warn, never fail.
+warnOnPlaceholderForms(content);
+
 // ── Helpers ────────────────────────────────────────────────────
+function warnOnPlaceholderForms(content) {
+  const PLACEHOLDER = 'https://UNCONFIGURED';
+  for (const page of content.pages || []) {
+    for (const block of page.blocks || []) {
+      if (block && block.type === 'contact-form' && block.fields
+          && block.fields.formAction === PLACEHOLDER) {
+        console.warn(`  ⚠ The contact form "${block.id}" (page "${page.slug}") still points at the placeholder endpoint ${PLACEHOLDER} — submissions will go nowhere until formAction is set to a real https:// endpoint or the block is switched to another delivery mode (see "Contact form delivery" in OPERATOR.md).`);
+      }
+    }
+  }
+}
+
 function warnOnHeavyImages(imgDir) {
   const PER_FILE_LIMIT = 500 * 1024;       // 500 KB per image
   const TOTAL_LIMIT    = 2 * 1024 * 1024;  // 2 MB for the whole img/ folder

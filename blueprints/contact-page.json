@@ -16,8 +16,8 @@
     { "key": "address", "label": "Street address", "type": "text", "required": true, "maxLength": 120,
       "example": "12 Main Street, Springfield" },
     { "key": "formAction", "label": "Form endpoint URL", "type": "text", "required": true, "maxLength": 200,
-      "pattern": "^https://", "hint": "a form service URL starting with https:// (e.g. from formspree.io)",
-      "example": "https://formspree.io/f/your-form-id",
+      "pattern": "^https://", "hint": "where submissions are sent — an https:// endpoint (your developer's form worker or a relay service); enter https://UNCONFIGURED to decide later (the build will keep reminding you)",
+      "example": "https://UNCONFIGURED",
       "variants": ["withForm"] }
   ],
   "template": {

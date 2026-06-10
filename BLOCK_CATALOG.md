@@ -139,13 +139,39 @@ CSS: `.contact-info-section`, `.contact-info-bar`, `.contact-info-item`,
 **Maintenance:** labels/values/hrefs editable by item id.
 
 ### `contact-form`
-A Formspree-backed form. Field set is parameterized per client.
-- `tag?`, `heading?`, `formAction` url, `subjectLine?`, `submitLabel?` (default "Send Message")
+A contact form with a selectable, subscription-free delivery mode. Field set is
+parameterized per client. The full per-host delivery story (Netlify / Cloudflare
+Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md).
+- `tag?`, `heading?`, `subjectLine?`, `submitLabel?` (default "Send Message")
+- `formAction` url — required in endpoint mode (must be `https://`); optional and
+  not rendered in netlify mode
+- `delivery?` — selects how submissions are delivered. Absent means `endpoint`:
+  - `mode` ∈ `endpoint` | `netlify`
+  - `formName?` string (netlify mode; default `contact`) — the form name Netlify registers
+  - `successPath?` relative path (netlify mode) — rendered as the form `action` so
+    Netlify redirects there after a submission; omit to use Netlify's built-in
+    success page
+- **endpoint mode** (default, unchanged semantics): the form POSTs to `formAction` —
+  the Cloudflare Worker shipped in `extras/cloudflare-form-worker/`, or a relay
+  service of your choosing.
+- **netlify mode**: the form renders `name`, `data-netlify="true"`, a hidden
+  `form-name` input, and `netlify-honeypot` wiring — Netlify's edge handles
+  delivery; nothing to deploy.
+- **Honeypot:** every form renders a visually hidden text input named `_gotcha`
+  (both modes). Netlify, the Worker template, and Formspree all drop submissions
+  that fill it. It is rendered markup, not schema content — it never appears in
+  the edit map and carries no annotations.
+- **Placeholder convention:** a `formAction` of exactly `https://UNCONFIGURED`
+  means "not wired up yet". It passes the schema's `https://` guard so the site
+  still builds, and every build warns loudly until it is replaced (warn, never
+  fail). The contact-page blueprint's example uses it.
 - `fields` Repeats: `{name, label, type ∈ text|email|tel|textarea|select, required?,
   placeholder?, options?[], half?}`
-CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`, `.btn-primary`.
-**Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields: developer
-(they carry no ids — structural by design).
+CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
+`.form-hp`, `.btn-primary`.
+**Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields and the
+delivery wiring (`formAction`, `delivery.*`): developer (fields carry no ids —
+structural by design).
 
 ### `cta`
 Centered closing banner with a statement and a button.

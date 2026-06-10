@@ -499,6 +499,17 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
   outline-offset: 1px;
 }
 .form-submit { margin-top: 0.5rem; }
+/* Honeypot wrapper: removed from the visual page and the accessibility tree
+   (the input is also aria-hidden and untabbable in the markup) — only a bot
+   that fills every field ever touches it. No tokens needed: pure removal. */
+.form-hp {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 /* ── Closing CTA ──────────────────────────────────────────── */
 .closing { text-align: center; }
