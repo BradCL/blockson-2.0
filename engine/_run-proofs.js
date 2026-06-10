@@ -1177,6 +1177,24 @@ console.log('\n═══ PROOF 15 — contact-form delivery: endpoint unchanged 
       }
       if (/still points at the placeholder/.test(b2.out)) failures.push('placeholder warning fired without the placeholder');
     }
+
+    // (e) extras/ is deploy-time material (the Cloudflare form worker), not
+    //     engine runtime: no file under engine/ may require/import from it.
+    const offenders = [];
+    (function scan(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) scan(p);
+        else if (entry.name.endsWith('.js')
+                 && /require\s*\([^)]*extras|from\s+['"][^'"]*extras/.test(fs.readFileSync(p, 'utf8'))) {
+          offenders.push(path.relative(ROOT, p));
+        }
+      }
+    })(path.join(ROOT, 'engine'));
+    if (offenders.length) failures.push(`engine code requires from extras/: ${offenders.join(', ')}`);
+    if (!fs.existsSync(path.join(ROOT, 'extras', 'cloudflare-form-worker', 'worker.js'))) {
+      failures.push('extras/cloudflare-form-worker/worker.js is missing');
+    }
   } catch (e) {
     failures.push(`exception: ${e.message}`);
   } finally {
@@ -1189,7 +1207,8 @@ console.log('\n═══ PROOF 15 — contact-form delivery: endpoint unchanged 
     console.log('       honeypot line (verified against a byte-level golden and a real client);');
     console.log('       netlify mode emits name/data-netlify/netlify-honeypot/form-name and the');
     console.log('       configured success redirect, with formAction optional ONLY there; the');
-    console.log('       honeypot is never annotated; https://UNCONFIGURED warns and never fails.');
+    console.log('       honeypot is never annotated; https://UNCONFIGURED warns and never fails;');
+    console.log('       nothing under extras/ is required by engine code.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

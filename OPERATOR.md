@@ -220,7 +220,28 @@ from `clients/<client-name>/content.json` changes yourself.
 
 ---
 
-## 8. Troubleshooting
+## 8. Contact form delivery
+
+The `contact-form` block (see [BLOCK_CATALOG.md](BLOCK_CATALOG.md)) needs
+something to receive its submissions. The blessed, subscription-free story is
+per-host — pick the row that matches where the site is deployed:
+
+| Host | Do this | What to deploy |
+|---|---|---|
+| **Netlify** | Set the block's `delivery` to `{ "mode": "netlify" }` | Nothing — Netlify's edge form handling picks the form up at deploy time; submissions appear under *Forms* in the Netlify dashboard (email notifications configurable there). Optional: `delivery.successPath` names your own thank-you page. |
+| **Cloudflare** (Pages or any Cloudflare-DNS domain) | Keep the default endpoint mode; set `formAction` to the worker URL | The Worker in [`extras/cloudflare-form-worker/`](extras/cloudflare-form-worker/README.md) — a one-time, free deploy at handover. It emails submissions to the owner's **verified** address via Email Routing; the folder's README has the four setup steps in order. |
+| **Anything else** | Keep endpoint mode; set `formAction` to an `https://` endpoint of your choosing | Your own endpoint, or a form relay service. Be explicit with yourself about the tradeoff: a free relay tier is a **dependency** (their uptime, their limits, their pricing changes), not a recommendation — it contradicts the no-service-relationship philosophy the rest of this system holds to. |
+
+Either way, every rendered form carries a hidden honeypot field (`_gotcha`);
+Netlify, the Worker, and common relays all drop submissions that fill it.
+
+Until delivery is decided, set `formAction` to the documented placeholder
+`https://UNCONFIGURED` — the site builds (so form delivery never blocks a
+handover) and every build warns loudly until it's replaced.
+
+---
+
+## 9. Troubleshooting
 
 - **"the live content does not build — fix it before editing"** (on starting
   `serve.js`): `clients/<client-name>/content.json` already fails validation or the

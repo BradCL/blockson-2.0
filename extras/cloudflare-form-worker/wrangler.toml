@@ -1,0 +1,29 @@
+# extras/cloudflare-form-worker — example wrangler.toml
+# Copy this folder, fill in the three addresses below, then: npx wrangler deploy
+# (full setup order in README.md beside this file)
+
+name = "blockson-form-worker"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Email Routing send binding. destination_address must be a VERIFIED
+# destination address on this Cloudflare account (Email Routing →
+# Destination addresses) — sending is free but works ONLY to verified
+# destinations, which is exactly the contact-form case.
+[[send_email]]
+name = "SEND_EMAIL"
+destination_address = "owner@example.com"
+
+[vars]
+# Sender — any mailbox name on the domain Email Routing is enabled for.
+MAIL_FROM = "forms@your-domain.example"
+# Recipient — the owner's verified destination address (same as the
+# binding's destination_address above).
+MAIL_TO = "owner@example.com"
+# Where the visitor lands after a successful submission (303 redirect):
+# an absolute path on the site, e.g. a thank-you page, or "/".
+THANKS_PATH = "/"
+# Comma-separated whitelist of form field names accepted into the email
+# body — match the block's field set in content.json. Optional; this is
+# the default:
+ALLOWED_FIELDS = "name,email,phone,message,_subject"
