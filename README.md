@@ -331,7 +331,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs sixteen end-to-end proofs against the example clients and the full contribution
+Runs seventeen end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -383,8 +383,16 @@ pipeline:
     on rejection; uploads are logged by name/size only (never file
     bytes); the file rotates at 1 MB; and an unwritable ledger never
     blocks the edit it describes
+17. the per-block visibility flag (`fields.hidden`, boolean): a hidden block
+    is absent from live HTML but stays rendered, annotated, and
+    `data-bk-hidden`-marked in the preview build; the toggle round-trips
+    through `applyPatch` with boolean values; type preservation rejects
+    strings on the flag, booleans on text fields, and booleans in lists
+    with nothing written; an absent flag means visible; the flag is seeded
+    on every example-client and starter block; the migration script is
+    idempotent
 
-All sixteen must pass on a clean tree (`exit 0`).
+All seventeen must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -400,7 +408,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (16 proofs)
+  _run-proofs.js        End-to-end proof suite (17 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)

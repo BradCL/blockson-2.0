@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all sixteen end-to-end proofs in sequence and prints results.
+// Runs all seventeen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -47,6 +47,13 @@
 //             submitted, outcome, error verbatim); uploads logged by
 //             name/size only; rotation at 1 MB; an unwritable ledger
 //             never blocks the edit it describes.
+// Proof 17:   per-block visibility flag (fields.hidden, boolean): hidden
+//             blocks absent from live HTML, present + data-bk-hidden in
+//             the annotated preview, toggle round-trips through applyPatch
+//             with boolean values, type-preservation guards hold both
+//             ways, absent flag means visible, the flag is seeded on the
+//             example clients and the starter, and the edit map reports
+//             it as block metadata (never a scalar).
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -140,7 +147,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 16;
+const TOTAL = 17;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1360,6 +1367,145 @@ console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, 
     console.log('       uploads are logged by name/size with no file bytes; the file rotates to');
     console.log('       edits.log.1.jsonl past 1 MB; and an unwritable ledger never blocks the');
     console.log('       edit it would have described.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 17 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 17 — Visibility flag: hidden blocks leave live HTML, stay reachable in the preview ═══');
+{
+  const STARTER = 'zz-proof-starter';
+  const CLIENT  = '__proof-hidden';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const failures = [];
+  const HERO_TEXT = 'Comfort food, wood-fired.';
+
+  try {
+    // (a) Seeding: every block of all three example clients carries the
+    //     flag explicitly, and a freshly scaffolded client starts with it.
+    for (const c of ['example-contractor', 'example-league', 'example-restaurant']) {
+      const content = readContent(c);
+      for (const p of content.pages) {
+        for (const b of p.blocks) {
+          if (typeof b.fields.hidden !== 'boolean') failures.push(`${c}: block "${b.id}" is missing the seeded hidden flag`);
+        }
+      }
+    }
+    fs.rmSync(path.join(ROOT, 'clients', STARTER), { recursive: true, force: true });
+    const nc = spawnSync(process.execPath, [path.join(ROOT, 'engine', 'new-client.js'), STARTER],
+      { cwd: ROOT, encoding: 'utf8' });
+    if (nc.status !== 0) failures.push(`new-client failed: ${(nc.stdout + nc.stderr).trim()}`);
+    else {
+      const starter = readContent(STARTER);
+      for (const p of starter.pages) {
+        for (const b of p.blocks) {
+          if (b.fields.hidden !== false) failures.push(`starter block "${b.id}" is not seeded with hidden: false`);
+        }
+      }
+    }
+
+    // (b) The edit map reports the flag as block metadata, never a scalar
+    //     (a scalar would demand an on-page annotation no renderer emits).
+    const content = readContent('example-restaurant');
+    const map = buildEditMap(content, loadTokens(content));
+    for (const page of map.pages) {
+      for (const b of page.blocks) {
+        if (b.scalars.some(s => s.field === 'hidden')) failures.push(`edit map lists hidden as a scalar on "${b.id}"`);
+        if (typeof b.hidden !== 'boolean') failures.push(`edit map does not report block-level hidden state on "${b.id}"`);
+      }
+    }
+
+    // (c) Toggle round-trip through applyPatch with boolean values: hide →
+    //     absent from live HTML but present, annotated, and badged in the
+    //     preview build → show → back in live HTML.
+    const hide = applyPatch(content, { action: 'set', block: 'home-hero', field: 'hidden', value: true });
+    if (!hide.ok) failures.push(`boolean hide rejected: ${hide.error}`);
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`live build with a hidden block failed:\n${b1.out}`);
+    const live1 = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+    if (live1.includes(HERO_TEXT)) failures.push('hidden block still present in live HTML');
+    if (live1.includes('data-bk-hidden')) failures.push('live HTML carries the data-bk-hidden marker');
+    const b2 = build(CLIENT, ['--annotate']);
+    if (!b2.ok) failures.push(`annotated build with a hidden block failed:\n${b2.out}`);
+    const ann = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', 'index.html'), 'utf8');
+    if (!ann.includes(HERO_TEXT)) failures.push('hidden block missing from the annotated preview — the owner could never unhide it');
+    if (!ann.includes('data-bk-hidden="true"')) failures.push('annotated preview does not mark the hidden block');
+    if (!ann.includes('data-bk-block="home-hero"')) failures.push('hidden block lost its click-to-edit annotations');
+
+    const show = applyPatch(content, { action: 'set', block: 'home-hero', field: 'hidden', value: false });
+    if (!show.ok) failures.push(`boolean show rejected: ${show.error}`);
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const b3 = build(CLIENT);
+    if (!b3.ok) failures.push(`live rebuild after unhiding failed:\n${b3.out}`);
+    if (!fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8').includes(HERO_TEXT)) {
+      failures.push('unhidden block did not return to live HTML');
+    }
+
+    // (d) Type preservation holds both ways, and booleans never enter
+    //     lists; every rejection leaves the content untouched.
+    const guarded = readContent('example-contractor');
+    const orig = JSON.stringify(guarded);
+    const gs = [
+      ['string onto the boolean flag', applyPatch(guarded, { action: 'set', block: 'home-hero', field: 'hidden', value: 'yes' })],
+      ['boolean onto a string field', applyPatch(guarded, { action: 'set', block: 'home-hero', field: 'headline', value: true })],
+      ['boolean into a list (match form)', applyPatch(guarded, { action: 'set', block: 'about-values', field: 'items', match: 'anything', value: true })],
+      ['boolean appended to a list', applyPatch(guarded, { action: 'append', block: 'about-values', field: 'items', value: false })],
+    ];
+    for (const [label, r] of gs) {
+      if (r.ok) failures.push(`accepted what must be rejected: ${label}`);
+    }
+    if (JSON.stringify(guarded) !== orig) failures.push('a rejected boolean write modified the content');
+
+    // (e) Absent flag means visible — pre-flag content behaves exactly as
+    //     before (the schema change is additive and optional).
+    delete content.pages[0].blocks[0].fields.hidden;
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const b4 = build(CLIENT);
+    if (!b4.ok) failures.push(`build without the flag failed (it must stay optional):\n${b4.out}`);
+    if (!fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8').includes(HERO_TEXT)) {
+      failures.push('a block without the flag was not rendered (absent must mean visible)');
+    }
+    const mapNoFlag = buildEditMap(JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8')));
+    const heroDesc = mapNoFlag.pages[0].blocks[0];
+    if (heroDesc.hidden !== null) failures.push('edit map should report hidden: null when the flag is not seeded');
+
+    // (f) The migration script is idempotent and seeds exactly the
+    //     flag-less blocks.
+    const mig1 = spawnSync(process.execPath, [path.join(ROOT, 'extras', 'add-hidden-flags.js'), CLIENT],
+      { cwd: ROOT, encoding: 'utf8' });
+    const after = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+    if (mig1.status !== 0 || after.pages[0].blocks[0].fields.hidden !== false) {
+      failures.push('add-hidden-flags.js did not seed the missing flag');
+    }
+    const beforeText = fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8');
+    spawnSync(process.execPath, [path.join(ROOT, 'extras', 'add-hidden-flags.js'), CLIENT], { cwd: ROOT, encoding: 'utf8' });
+    if (fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8') !== beforeText) {
+      failures.push('add-hidden-flags.js is not idempotent');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(path.join(ROOT, 'clients', STARTER), { recursive: true, force: true });
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    for (const d of [STARTER, CLIENT, CLIENT + '__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the flag is seeded on every example-client and starter block; the edit');
+    console.log('       map reports it as block metadata (never a scalar); a hidden block leaves');
+    console.log('       live HTML entirely but stays rendered, annotated, and data-bk-hidden-');
+    console.log('       marked in the preview; the toggle round-trips through applyPatch with');
+    console.log('       booleans; type preservation rejects strings-on-flag, booleans-on-text,');
+    console.log('       and booleans-into-lists with nothing written; an absent flag means');
+    console.log('       visible; the migration script seeds it once, idempotently.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

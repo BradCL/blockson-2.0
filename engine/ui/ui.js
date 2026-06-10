@@ -171,8 +171,31 @@
       else if (info.kind === 'text-list') renderTextListEditor(ref, info);
       else if (info.kind === 'image') renderImageEditor(ref, info);
       else if (info.kind === 'image-list') renderImageListEditor(ref, info);
-      else showMessage('error', 'This field cannot be edited here.');
+      else if (info.kind === 'toggle') editorShell(fieldTitle(ref));
+      else { showMessage('error', 'This field cannot be edited here.'); return; }
+      appendVisibilityToggle(ref, info);
     });
+  }
+
+  // Section visibility: every editor opened for a block also offers the
+  // block-level hide/show toggle (no separate hidden-blocks panel — the
+  // owner reaches it through the same click that edits any field of the
+  // section). Shown only when the block carries the seeded flag.
+  function appendVisibilityToggle(ref, info) {
+    if (typeof info.blockHidden !== 'boolean' && info.kind !== 'toggle') return;
+    var hidden = info.kind === 'toggle' ? info.value === true : info.blockHidden;
+    var ed = $('editor');
+    if (ed.hidden) return;
+    ed.appendChild(el('div', 'field-label', 'This whole section'));
+    ed.appendChild(el('div', 'hint', hidden
+      ? 'This section is hidden — visitors do not see it on the live site.'
+      : 'Visitors currently see this section on the live site.'));
+    var row = el('div', 'btn-row');
+    row.appendChild(button(hidden ? 'Show this section again' : 'Hide this section', null, function () {
+      stage({ action: 'set', block: ref.block, field: 'hidden', value: !hidden }, null, ed);
+    }));
+    if (info.kind === 'toggle') row.appendChild(button('Cancel', null, closeEditor));
+    ed.appendChild(row);
   }
 
   // Short text → input; long text → textarea.

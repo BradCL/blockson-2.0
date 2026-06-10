@@ -21,8 +21,15 @@ function renderPage(page, site, tokens, annotator) {
   for (const block of page.blocks) {
     const mod = BLOCKS[block.type];
     if (!mod) throw new Error(`Unknown block type "${block.type}" on block id "${block.id}"`);
+    const hidden = !!(block.fields && block.fields.hidden === true);
+    // A hidden block is absent from LIVE output entirely. In the ANNOTATED
+    // preview it still renders (so the owner can click it and unhide it),
+    // stamped data-bk-hidden for the overlay's dimmed/badged treatment.
+    if (hidden && !annotator) continue;
     const bk = annotator ? annotator.forBlock(block.id) : NOOP_BLOCK;
-    parts.push(mod(block.fields, site, bk));
+    let html = mod(block.fields, site, bk);
+    if (hidden) html = html.replace(/^(\s*<[a-zA-Z][a-zA-Z0-9-]*)/, '$1 data-bk-hidden="true"');
+    parts.push(html);
   }
 
   parts.push(footer(site, siteBk));

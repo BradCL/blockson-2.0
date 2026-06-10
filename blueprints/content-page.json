@@ -34,10 +34,10 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}"
+          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}", "hidden": false
         } },
         { "id": "body", "type": "text", "fields": {
-          "body": "{{body|paragraphs}}"
+          "body": "{{body|paragraphs}}", "hidden": false
         } }
       ]
     },
@@ -46,14 +46,15 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}"
+          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}", "hidden": false
         } },
         { "id": "body", "type": "text", "fields": {
-          "body": "{{body|paragraphs}}"
+          "body": "{{body|paragraphs}}", "hidden": false
         } },
         { "id": "cta", "type": "cta", "fields": {
           "statement": "{{ctaStatement}}",
-          "button": { "label": "{{ctaLabel}}", "href": "{{ctaHref}}", "style": "primary" }
+          "button": { "label": "{{ctaLabel}}", "href": "{{ctaHref}}", "style": "primary" },
+          "hidden": false
         } }
       ]
     }

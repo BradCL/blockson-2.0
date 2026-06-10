@@ -76,11 +76,13 @@ const starter = {
           headline: 'Replace this headline.',
           subhead: 'One sentence on what the business does and for whom.',
           background: 'img/banner.jpg',
-          actions: [{ label: 'Get in Touch', href: 'contact.html', style: 'primary' }]
+          actions: [{ label: 'Get in Touch', href: 'contact.html', style: 'primary' }],
+          hidden: false
         }},
         { id: 'home-cta', type: 'cta', fields: {
           statement: 'Ready to get started?',
-          button: { label: 'Contact Us', href: 'contact.html', style: 'primary' }
+          button: { label: 'Contact Us', href: 'contact.html', style: 'primary' },
+          hidden: false
         }}
       ]
     },
@@ -89,13 +91,14 @@ const starter = {
       meta: { title: `Contact | ${pretty}`, description: 'Get in touch.' },
       blocks: [
         { id: 'contact-header', type: 'page-header', fields: {
-          tag: 'Contact', heading: "Let's talk"
+          tag: 'Contact', heading: "Let's talk", hidden: false
         }},
         { id: 'contact-info', type: 'contact-info', fields: {
           items: [
             { id: 'info-phone', icon: 'phone', label: 'Call', value: '000-000-0000', href: 'tel:0000000000' },
             { id: 'info-email', icon: 'mail', label: 'Email', value: 'Email Us', href: `mailto:hello@${name}.example.com` }
-          ]
+          ],
+          hidden: false
         }}
       ]
     }

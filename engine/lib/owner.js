@@ -175,6 +175,10 @@ function resolveCardValue(content, patch, presetTokens) {
 
 function summarize(patch) {
   if (patch.action === 'set-token') return `set brand token --${String(patch.token).replace(/^--/, '')}`;
+  if (patch.action === 'set' && patch.field === 'hidden' && patch.item == null
+      && typeof patch.value === 'boolean') {
+    return patch.value ? `hide the ${patch.block} section` : `show the ${patch.block} section again`;
+  }
   const where = patch.item ? `${patch.block} › ${patch.item}` : patch.block;
   if (patch.action === 'append') return `add a line to ${where}.${patch.field}`;
   if (patch.action === 'delete') return `remove a line from ${where}.${patch.field}`;
@@ -343,6 +347,18 @@ function getState(session) {
    from the CANDIDATE content — the same content a staged patch will be
    resolved against. */
 function describeField(session, ref) {
+  const res = describeFieldValue(session, ref);
+  // Block-level visibility state rides along on every successful field
+  // description, so the editor pane can offer the section's hide/show
+  // toggle next to whichever field was clicked. Absent flag → no toggle.
+  if (res.ok && ref && ref.block !== 'site') {
+    const fields = indexHosts(readCandidate(session)).get(ref.block);
+    if (fields && typeof fields.hidden === 'boolean') res.blockHidden = fields.hidden;
+  }
+  return res;
+}
+
+function describeFieldValue(session, ref) {
   if (!ref || typeof ref.block !== 'string' || typeof ref.field !== 'string') {
     return { ok: false, error: 'a field reference needs at least "block" and "field"' };
   }
@@ -373,6 +389,7 @@ function describeField(session, ref) {
     return { ok: false, error: `"${ref.field}" is a container; its inner values are edited individually` };
   }
   if (isImagePath(v)) return { ok: true, kind: 'image', field: ref.field, value: v };
+  if (typeof v === 'boolean') return { ok: true, kind: 'toggle', field: ref.field, value: v };
   if (typeof v === 'number') return { ok: true, kind: 'text', field: ref.field, value: v, valueType: 'number' };
   const s = String(v == null ? '' : v);
   const kind = (s.includes('\n') || s.length > LONG_TEXT_THRESHOLD) ? 'long-text' : 'text';

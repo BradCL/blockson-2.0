@@ -26,13 +26,14 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}", "background": "{{bannerPhoto}}"
+          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}", "background": "{{bannerPhoto}}", "hidden": false
         } },
         { "id": "albums", "type": "gallery", "fields": {
           "filters": [ { "label": "All", "value": "all" } ],
           "albums": [
             { "id": "album-1", "category": "photos", "title": "{{albumTitle}}", "images": ["{{photo}}"] }
-          ]
+          ],
+          "hidden": false
         } }
       ]
     },
@@ -41,14 +42,15 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}"
+          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}", "hidden": false
         } },
         { "id": "albums", "type": "gallery", "fields": {
           "heading": "{{albumTitle}}",
           "filters": [ { "label": "All", "value": "all" } ],
           "albums": [
             { "id": "album-1", "category": "photos", "title": "{{albumTitle}}", "images": ["{{photo}}"] }
-          ]
+          ],
+          "hidden": false
         } }
       ]
     }

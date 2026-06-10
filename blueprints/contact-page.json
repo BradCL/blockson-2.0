@@ -26,14 +26,15 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "Contact", "heading": "{{title}}", "subhead": "{{intro}}"
+          "tag": "Contact", "heading": "{{title}}", "subhead": "{{intro}}", "hidden": false
         } },
         { "id": "info", "type": "contact-info", "fields": {
           "items": [
             { "id": "info-phone", "icon": "phone", "label": "Call", "value": "{{site.contact.phone}}", "href": "tel:{{site.contact.phone}}" },
             { "id": "info-email", "icon": "mail", "label": "Email", "value": "{{site.contact.email}}", "href": "mailto:{{site.contact.email}}" },
             { "id": "info-address", "icon": "pin", "label": "Visit", "value": "{{address}}" }
-          ]
+          ],
+          "hidden": false
         } },
         { "id": "form", "type": "contact-form", "fields": {
           "tag": "Send a message",
@@ -45,7 +46,8 @@
             { "name": "email", "label": "Email", "type": "email", "required": true, "half": true },
             { "name": "message", "label": "Your message", "type": "textarea", "required": true }
           ],
-          "submitLabel": "Send"
+          "submitLabel": "Send",
+          "hidden": false
         } }
       ]
     },
@@ -54,19 +56,21 @@
       "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
       "blocks": [
         { "id": "header", "type": "page-header", "fields": {
-          "tag": "Contact", "heading": "{{title}}", "subhead": "{{intro}}"
+          "tag": "Contact", "heading": "{{title}}", "subhead": "{{intro}}", "hidden": false
         } },
         { "id": "info", "type": "contact-info", "fields": {
           "items": [
             { "id": "info-phone", "icon": "phone", "label": "Call", "value": "{{site.contact.phone}}", "href": "tel:{{site.contact.phone}}" },
             { "id": "info-email", "icon": "mail", "label": "Email", "value": "{{site.contact.email}}", "href": "mailto:{{site.contact.email}}" },
             { "id": "info-address", "icon": "pin", "label": "Visit", "value": "{{address}}" }
-          ]
+          ],
+          "hidden": false
         } },
         { "id": "cta", "type": "cta", "fields": {
           "statement": "Fastest answer? Give us a call.",
           "subtext": "{{site.contact.phone}}",
-          "button": { "label": "Call now", "href": "tel:{{site.contact.phone}}", "style": "primary" }
+          "button": { "label": "Call now", "href": "tel:{{site.contact.phone}}", "style": "primary" },
+          "hidden": false
         } }
       ]
     }

@@ -121,8 +121,9 @@ function baseContent(name, copy) {
         { id: 'index-header', type: 'page-header', fields: {
           tag: 'Home', heading: c.indexHeading || 'Validation sandbox',
           subhead: c.indexSubhead || 'Instantiated blueprint pages are linked from the menu.',
+          hidden: false,
         } },
-        ...(c.indexBody ? [{ id: 'index-intro', type: 'text', fields: { body: c.indexBody } }] : []),
+        ...(c.indexBody ? [{ id: 'index-intro', type: 'text', fields: { body: c.indexBody, hidden: false } }] : []),
       ],
     }],
   };
@@ -351,6 +352,11 @@ const SHOWCASE_BLOCKS = [
     provider: 'Calendly', note: 'Opens in a new tab.',
     button: { label: 'Book now', href: 'https://calendly.com/sample' } } },
 ];
+
+// Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks
+// carry the owner-togglable visibility flag explicitly — applied here so a
+// newly added showcase block can never ship without it.
+for (const b of SHOWCASE_BLOCKS) b.fields.hidden = false;
 
 // ── Demo gallery content ───────────────────────────────────────
 

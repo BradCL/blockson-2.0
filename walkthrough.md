@@ -15,7 +15,7 @@ What to do:
 git clone <your repo>
 cd blockson
 npm install              # ajv + ajv-formats — the only deps, used for full schema validation
-node engine/_run-proofs.js   # or: npm test  → expect "16/16 proofs passed"
+node engine/_run-proofs.js   # or: npm test  → expect "17/17 proofs passed"
 If the proofs are green, every safety guard (patch resolver, candidate isolation, link-scheme guard, upload signatures, server request guards) is verified working.
 
 Step 2 — Scaffold a new client

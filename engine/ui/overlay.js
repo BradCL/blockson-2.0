@@ -19,12 +19,21 @@
 (function () {
   var ORIGIN = window.location.origin;
 
-  // Hover/selection styles for annotated elements.
+  // Hover/selection styles for annotated elements, plus the dimmed/badged
+  // treatment of HIDDEN sections (data-bk-hidden, stamped only in annotated
+  // preview builds — this CSS lives in the editor layer and is never part
+  // of any live output). A hidden section stays visible and clickable here
+  // so the owner can always reach the toggle that unhides it.
   var style = document.createElement('style');
   style.textContent =
     '[data-bk-block]{cursor:pointer}' +
     '.bk-hover{outline:2px solid #2563eb !important;outline-offset:2px;border-radius:2px;' +
-    'background-color:rgba(37,99,235,.08) !important;transition:background-color .1s}';
+    'background-color:rgba(37,99,235,.08) !important;transition:background-color .1s}' +
+    '[data-bk-hidden]{opacity:.45;outline:2px dashed #b45309;outline-offset:-2px;position:relative}' +
+    '[data-bk-hidden]::before{content:"Hidden section \\2014  visitors don\\2019t see this. Click anything in it to show it again.";' +
+    'display:block;position:absolute;top:0;left:0;right:0;z-index:50;' +
+    'background:#b45309;color:#fff;font:13px/1.6 system-ui,sans-serif;' +
+    'text-align:center;padding:2px 8px;opacity:1}';
   document.head.appendChild(style);
 
   var hovered = null;

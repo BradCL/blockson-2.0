@@ -77,7 +77,8 @@
           "fields": {
             "tag": "Home",
             "heading": "Blueprint gallery",
-            "subhead": "One page per blueprint × variant, instantiated from each input’s example values."
+            "subhead": "One page per blueprint × variant, instantiated from each input’s example values.",
+            "hidden": false
           }
         },
         {
@@ -87,7 +88,8 @@
             "body": [
               "This client is GENERATED. Do not edit it by hand — run \"npm run blueprints:check\" to validate every blueprint and regenerate this gallery, and commit the result.",
               "Each menu entry is one blueprint variant, instantiated through engine/lib/scaffold.js exactly as the owner editor would. The pages double as the visual gallery for theme work and as the regression corpus the proof suite builds on every run."
-            ]
+            ],
+            "hidden": false
           }
         }
       ]
@@ -105,7 +107,8 @@
           "fields": {
             "tag": "Contact",
             "heading": "Get in touch",
-            "subhead": "Call, email, or send us a message — we reply within one business day."
+            "subhead": "Call, email, or send us a message — we reply within one business day.",
+            "hidden": false
           }
         },
         {
@@ -133,7 +136,8 @@
                 "label": "Visit",
                 "value": "12 Main Street, Springfield"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -166,7 +170,8 @@
                 "required": true
               }
             ],
-            "submitLabel": "Send"
+            "submitLabel": "Send",
+            "hidden": false
           }
         }
       ]
@@ -184,7 +189,8 @@
           "fields": {
             "tag": "Contact",
             "heading": "Get in touch",
-            "subhead": "Call, email, or send us a message — we reply within one business day."
+            "subhead": "Call, email, or send us a message — we reply within one business day.",
+            "hidden": false
           }
         },
         {
@@ -212,7 +218,8 @@
                 "label": "Visit",
                 "value": "12 Main Street, Springfield"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -225,7 +232,8 @@
               "label": "Call now",
               "href": "tel:000-000-0000",
               "style": "primary"
-            }
+            },
+            "hidden": false
           }
         }
       ]
@@ -244,7 +252,8 @@
             "tag": "Our story: textOnly",
             "heading": "How we got here",
             "subhead": "The story of how a one-truck operation became a local fixture.",
-            "variant": "default"
+            "variant": "default",
+            "hidden": false
           }
         },
         {
@@ -254,7 +263,8 @@
             "body": [
               "We started small, with one truck and a borrowed ladder.",
               "Twenty years later the trucks are newer, but the promise is the same: do the job right, charge what was quoted, and leave the site cleaner than we found it."
-            ]
+            ],
+            "hidden": false
           }
         }
       ]
@@ -273,7 +283,8 @@
             "tag": "Our story: withCta",
             "heading": "How we got here",
             "subhead": "The story of how a one-truck operation became a local fixture.",
-            "variant": "default"
+            "variant": "default",
+            "hidden": false
           }
         },
         {
@@ -283,7 +294,8 @@
             "body": [
               "We started small, with one truck and a borrowed ladder.",
               "Twenty years later the trucks are newer, but the promise is the same: do the job right, charge what was quoted, and leave the site cleaner than we found it."
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -295,7 +307,8 @@
               "label": "Get in touch",
               "href": "contact.html",
               "style": "primary"
-            }
+            },
+            "hidden": false
           }
         }
       ]
@@ -314,7 +327,8 @@
             "tag": "Gallery",
             "heading": "Our work in pictures",
             "subhead": "A look at recent projects, straight from the job site.",
-            "background": "img/sample-banner.jpg"
+            "background": "img/sample-banner.jpg",
+            "hidden": false
           }
         },
         {
@@ -336,7 +350,8 @@
                   "img/sample-1.jpg"
                 ]
               }
-            ]
+            ],
+            "hidden": false
           }
         }
       ]
@@ -354,7 +369,8 @@
           "fields": {
             "tag": "Gallery",
             "heading": "Our work in pictures",
-            "subhead": "A look at recent projects, straight from the job site."
+            "subhead": "A look at recent projects, straight from the job site.",
+            "hidden": false
           }
         },
         {
@@ -377,7 +393,8 @@
                   "img/sample-1.jpg"
                 ]
               }
-            ]
+            ],
+            "hidden": false
           }
         }
       ]
@@ -408,7 +425,8 @@
                 "href": "index.html",
                 "style": "secondary"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -418,7 +436,8 @@
             "tag": "Showcase",
             "heading": "A page header band",
             "subhead": "The interior-page opener.",
-            "variant": "default"
+            "variant": "default",
+            "hidden": false
           }
         },
         {
@@ -430,7 +449,8 @@
             "body": [
               "First paragraph of sample prose.",
               "Second paragraph, to show paragraph spacing."
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -463,7 +483,8 @@
                 "title": "Third card",
                 "body": "One sentence of card body."
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -490,7 +511,8 @@
                   "img/sample-3.jpg"
                 ]
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -512,7 +534,8 @@
                 "quote": "A second quote, four stars.",
                 "attribution": "B. Customer"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -526,7 +549,8 @@
               "Second line",
               "Third line",
               "Fourth line"
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -539,7 +563,8 @@
               "Northside",
               "Southside",
               "Downtown"
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -574,7 +599,8 @@
                   "style": "secondary"
                 }
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -602,7 +628,8 @@
                 "label": "Visit",
                 "value": "12 Main Street"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -635,7 +662,8 @@
                 "type": "textarea",
                 "required": true
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -649,7 +677,8 @@
               "label": "Do the thing",
               "href": "index.html",
               "style": "primary"
-            }
+            },
+            "hidden": false
           }
         },
         {
@@ -688,7 +717,8 @@
                   "style": "primary"
                 }
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -710,7 +740,8 @@
                 "name": "Alex Person",
                 "role": "Manager"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -730,7 +761,8 @@
                 "question": "A second question?",
                 "answer": "Its answer."
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -756,7 +788,8 @@
                 "day": "Sunday",
                 "hours": "Closed"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -773,7 +806,8 @@
                 "after": "img/sample-2.jpg",
                 "caption": "One-line caption."
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -796,7 +830,8 @@
                 "value": "4.9",
                 "label": "Average rating"
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -824,7 +859,8 @@
                 "title": "Third step",
                 "body": "One sentence."
               }
-            ]
+            ],
+            "hidden": false
           }
         },
         {
@@ -834,7 +870,8 @@
             "tag": "Video",
             "heading": "A video embed",
             "videoUrl": "https://www.youtube.com/embed/sample123",
-            "caption": "One-line caption."
+            "caption": "One-line caption.",
+            "hidden": false
           }
         },
         {
@@ -849,7 +886,8 @@
             "button": {
               "label": "Book now",
               "href": "https://calendly.com/sample"
-            }
+            },
+            "hidden": false
           }
         }
       ]

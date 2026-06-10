@@ -302,8 +302,14 @@ function applyPatch(content, patch, presetTokens) {
   }
   if (typeof patch.block !== 'string') return { ok: false, error: 'patch missing "block"' };
   if (typeof patch.field !== 'string') return { ok: false, error: 'patch missing "field"' };
+  // Value-type guard. Booleans are accepted ADDITIVELY (v4.2, Task 1) and
+  // only land where the existing value is already a boolean (enforced in the
+  // set branch below) — since this resolver can never CREATE a field, the
+  // boolean-writable surface is exactly the boolean fields a developer
+  // seeded (today: the per-block "hidden" visibility flag).
   if (patch.action !== 'delete'
-      && typeof patch.value !== 'string' && typeof patch.value !== 'number') {
+      && typeof patch.value !== 'string' && typeof patch.value !== 'number'
+      && typeof patch.value !== 'boolean') {
     return { ok: false, error: `"${patch.field}" requires a string "value" (got ${patch.value === undefined ? 'no value' : typeof patch.value})` };
   }
   if (fieldIsForbidden(patch.field)) {
@@ -328,6 +334,9 @@ function applyPatch(content, patch, presetTokens) {
 
   // Flat-text-list edit by matching the current line (no indices).
   if (patch.action === 'set' && typeof patch.match === 'string') {
+    if (typeof patch.value === 'boolean') {
+      return { ok: false, error: `"${patch.field}" is a text list — true/false values do not belong in it` };
+    }
     const fr = resolveField(host, patch.field);
     if (!fr || !Array.isArray(fr.parent && fr.parent[fr.key])) {
       return { ok: false, error: `match requires "${patch.field}" to be a list` };
@@ -372,6 +381,15 @@ function applyPatch(content, patch, presetTokens) {
     if (existing !== null && typeof existing === 'object') {
       return { ok: false, error: `"${patch.field}" is a container; only its inner values are editable` };
     }
+    // Boolean writes are type-preserving in BOTH directions: a boolean can
+    // only replace a boolean, and a boolean field accepts only booleans.
+    // true/false therefore stays a closed two-value domain by construction.
+    if (typeof patch.value === 'boolean' && typeof existing !== 'boolean') {
+      return { ok: false, error: `"${patch.field}" does not hold true/false — a boolean value is only accepted where the field already holds one` };
+    }
+    if (typeof existing === 'boolean' && typeof patch.value !== 'boolean') {
+      return { ok: false, error: `"${patch.field}" holds true/false — set it with a boolean value, not ${typeof patch.value === 'string' ? `"${patch.value}"` : patch.value}` };
+    }
     parent[key] = patch.value;
     return { ok: true, action: 'set' };
   }
@@ -380,6 +398,9 @@ function applyPatch(content, patch, presetTokens) {
   // Object-item arrays (cards, quotes, albums) are structural; adding/removing an item
   // is developer-managed. Mirrors the same restriction already enforced on delete.
   const target = parent[key];
+  if (typeof patch.value === 'boolean') {
+    return { ok: false, error: `"${patch.field}" is a list — true/false values do not belong in it` };
+  }
   if (!Array.isArray(target)) return { ok: false, error: `append target is not a list: ${patch.field}` };
   if (target.some(el => el !== null && typeof el === 'object')) {
     return { ok: false, error: `"${patch.field}" contains objects; append is not permitted on structured item arrays — use set to edit existing items by id` };

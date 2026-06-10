@@ -94,6 +94,11 @@ function describeBlock(block) {
 
   for (const name of Object.keys(fields)) {
     const v = fields[name];
+    // The per-block visibility flag is DELIBERATELY not a scalar here: it has
+    // no rendered element to annotate (proof 1 requires an annotation for
+    // every non-dotted scalar), so it surfaces as block-level metadata below
+    // and the UI reaches it through the editor pane's section toggle.
+    if (name === 'hidden' && typeof v === 'boolean') continue;
     if (isAddressableItemArray(v)) {
       // Repeating object items with ids -> addressed by id
       const items = v.map(it => ({
@@ -121,7 +126,12 @@ function describeBlock(block) {
       scalars.push({ field: name, preview: preview(v) });
     }
   }
-  return { id: block.id, type: block.type, scalars, textLists, itemSets };
+  return {
+    id: block.id, type: block.type, scalars, textLists, itemSets,
+    // null = the flag is not seeded on this block (no toggle to offer);
+    // true/false = the owner-togglable visibility state.
+    hidden: typeof fields.hidden === 'boolean' ? fields.hidden : null,
+  };
 }
 
 function buildEditMap(content, presetTokens) {

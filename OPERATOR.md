@@ -155,6 +155,19 @@ Only one change is pending at a time — the owner approves or discards before m
 the next edit. Nothing the owner does can write outside `clients/<client-name>/`,
 and a failed candidate build can never become a pending change (§8 of SPEC.md).
 
+**Hiding a section.** Every block carries an owner-togglable visibility flag
+(`"hidden": false` inside the block's fields). In the editor, clicking anything
+in a section offers "Hide this section" / "Show this section again" next to the
+field editor. A hidden section is absent from the live site entirely, but stays
+in the preview — dimmed and badged — so the owner can always click it and
+unhide it. This is block-level only: pages and their menu entries cannot be
+hidden by the maintenance tier (page-level hiding is deliberately out of
+scope). **Clients created before this flag existed** simply have no flag —
+their blocks stay visible and the toggle isn't offered, because the editor can
+never create a field. Migrate once with
+`node extras/add-hidden-flags.js <client-name>` (idempotent — seeds
+`"hidden": false` on every block that lacks it), then rebuild.
+
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
 editor scales it to at most 1920 px on the longest edge and re-encodes it (PNG →
 WebP to keep transparency, everything else → JPEG) before uploading — so a 4 MB
