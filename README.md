@@ -76,7 +76,9 @@ tokens via `var(--token-name)`, so one proven CSS file serves every theme.
 Token-only presets declare `"cssBase": "default"` and reuse the default theme's CSS and
 JS. **Building a custom theme:** copy a preset folder, change the token values, and (only
 if you need structural CSS changes) add a `css/styles.css` to the theme folder — the
-build prefers a theme's own CSS when present.
+build prefers a theme's own CSS when present. The full authoring contract is
+[THEME_AUTHORING.md](THEME_AUTHORING.md); validate with
+`node engine/validate-theme.js themes/<name>`.
 
 **Per-client tweaks** go in `site.themeOverrides` (e.g. `"color-primary": "#2D6A4F"`),
 which the developer can write directly — and which the maintenance tier can reach

@@ -223,6 +223,135 @@ function checkBlueprint(filePath) {
   return { ok: errors.length === 0, name, checks, errors };
 }
 
+// ── Block showcase ─────────────────────────────────────────────
+
+/* One schema-valid sample instance of EVERY block type, in registry
+   order. Rendered as the demo gallery's "All blocks" page, this is what
+   makes the gallery a real theme-coverage corpus: validate-theme builds
+   it under a candidate theme and (for themes shipping their own CSS)
+   checks each block's root classes against the stylesheet. Adding a
+   Tier B block type without extending this list fails the theme
+   validator — a deliberate ratchet. All asset paths are placeholders;
+   nothing here references an external resource. */
+const SHOWCASE_BLOCKS = [
+  { id: 'show-hero', type: 'hero', fields: {
+    tag: 'Block showcase', headline: 'Every block type, one page',
+    subhead: 'Theme coverage is checked against this page — every renderer, styled by your tokens.',
+    background: 'img/sample-banner.jpg',
+    actions: [
+      { label: 'Primary action', href: 'index.html', style: 'primary' },
+      { label: 'Secondary action', href: 'index.html', style: 'secondary' },
+    ] } },
+  { id: 'show-page-header', type: 'page-header', fields: {
+    tag: 'Showcase', heading: 'A page header band', subhead: 'The interior-page opener.', variant: 'default' } },
+  { id: 'show-text', type: 'text', fields: {
+    tag: 'Prose', heading: 'A text block',
+    body: ['First paragraph of sample prose.', 'Second paragraph, to show paragraph spacing.'] } },
+  { id: 'show-card-grid', type: 'card-grid', fields: {
+    tag: 'Services', heading: 'A card grid', columns: 3,
+    cards: [
+      { id: 'card-one', icon: 'hammer', title: 'First card', body: 'One sentence of card body.', items: ['A sub-list line', 'Another line'] },
+      { id: 'card-two', icon: 'wrench', title: 'Second card', body: 'One sentence of card body.' },
+      { id: 'card-three', icon: 'home', title: 'Third card', body: 'One sentence of card body.' },
+    ] } },
+  { id: 'show-gallery', type: 'gallery', fields: {
+    tag: 'Work', heading: 'A gallery',
+    filters: [{ label: 'All', value: 'all' }],
+    albums: [
+      { id: 'album-1', category: 'photos', title: 'Sample album', meta: '3 photos',
+        images: ['img/sample-1.jpg', 'img/sample-2.jpg', 'img/sample-3.jpg'] },
+    ] } },
+  { id: 'show-testimonials', type: 'testimonials', fields: {
+    tag: 'Reviews', heading: 'Testimonials',
+    quotes: [
+      { id: 'quote-one', stars: 5, quote: 'A sample five-star quote.', attribution: 'A. Customer' },
+      { id: 'quote-two', stars: 4, quote: 'A second quote, four stars.', attribution: 'B. Customer' },
+    ] } },
+  { id: 'show-list-panel', type: 'list-panel', fields: {
+    tag: 'Details', heading: 'A list panel',
+    items: ['First line', 'Second line', 'Third line', 'Fourth line'] } },
+  { id: 'show-service-area', type: 'service-area', fields: {
+    heading: 'A service area', body: 'One sentence about coverage.',
+    areas: ['Northside', 'Southside', 'Downtown'] } },
+  { id: 'show-contact-cards', type: 'contact-cards', fields: {
+    cards: [
+      { id: 'path-one', icon: 'mail', title: 'First path', body: 'One sentence.', items: ['Point one', 'Point two'],
+        note: 'A small note.', cta: { label: 'Go', href: 'index.html', style: 'primary' } },
+      { id: 'path-two', icon: 'people', title: 'Second path', body: 'One sentence.',
+        cta: { label: 'Go', href: 'index.html', style: 'secondary' } },
+    ] } },
+  { id: 'show-contact-info', type: 'contact-info', fields: {
+    items: [
+      { id: 'info-phone', icon: 'phone', label: 'Call', value: '000-000-0000', href: 'tel:0000000000' },
+      { id: 'info-email', icon: 'mail', label: 'Email', value: 'hello@example.com', href: 'mailto:hello@example.com' },
+      { id: 'info-visit', icon: 'pin', label: 'Visit', value: '12 Main Street' },
+    ] } },
+  { id: 'show-contact-form', type: 'contact-form', fields: {
+    tag: 'Message', heading: 'A contact form', formAction: 'https://formspree.io/f/sample',
+    subjectLine: 'Showcase enquiry', submitLabel: 'Send',
+    fields: [
+      { name: 'name', label: 'Full Name', type: 'text', required: true, half: true },
+      { name: 'email', label: 'Email', type: 'email', required: true, half: true },
+      { name: 'message', label: 'Your message', type: 'textarea', required: true },
+    ] } },
+  { id: 'show-cta', type: 'cta', fields: {
+    tag: 'Closing', statement: 'A closing call to action.', subtext: 'With a supporting line.',
+    button: { label: 'Do the thing', href: 'index.html', style: 'primary' } } },
+  { id: 'show-pricing-table', type: 'pricing-table', fields: {
+    tag: 'Pricing', heading: 'A pricing table', note: 'Fine print under the grid.',
+    plans: [
+      { id: 'plan-basic', name: 'Basic', price: '$19', period: '/month', description: 'One line.',
+        features: ['Feature one', 'Feature two'] },
+      { id: 'plan-pro', name: 'Pro', price: '$49', period: '/month', description: 'One line.', featured: true,
+        features: ['Everything in Basic', 'Feature three'],
+        cta: { label: 'Choose Pro', href: 'index.html', style: 'primary' } },
+    ] } },
+  { id: 'show-team-grid', type: 'team-grid', fields: {
+    tag: 'Team', heading: 'A team grid',
+    members: [
+      { id: 'member-one', photo: 'img/sample-1.jpg', name: 'Sam Person', role: 'Founder', bio: 'One-line bio.' },
+      { id: 'member-two', name: 'Alex Person', role: 'Manager' },
+    ] } },
+  { id: 'show-faq', type: 'faq', fields: {
+    tag: 'FAQ', heading: 'Questions',
+    items: [
+      { id: 'faq-one', question: 'A first question?', answer: 'Its answer.' },
+      { id: 'faq-two', question: 'A second question?', answer: 'Its answer.' },
+    ] } },
+  { id: 'show-hours-table', type: 'hours-table', fields: {
+    tag: 'Hours', heading: 'An hours table', note: 'Holiday hours may differ.',
+    rows: [
+      { id: 'row-weekdays', day: 'Monday – Friday', hours: '9am – 5pm' },
+      { id: 'row-saturday', day: 'Saturday', hours: '10am – 2pm' },
+      { id: 'row-sunday', day: 'Sunday', hours: 'Closed' },
+    ] } },
+  { id: 'show-before-after', type: 'before-after', fields: {
+    tag: 'Results', heading: 'Before and after',
+    pairs: [
+      { id: 'pair-one', title: 'A sample pair', before: 'img/sample-1.jpg', after: 'img/sample-2.jpg', caption: 'One-line caption.' },
+    ] } },
+  { id: 'show-stats-bar', type: 'stats-bar', fields: {
+    stats: [
+      { id: 'stat-years', value: '14', label: 'Years in business' },
+      { id: 'stat-jobs', value: '2,400', label: 'Jobs completed' },
+      { id: 'stat-rating', value: '4.9', label: 'Average rating' },
+    ] } },
+  { id: 'show-process-steps', type: 'process-steps', fields: {
+    tag: 'Process', heading: 'Process steps',
+    steps: [
+      { id: 'step-one', icon: 'phone', title: 'First step', body: 'One sentence.' },
+      { id: 'step-two', icon: 'calendar', title: 'Second step', body: 'One sentence.' },
+      { id: 'step-three', icon: 'check', title: 'Third step', body: 'One sentence.' },
+    ] } },
+  { id: 'show-video-embed', type: 'video-embed', fields: {
+    tag: 'Video', heading: 'A video embed',
+    videoUrl: 'https://www.youtube.com/embed/sample123', caption: 'One-line caption.' } },
+  { id: 'show-booking-cta', type: 'booking-cta', fields: {
+    tag: 'Book', statement: 'Book a time online.', subtext: 'Takes about a minute.',
+    provider: 'Calendly', note: 'Opens in a new tab.',
+    button: { label: 'Book now', href: 'https://calendly.com/sample' } } },
+];
+
 // ── Demo gallery content ───────────────────────────────────────
 
 /* Every registry blueprint × every variant in one deterministic content
@@ -274,10 +403,23 @@ function demoContent() {
       created.push({ blueprint: key, variant: variant.key, ...r.created });
     }
   }
+
+  // The "All blocks" showcase page — every block type once (see
+  // SHOWCASE_BLOCKS). Last in the nav, after the blueprint pages.
+  content.pages.push({
+    slug: 'all-blocks',
+    meta: {
+      title: 'All blocks | Blueprint Gallery',
+      description: 'One sample instance of every block type the engine renders — the theme-coverage corpus.',
+    },
+    blocks: SHOWCASE_BLOCKS,
+  });
+  content.site.nav.links.push({ label: 'All blocks', href: 'all-blocks.html' });
+
   return { ok: true, content, created };
 }
 
 module.exports = {
   checkBlueprint, sampleValues, baseContent, demoContent, build,
-  VALIDATE_CLIENT, GALLERY_CLIENT,
+  SHOWCASE_BLOCKS, VALIDATE_CLIENT, GALLERY_CLIENT,
 };

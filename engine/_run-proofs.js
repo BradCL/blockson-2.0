@@ -24,6 +24,11 @@
 //             gallery client matches deterministic regeneration (stale =
 //             fail); the live gallery build is annotation/id free; a
 //             known-bad blueprint fails the CLI with named reasons.
+// Proof 12:   theme validator (engine/lib/themecheck.js + validate-theme
+//             CLI): every shipped theme passes (tokens, value safety, hard
+//             rules, contrast pairs, demo-client coverage build); the demo
+//             corpus covers the whole block registry; a known-bad theme
+//             fails with each reason named.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -117,7 +122,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 11;
+const TOTAL = 12;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -709,6 +714,91 @@ console.log('\n═══ PROOF 11 — Authoring kit: every blueprint validates, 
     console.log('       instantiation → full build → invariant checks); the committed demo gallery');
     console.log('       matches deterministic regeneration and its live build carries no annotations');
     console.log('       or id attributes; a known-bad blueprint fails the CLI with named reasons.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 12 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 12 — Theme validator: every shipped theme passes; a bad theme fails with named reasons ═══');
+{
+  const bpcheck = require('./lib/bpcheck');
+  const BLOCKS = require('./blocks/_registry');
+  const failures = [];
+  const badDir = path.join(ROOT, 'dist', '__proof-bad-theme');
+
+  const runNode = (args) => {
+    const r = spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
+    return { status: r.status, out: ((r.stdout || '') + (r.stderr || '')) };
+  };
+
+  try {
+    // (a) Every shipped theme clears the full pipeline (tokens, value
+    //     safety, hard rules, contrast pairs, demo-client coverage build).
+    const themeDirs = fs.readdirSync(path.join(ROOT, 'themes'), { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => path.join('themes', d.name));
+    const all = runNode([path.join('engine', 'validate-theme.js'), ...themeDirs]);
+    if (all.status !== 0) failures.push(`a shipped theme failed validation:\n${all.out.slice(-1500)}`);
+    if (!all.out.includes(`${themeDirs.length}/${themeDirs.length} theme(s) passed`)) {
+      failures.push(`expected ${themeDirs.length}/${themeDirs.length} themes to pass`);
+    }
+
+    // (b) The demo corpus really covers the whole block registry — the
+    //     ratchet a Tier B block type must extend.
+    const demo = bpcheck.demoContent();
+    if (!demo.ok) failures.push(`demoContent failed: ${demo.errors.join('; ')}`);
+    else {
+      const types = new Set();
+      for (const p of demo.content.pages) for (const b of p.blocks) types.add(b.type);
+      const uncovered = Object.keys(BLOCKS).filter(t => !types.has(t));
+      if (uncovered.length) failures.push(`demo corpus misses block type(s): ${uncovered.join(', ')}`);
+    }
+
+    // (c) A known-bad theme — missing tokens, an injection value, external
+    //     CSS, @import, a JS file, two contrast collisions — fails with
+    //     each reason NAMED. Lives under dist/, outside themes/.
+    fs.mkdirSync(path.join(badDir, 'css'), { recursive: true });
+    fs.writeFileSync(path.join(badDir, 'tokens.json'), JSON.stringify({
+      cssBase: 'default',
+      'font-heading': 'sans-serif', 'font-body': 'sans-serif',
+      'color-bg': '#ffffff', 'color-surface': '#f5f5f5',
+      'color-text': '#111111', 'color-muted': '#cccccc',
+      'color-primary': 'red;background:url(evil)', 'color-accent': '#ff0000',
+      'btn-primary-bg': '#eeeeee', 'btn-primary-text': '#f0f0f0',
+      'nav-bg': '#ffffff', 'nav-text': '#222222',
+      'hero-overlay-opacity': '0.5', 'radius': '8px',
+    }, null, 2), 'utf8');
+    fs.writeFileSync(path.join(badDir, 'css', 'styles.css'),
+      '@import url(https://fonts.example.com/x.css);\n.hero{color:red}\n', 'utf8');
+    fs.writeFileSync(path.join(badDir, 'main.js'), '// themes must not ship JS\n', 'utf8');
+
+    const bad = runNode([path.join('engine', 'validate-theme.js'), path.join('dist', '__proof-bad-theme')]);
+    if (bad.status === 0) failures.push('validate-theme PASSED a known-bad theme');
+    for (const named of [
+      'missing required token "footer-bg"',
+      'fails the injection guard',
+      'external resource',
+      '@import',
+      'no JavaScript',
+      'contrast: "btn-primary-text"',
+      'contrast: "color-muted"',
+    ]) {
+      if (!bad.out.includes(named)) failures.push(`bad-theme output does not name the reason: ${named}`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(badDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — all shipped themes clear the pipeline (token completeness, injection +');
+    console.log('       format guards on values, no JS / no external resources, tiered contrast');
+    console.log('       pairs, demo-client coverage build of all 21 block types); a known-bad');
+    console.log('       theme fails the CLI with every reason named.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

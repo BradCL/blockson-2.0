@@ -102,8 +102,10 @@ toys, kindergarten wayfinding. Contrast with default: playful maximum-roundness 
 default's squared confidence.
 
 ### `trades` — plumbing / HVAC / electrical
-Dependable daylight service: bright blue `#0e5fd8` + safety yellow `#ffc224` on light
-steel, IBM Plex (condensed headings). References: van wraps, safety signage, utility
+Dependable daylight service: bright blue `#0e5fd8` + safety yellow `#f5b400` on light
+steel, IBM Plex (condensed headings). (The yellow was deepened one step in v4 so the
+accent clears the engine's own 1.5 contrast floor against the light background —
+the original `#ffc224` sat at 1.48, below what the owner-edit guard itself permits.) References: van wraps, safety signage, utility
 bills done well. Contrast with default (the *other* trades-adjacent theme): light and
 dispatch-fast instead of dark and craftsman-heavy — distinct on purpose.
 

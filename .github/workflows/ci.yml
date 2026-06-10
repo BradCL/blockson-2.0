@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install --no-audit --no-fund
-      - name: Proof suite (7 proofs, exit 0 required)
+      - name: Proof suite (exit 0 required)
         run: node engine/_run-proofs.js
       - name: Build all example clients
         run: npm run build:all

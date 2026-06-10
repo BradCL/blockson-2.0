@@ -74,7 +74,9 @@ engine/
                         full build → invariant checks; see §10.2)
   blueprints-check.js   Whole-registry check + demo-gallery regeneration
                         (npm run blueprints:check; see §10.2)
-  _run-proofs.js        Proof suite (11 proofs)
+  validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
+                        contrast pairs → coverage build; see THEME_AUTHORING.md)
+  _run-proofs.js        Proof suite (12 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -93,7 +95,9 @@ engine/
     owner.js            Owner-editor request handlers: candidate copy, pending change,
                         approve/discard/restore, publish (§13)
     scaffold.js         Blueprint scaffolder — the only structural-addition path (§10)
-    bpcheck.js          Blueprint authoring-kit pipeline behind both validator CLIs (§10.2)
+    bpcheck.js          Blueprint authoring-kit pipeline behind validate-blueprint /
+                        blueprints-check, incl. the all-blocks showcase corpus (§10.2)
+    themecheck.js       Theme acceptance pipeline behind validate-theme.js
     sitemap.js          Edit-map generator — compact per-client map of editable fields
   schema/
     content.schema.json JSON Schema (draft 2020-12) for content.json
@@ -128,6 +132,9 @@ dist/                   Build output (one folder per client)
 BLOCK_CATALOG.md        Reference: every block type and its fields
 BLUEPRINT_AUTHORING.md  The complete, self-sufficient contract for authoring a
                         blueprint from outside this codebase (§10.2)
+THEME_AUTHORING.md      The complete contract for contributing a theme (required
+                        tokens, hard rules, contrast pairs, coverage)
+CONTRIBUTING.md         The three contribution lanes and their review bar
 SPEC.md                 This file
 ```
 
@@ -252,7 +259,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Eleven proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Twelve proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -275,7 +282,11 @@ annotations and no ids, (11) the blueprint authoring kit (§10.2): every shipped
 blueprint clears the acceptance pipeline, the committed demo gallery matches
 deterministic regeneration (a stale gallery fails the suite), the live gallery build
 carries no annotations or id attributes, and a known-bad blueprint fails the validator
-CLI with named reasons. All eleven must pass on a clean tree.
+CLI with named reasons, (12) the theme validator: every shipped theme passes (token
+completeness, injection + format guards on values, no JS / no external resources,
+tiered contrast pairs, demo-client coverage build), the demo corpus covers the whole
+block registry, and a known-bad theme fails with each reason named. All twelve must
+pass on a clean tree.
 
 ---
 
@@ -367,9 +378,11 @@ Two contribution tiers, split by what they can break:
 - **Tier A — blueprints and themes.** Pure recombination and re-skinning of what the
   engine already renders. Blueprints may only use existing block types; themes are
   token sets (plus optional self-contained CSS). Tier A is community-open and
-  validator-gated: the machine validator (§10.2 for blueprints) plus a visual check
-  of the demo gallery is the entire review bar. Provenance — hand-written, generated,
-  copied from a screenshot — is irrelevant; the validator is the sole gate.
+  validator-gated: the machine validator (§10.2 / `validate-blueprint.js` for
+  blueprints, `validate-theme.js` per THEME_AUTHORING.md for themes) plus a visual
+  check of the demo gallery is the entire review bar. Provenance — hand-written,
+  generated, copied from a screenshot — is irrelevant; the validator is the sole
+  gate. Lane rules, licensing, and originality requirements live in CONTRIBUTING.md.
 - **Tier B — new block types.** Engine changes, maintainer-gated, because a block
   type touches every layer at once. The checklist for one new block type:
   1. renderer module in `engine/blocks/` + registration in `_registry.js`
@@ -384,8 +397,11 @@ Two contribution tiers, split by what they can break:
   4. edit-map coverage (`engine/lib/sitemap.js` picks up scalars/items/text-lists by
      shape — verify the new block's editable surface appears) and annotation
      coverage in the annotated build;
-  5. an entry in BLOCK_CATALOG.md and in BLUEPRINT_AUTHORING.md §4;
-  6. proof coverage — proof 1 (annotation coverage) must hold with the new block
+  5. a sample instance in `SHOWCASE_BLOCKS` (`engine/lib/bpcheck.js`) — the theme
+     validator fails every theme until the demo corpus covers the new type
+     (deliberate ratchet);
+  6. an entry in BLOCK_CATALOG.md and in BLUEPRINT_AUTHORING.md §4;
+  7. proof coverage — proof 1 (annotation coverage) must hold with the new block
      in a client, and any new guard behavior gets its own proof.
 
   Adding a block type never changes existing blocks, clients, or content files
@@ -408,9 +424,11 @@ The library is self-serve. Three pieces, proved by proof 11:
   reasons; the throwaway client never persists.
 - **`npm run blueprints:check`** — runs the same pipeline on the whole registry,
   then regenerates `clients/blueprint-gallery/` deterministically: every blueprint ×
-  every variant, one page each, instantiated from example inputs. The committed
-  gallery is the visual gallery (browse `dist/blueprint-gallery/` under any theme)
-  AND the regression corpus: proof 11 fails when the committed file drifts from
+  every variant, one page each, instantiated from example inputs, plus an
+  "All blocks" showcase page carrying one sample instance of every block type
+  (`SHOWCASE_BLOCKS`, the theme-coverage corpus). The committed gallery is the
+  visual gallery (browse `dist/blueprint-gallery/` under any theme) AND the
+  regression corpus: proof 11 fails when the committed file drifts from
   regeneration, so blueprint changes ship together with their regenerated gallery.
 
 ---

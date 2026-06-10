@@ -392,4 +392,7 @@ module.exports = {
   applyPatch, indexHosts, findItemById,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,
+  // Exported (additive) so the theme validator applies the SAME injection
+  // blacklist to preset token values that set-token applies to owner values.
+  DANGEROUS_VALUE,
 };
