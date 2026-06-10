@@ -331,7 +331,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs seventeen end-to-end proofs against the example clients and the full contribution
+Runs eighteen end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -344,16 +344,19 @@ pipeline:
    collision) are all rejected
 7. the resolver rejects valueless writes (both plain set and match form), nothing written
 8. the owner-editor handlers (*Click-to-edit owner editor*, above): edit → candidate
-   → annotated rebuild → change card, Approve writes live with no annotations, one
-   pending change at a time, uploads stay candidate-side until Approve and vanish
-   on Discard, and non-image bytes under an image filename are refused by the
+   → annotated rebuild → change card, Keep stages the change and frees the next
+   edit, one pending change at a time, a pending-discard replays the staged list
+   without disturbing it, Publish writes the whole session to live in one step
+   with no annotations, uploads stay candidate-side until Publish and vanish on
+   Discard all, and non-image bytes under an image filename are refused by the
    file-signature guard
 9. the blueprint scaffolder: every shipped blueprint validates, invalid inputs are
    rejected with nothing written, ids stay unique site-wide under repeated
    instantiation, and every blueprint × variant builds clean
 10. blueprint scaffolding through the owner handlers: the new page lands annotated
     in the candidate only, the pending interlock covers edits and scaffolds both
-    ways, and Approve puts the page + nav entry live with no annotations or ids
+    ways, a kept page survives a pending-discard replay with the same ids, and
+    Publish puts the page + nav entry live with no annotations or ids
 11. the blueprint authoring kit: every shipped blueprint clears
     `validate-blueprint.js`, the committed demo gallery matches deterministic
     regeneration, a known-bad blueprint fails with named reasons, and a blueprint
@@ -377,7 +380,7 @@ pipeline:
     build without failing it; and nothing under `extras/` is required by
     engine code
 16. the maintenance ledger: every owner-handler attempt (edit, scaffold,
-    approve, discard) appends one JSONL line to
+    keep, publish, discard) appends one JSONL line to
     `clients/<client>/edits.log.jsonl` carrying an ISO timestamp, the
     request as submitted, the outcome, and the resolver's error verbatim
     on rejection; uploads are logged by name/size only (never file
@@ -391,8 +394,13 @@ pipeline:
     with nothing written; an absent flag means visible; the flag is seeded
     on every example-client and starter block; the migration script is
     idempotent
+18. session batching over real git, in a throwaway sandbox repository with a
+    local bare origin: keeping changes never touches git; publishing a
+    multi-change session makes exactly one pushed commit carrying the
+    `[blockson-publish <client>]` marker; restore refuses while changes are
+    staged and, once clear, reverts the whole session as one unit
 
-All seventeen must pass on a clean tree (`exit 0`).
+All eighteen must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -408,7 +416,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (17 proofs)
+  _run-proofs.js        End-to-end proof suite (18 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)

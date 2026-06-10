@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all seventeen end-to-end proofs in sequence and prints results.
+// Runs all eighteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -9,15 +9,19 @@
 // Proof 7:    resolver value guards — valueless writes are rejected.
 // Proof 8:    owner-editor request handlers (engine/lib/owner.js) exercised
 //             directly: edit → candidate-only write + annotated rebuild →
-//             approve → live write + clean live build; one-pending-change
-//             gate, resolver guards on the UI path, image upload, discard.
+//             keep (stage) → next edit allowed → publish → live write +
+//             clean live build, the whole session in one step; the
+//             one-pending-change gate, staged changes surviving a
+//             pending-discard (replay), resolver guards on the UI path,
+//             uploads riding the session, discard-all.
 // Proof 9:    blueprint scaffolder (engine/lib/scaffold.js): registry loads
 //             and validates all shipped blueprints; invalid inputs rejected
 //             with nothing written; ids unique site-wide under repeated
 //             instantiation; every blueprint × variant builds clean.
 // Proof 10:   scaffold through the owner handlers: candidate-only page add
-//             with annotations, pending interlock with edits, approve →
-//             page + nav entry live with no annotations and no ids.
+//             with annotations, pending interlock with edits, keep → the
+//             page survives a pending-discard replay with the same ids,
+//             publish → page + nav entry live with no annotations, no ids.
 // Proof 11:   blueprint authoring kit (engine/lib/bpcheck.js + the
 //             validate-blueprint / blueprints-check CLIs): every shipped
 //             blueprint passes the acceptance pipeline; the committed demo
@@ -59,6 +63,13 @@
 //             ways, absent flag means visible, the flag is seeded on the
 //             example clients and the starter, and the edit map reports
 //             it as block metadata (never a scalar).
+// Proof 18:   session batching over real git (v4.2 Task 3), in a throwaway
+//             sandbox repository under dist/ with a local bare origin:
+//             keeping changes never touches git; publishing a multi-change
+//             session makes exactly ONE pushed commit carrying the
+//             [blockson-publish <client>] marker; restore refuses while
+//             changes are staged and, once clear, reverts the whole
+//             session as one unit.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -152,7 +163,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 17;
+const TOTAL = 18;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -364,7 +375,7 @@ console.log('\n═══ PROOF 7 — Resolver value guards: valueless writes are
 }
 
 // ── PROOF 8 ─────────────────────────────────────────────────────────────────
-console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: edit → candidate → approve ═══');
+console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: edit → keep → publish ═══');
 {
   const owner = require('./lib/owner');
   const CLIENT  = '__proof-owner';
@@ -408,52 +419,105 @@ console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: 
       const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
       const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
       if (cand.pages[0].blocks[0].fields.headline !== NEW) failures.push('candidate content was not updated');
-      if (live.pages[0].blocks[0].fields.headline === NEW) failures.push('LIVE content was touched before approve');
+      if (live.pages[0].blocks[0].fields.headline === NEW) failures.push('LIVE content was touched before publish');
       if (!fs.readFileSync(candIndexPath, 'utf8').includes(NEW)) failures.push('candidate preview was not rebuilt');
     }
 
-    // (d) Exactly one pending change at a time.
+    // (d) Exactly one pending change at a time — staging is a new layer;
+    //     the pending rule is unchanged.
     const e2 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: 'x' });
     if (e2.ok) failures.push('a second edit was accepted while one was pending');
 
-    // (e) Approve: live content written from the candidate, live build clean
-    //     of annotations, publish skipped (publish: "none").
-    const a = owner.approve(session);
-    if (!a.ok) failures.push(`approve failed: ${a.error}`);
-    else {
-      if (!a.publish.skipped) failures.push('publish ran despite publish:"none"');
-      const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
-      if (live2.pages[0].blocks[0].fields.headline !== NEW) failures.push('approve did not write live content.json');
-      const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
-      if (!liveHtml.includes(NEW)) failures.push('live build is missing the approved value');
-      if (liveHtml.includes('data-bk-')) failures.push('live build contains data-bk-* after approve');
+    // (e) Keep: the pending change joins the staged list with its card,
+    //     live is still untouched, and the next edit can begin.
+    const k1 = owner.keep(session);
+    if (!k1.ok) failures.push(`keep failed: ${k1.error}`);
+    else if (session.pending || k1.staged.length !== 1 || k1.staged[0].new !== NEW) {
+      failures.push(`keep did not stage the change card: ${JSON.stringify(k1.staged)}`);
+    }
+    const NEW2 = 'Open every winter evening.';
+    const e3 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: NEW2 });
+    if (!e3.ok) failures.push(`the edit after a keep was refused: ${e3.error}`);
+    const k2 = owner.keep(session);
+    if (!k2.ok || k2.staged.length !== 2) failures.push('the second keep did not extend the staged list');
+    const liveMid = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+    if (liveMid.pages[0].blocks[0].fields.headline === NEW || liveMid.pages[0].blocks[0].fields.subhead === NEW2) {
+      failures.push('LIVE content was touched by keep');
     }
 
-    // (f) The resolver guards run unchanged on the UI path: forbidden field
+    // (f) Staged changes survive a pending-discard: the candidate is
+    //     reconstructed from live + a replay of the staged list, dropping
+    //     only the pending change.
+    const e4 = owner.applyEdit(session, { action: 'set', block: 'site', field: 'copyright', value: 'Temporary line.' });
+    if (!e4.ok) failures.push(`third edit failed: ${e4.error}`);
+    const disc1 = owner.discard(session);
+    if (!disc1.ok) failures.push(`pending-discard failed: ${disc1.error}`);
+    const candReplayed = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+    if (candReplayed.pages[0].blocks[0].fields.headline !== NEW
+        || candReplayed.pages[0].blocks[0].fields.subhead !== NEW2) {
+      failures.push('a pending-discard disturbed the staged changes');
+    }
+    if (candReplayed.site.copyright === 'Temporary line.') failures.push('the discarded pending change survived the replay');
+    if (!fs.readFileSync(candIndexPath, 'utf8').includes(NEW)) failures.push('candidate preview lost a staged change after a pending-discard');
+
+    // (g) Publish refuses while a change is pending — a pending change is
+    //     never silently included in a publish.
+    owner.applyEdit(session, { action: 'set', block: 'site', field: 'copyright', value: 'Temporary again.' });
+    const pBlocked = owner.publish(session);
+    if (pBlocked.ok) failures.push('publish ran over a pending change');
+    owner.discard(session);
+
+    // (h) Publish: the WHOLE staged session lands on live in one step, the
+    //     live build is clean of annotations, the publish command would run
+    //     once (skipped here: publish "none"), and the session empties —
+    //     publishing again with nothing staged is refused.
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      if (!pub.publish.skipped) failures.push('publish ran a command despite publish:"none"');
+      const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (live2.pages[0].blocks[0].fields.headline !== NEW || live2.pages[0].blocks[0].fields.subhead !== NEW2) {
+        failures.push('publish did not write the whole session to live content.json');
+      }
+      const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!liveHtml.includes(NEW) || !liveHtml.includes(NEW2)) failures.push('live build is missing a published value');
+      if (liveHtml.includes('data-bk-')) failures.push('live build contains data-bk-* after publish');
+    }
+    if (owner.publish(session).ok) failures.push('publish succeeded with nothing staged');
+
+    // (i) The resolver guards run unchanged on the UI path: forbidden field
     //     and unsafe token value both bounce, nothing staged.
     const g1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'id', value: 'x' });
     const g2 = owner.applyEdit(session, { action: 'set-token', token: '--color-primary', value: 'red;background:url(evil)' });
     if (g1.ok || g2.ok || session.pending) failures.push('a guarded write slipped through the edit handler');
 
-    // (g) Image upload: file lands in candidate img/ under a handler-assigned
-    //     path; discard then resets the candidate from live, removing it.
+    // (j) Uploads ride the session candidate-side: the file lands in
+    //     candidate img/ under a handler-assigned path, survives a
+    //     pending-discard once kept (the replay rewrites it), and
+    //     discard-all removes it — live img/ never sees it.
     const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-    const e3 = owner.applyEdit(session,
+    const e5 = owner.applyEdit(session,
       { action: 'set', block: 'home-team', item: 'member-chef', field: 'photo' },
       { name: 'new portrait.png', dataBase64: PNG_1PX });
-    if (!e3.ok) failures.push(`image edit failed: ${e3.error}`);
+    if (!e5.ok) failures.push(`image edit failed: ${e5.error}`);
     else {
-      if (e3.pending.new !== 'img/new-portrait.png') failures.push(`image path not assigned by the handler: ${e3.pending.new}`);
+      if (e5.pending.new !== 'img/new-portrait.png') failures.push(`image path not assigned by the handler: ${e5.pending.new}`);
       if (!fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('uploaded image missing from candidate img/');
     }
-    const disc = owner.discard(session);
+    owner.keep(session);
+    owner.applyEdit(session, { action: 'set', block: 'site', field: 'copyright', value: 'Replay check.' });
+    owner.discard(session);
+    if (!fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) {
+      failures.push('a kept upload did not survive the pending-discard replay');
+    }
+    const dAll = owner.discardAll(session);
     const candText = fs.readFileSync(path.join(candDir, 'content.json'), 'utf8');
     const liveText = fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8');
-    if (!disc.ok || candText !== liveText) failures.push('discard did not reset the candidate from live');
-    if (fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('discard left the uploaded image in the candidate');
+    if (!dAll.ok || candText !== liveText) failures.push('discard-all did not reset the candidate from live');
+    if (fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('discard-all left the uploaded image in the candidate');
     if (fs.existsSync(path.join(liveDir, 'img', 'new-portrait.png'))) failures.push('a discarded upload leaked into live img/');
 
-    // (h) Upload signature guard: the bytes must BE the image type the name
+    // (k) Upload signature guard: the bytes must BE the image type the name
     //     claims — an HTML payload named .png is rejected with nothing staged
     //     and nothing written.
     const fake = owner.applyEdit(session,
@@ -473,11 +537,12 @@ console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: 
 
   if (failures.length === 0) {
     console.log('PASS — handlers exercised directly: an edit writes ONLY the candidate and');
-    console.log('       rebuilds its annotated preview; the change card derives old → new from');
-    console.log('       the resolved patch; a second edit is held until approve/discard; approve');
-    console.log('       writes live + builds clean HTML; guards hold; uploads stay candidate-side');
-    console.log('       until approve and vanish on discard; non-image bytes under an image');
-    console.log('       name are refused by the signature guard.');
+    console.log('       rebuilds its annotated preview; keep stages the change card and frees');
+    console.log('       the next edit; a pending-discard replays the staged list and disturbs');
+    console.log('       nothing kept; publish refuses over a pending change, then ships the');
+    console.log('       whole session to live in one step with clean HTML; guards hold;');
+    console.log('       uploads stay candidate-side, survive the replay once kept, and vanish');
+    console.log('       on discard-all; non-image bytes under an image name are refused.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
@@ -579,7 +644,7 @@ console.log('\n═══ PROOF 9 — Scaffolder: schema-validated inputs, collis
 }
 
 // ── PROOF 10 ────────────────────────────────────────────────────────────────
-console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candidate page → approve → live, no annotations ═══');
+console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candidate page → keep → publish, no annotations ═══');
 {
   const owner = require('./lib/owner');
   const CLIENT  = '__proof-scaffold2';
@@ -625,12 +690,31 @@ console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candi
     });
     if (e.ok || sc2.ok) failures.push('the one-pending-change rule did not hold across edit/scaffold');
 
-    // (c) Approve: page + nav entry live; live HTML free of annotations and ids.
-    const a = owner.approve(session);
-    if (!a.ok) failures.push(`approve failed: ${a.error}`);
+    // (c) Keep the scaffold, then discard a later pending edit: the kept
+    //     page must survive the replay (deterministic re-instantiation —
+    //     same slug, same block ids) while the discarded edit vanishes.
+    const k = owner.keep(session);
+    if (!k.ok) failures.push(`keep failed: ${k.error}`);
+    const e2 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'Replay check' });
+    if (!e2.ok) failures.push(`the edit after keeping a scaffold was refused: ${e2.error}`);
+    const disc = owner.discard(session);
+    if (!disc.ok) failures.push(`pending-discard failed: ${disc.error}`);
+    const candReplayed = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+    const photosPage = candReplayed.pages.find(p => p.slug === 'photos');
+    if (!photosPage) failures.push('the kept page did not survive a pending-discard');
+    else if (photosPage.blocks[0].id !== 'photos-header') {
+      failures.push(`replaying the kept scaffold changed its block ids: ${photosPage.blocks[0].id}`);
+    }
+    if (candReplayed.pages[0].blocks[0].fields.headline === 'Replay check') {
+      failures.push('the discarded edit survived the replay');
+    }
+
+    // (d) Publish: page + nav entry live; live HTML free of annotations and ids.
+    const a = owner.publish(session);
+    if (!a.ok) failures.push(`publish failed: ${a.error}`);
     else {
       const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
-      if (!live2.pages.some(p => p.slug === 'photos')) failures.push('approved page missing from live content');
+      if (!live2.pages.some(p => p.slug === 'photos')) failures.push('published page missing from live content');
       if (!live2.site.nav.links.some(l => l.label === 'Photos' && l.href === 'photos.html')) {
         failures.push('nav entry missing from live content');
       }
@@ -658,8 +742,9 @@ console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candi
   if (failures.length === 0) {
     console.log('PASS — a blueprint page lands in the CANDIDATE with full click-to-edit');
     console.log('       annotations; edits and further scaffolds are held while it is pending;');
-    console.log('       approve puts the page, its nav entry, and its sitemap line live with no');
-    console.log('       annotations and no ids in the HTML.');
+    console.log('       kept, it survives a pending-discard replay with the same slug and ids;');
+    console.log('       publish puts the page, its nav entry, and its sitemap line live with');
+    console.log('       no annotations and no ids in the HTML.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
@@ -1357,7 +1442,8 @@ console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, 
     if (!line.error || line.error !== bad.error) failures.push('rejected-edit line does not carry the resolver error verbatim');
 
     // (c) A scaffold logs event "scaffold" with the request as submitted;
-    //     approve logs "approve" with the pending change it shipped.
+    //     keep logs "keep" with the pending change it staged; publish logs
+    //     "publish" with the staged list it shipped.
     const sc = owner.applyScaffold(session, {
       blueprint: 'gallery-page', variant: 'simple',
       values: { menuLabel: 'Photos', title: 'Our work', intro: 'Pictures.', albumTitle: 'Recent', photo: 'img/sample-1.jpg' },
@@ -1367,11 +1453,18 @@ console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, 
     if (line.event !== 'scaffold' || line.outcome !== 'ok' || !line.request || line.request.blueprint !== 'gallery-page') {
       failures.push(`scaffold logged wrong: ${JSON.stringify(line)}`);
     }
-    const ap = owner.approve(session);
+    const kp = owner.keep(session);
     line = last();
-    if (!ap.ok) failures.push(`approve failed: ${ap.error}`);
-    if (line.event !== 'approve' || line.outcome !== 'ok' || !line.request || !line.request.summary) {
-      failures.push(`approve logged wrong: ${JSON.stringify(line)}`);
+    if (!kp.ok) failures.push(`keep failed: ${kp.error}`);
+    if (line.event !== 'keep' || line.outcome !== 'ok' || !line.request || !line.request.summary) {
+      failures.push(`keep logged wrong: ${JSON.stringify(line)}`);
+    }
+    const ap = owner.publish(session);
+    line = last();
+    if (!ap.ok) failures.push(`publish failed: ${ap.error}`);
+    if (line.event !== 'publish' || line.outcome !== 'ok' || !line.request
+        || !Array.isArray(line.request.staged) || line.request.staged.length !== 1) {
+      failures.push(`publish logged wrong: ${JSON.stringify(line)}`);
     }
 
     // (d) An upload is logged by name and size only — the ledger never
@@ -1395,7 +1488,7 @@ console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, 
     //     timestamp, known event and outcome.
     for (const l of readLines()) {
       if (Number.isNaN(Date.parse(l.at || ''))) failures.push(`line without ISO timestamp: ${JSON.stringify(l)}`);
-      if (!['edit', 'scaffold', 'approve', 'discard', 'restore'].includes(l.event)) failures.push(`unknown event: ${l.event}`);
+      if (!['edit', 'scaffold', 'keep', 'discard', 'discard-all', 'publish', 'restore'].includes(l.event)) failures.push(`unknown event: ${l.event}`);
       if (!['ok', 'rejected', 'build-failed'].includes(l.outcome)) failures.push(`unknown outcome: ${l.outcome}`);
     }
 
@@ -1584,6 +1677,135 @@ console.log('\n═══ PROOF 17 — Visibility flag: hidden blocks leave live 
     console.log('       booleans; type preservation rejects strings-on-flag, booleans-on-text,');
     console.log('       and booleans-into-lists with nothing written; an absent flag means');
     console.log('       visible; the migration script seeds it once, idempotently.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 18 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 18 — One session, one commit: publish batches the session; restore reverts it whole ═══');
+{
+  // Publish (git mode) and restore are git operations on whatever repository
+  // contains the engine, so exercising them against THIS repo would write
+  // commits into the developer's history. Instead the proof copies the
+  // engine into a throwaway git repository under dist/, wires it to a local
+  // bare "origin", and drives a real multi-change session there — owner.js
+  // resolves every path from its own location, so the copy operates entirely
+  // inside the sandbox.
+  const SANDBOX = path.join(ROOT, 'dist', '__proof-session-repo');
+  const ORIGIN  = path.join(ROOT, 'dist', '__proof-session-origin.git');
+  const CLIENT  = 'proof-session';
+  const failures = [];
+
+  const sgit = args => spawnSync('git', args, { cwd: SANDBOX, encoding: 'utf8' });
+
+  try {
+    const probe = spawnSync('git', ['--version'], { encoding: 'utf8' });
+    if (probe.error) {
+      failures.push('git is required for this proof — publish (git mode) and restore are git operations');
+    } else {
+      fs.rmSync(SANDBOX, { recursive: true, force: true });
+      fs.rmSync(ORIGIN, { recursive: true, force: true });
+      fs.mkdirSync(SANDBOX, { recursive: true });
+      for (const dir of ['engine', 'themes', 'blueprints']) {
+        fs.cpSync(path.join(ROOT, dir), path.join(SANDBOX, dir), { recursive: true });
+      }
+      const liveDir = path.join(SANDBOX, 'clients', CLIENT);
+      fs.mkdirSync(liveDir, { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+        path.join(liveDir, 'content.json'));
+      // No "publish" key: the DEFAULT git mode is exactly what is on trial.
+      fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+        JSON.stringify({ clientName: 'Proof Client' }) + '\n', 'utf8');
+
+      spawnSync('git', ['init', '--bare', ORIGIN], { encoding: 'utf8' });
+      sgit(['init']);
+      sgit(['config', 'user.email', 'proof@example.invalid']);
+      sgit(['config', 'user.name', 'Proof Runner']);
+      // Byte-exactness is part of what is on trial: the revert must restore
+      // content.json exactly, so checkout must never rewrite line endings.
+      sgit(['config', 'core.autocrlf', 'false']);
+      sgit(['add', '-A']);
+      sgit(['commit', '-m', 'initial']);
+      sgit(['branch', '-M', 'main']);
+      sgit(['remote', 'add', 'origin', ORIGIN]);
+      sgit(['push', '-u', 'origin', 'main']);
+
+      const preSession = fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8');
+      const commitCount = () => Number((sgit(['rev-list', '--count', 'HEAD']).stdout || '').trim());
+      const baseCount = commitCount();
+
+      const owner = require(path.join(SANDBOX, 'engine', 'lib', 'owner.js'));
+      const session = owner.createSession(CLIENT);
+
+      // (a) A two-change session: keeping never touches git.
+      const e1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'Session headline.' });
+      if (!e1.ok) failures.push(`edit 1 failed: ${e1.error}`);
+      const k1 = owner.keep(session);
+      const e2 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: 'Session subhead.' });
+      if (!e2.ok) failures.push(`edit 2 failed: ${e2.error}`);
+      const k2 = owner.keep(session);
+      if (!k1.ok || !k2.ok) failures.push('keep failed in the sandbox session');
+      if (commitCount() !== baseCount) failures.push('keeping changes touched git');
+
+      // (b) Publish: the whole session lands as exactly ONE commit carrying
+      //     the [blockson-publish <client>] marker, pushed to origin.
+      const pub = owner.publish(session);
+      if (!pub.ok || !pub.publish.ok) {
+        failures.push(`publish failed: ${pub.ok ? pub.publish.message : pub.error}`);
+      }
+      if (commitCount() !== baseCount + 1) {
+        failures.push(`expected exactly one publish commit, got ${commitCount() - baseCount}`);
+      }
+      const msg = (sgit(['log', '-n', '1', '--format=%B']).stdout || '');
+      if (!msg.includes(`[blockson-publish ${CLIENT}]`)) failures.push(`publish commit is missing the marker: ${msg.trim()}`);
+      if (!msg.includes('2 changes')) failures.push(`publish message does not summarize the session: ${msg.trim()}`);
+      const livePub = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (livePub.pages[0].blocks[0].fields.headline !== 'Session headline.'
+          || livePub.pages[0].blocks[0].fields.subhead !== 'Session subhead.') {
+        failures.push('publish did not write the whole session to live');
+      }
+      // Ask the bare origin for the "main" tip explicitly — its HEAD may
+      // still point at the host's default branch name.
+      const originHead = spawnSync('git', ['--git-dir', ORIGIN, 'log', '-n', '1', '--format=%B', 'main'], { encoding: 'utf8' });
+      if (!(originHead.stdout || '').includes(`[blockson-publish ${CLIENT}]`)) {
+        failures.push('the publish commit was not pushed to origin');
+      }
+
+      // (c) Restore refuses while changes are staged; once the session is
+      //     clear it reverts the WHOLE publish as one unit and republishes.
+      const e3 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'Stray edit.' });
+      if (!e3.ok) failures.push(`edit 3 failed: ${e3.error}`);
+      owner.keep(session);
+      const blocked = owner.restore(session);
+      if (blocked.ok) failures.push('restore ran with staged changes in the session');
+      owner.discardAll(session);
+
+      const res = owner.restore(session);
+      if (!res.ok) failures.push(`restore failed: ${res.error}`);
+      else if (!res.publish.ok) failures.push(`restore could not republish: ${res.publish.message}`);
+      if (fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8') !== preSession) {
+        failures.push('restore did not revert the whole session as one unit');
+      }
+      if (commitCount() !== baseCount + 2) {
+        failures.push(`restore should add exactly one revert commit (have ${commitCount() - baseCount - 1})`);
+      }
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(SANDBOX, { recursive: true, force: true });
+    fs.rmSync(ORIGIN, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — in a sandbox git repository with a local bare origin: keeping changes');
+    console.log('       never touches git; publishing a two-change session makes exactly ONE');
+    console.log('       pushed commit carrying the [blockson-publish] marker and the session');
+    console.log('       summary; restore refuses while changes are staged and, once clear,');
+    console.log('       reverts the whole session as one unit and republishes.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

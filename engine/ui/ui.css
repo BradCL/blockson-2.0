@@ -62,8 +62,21 @@ html, body {
   font-size: 15px;
 }
 .card.pending { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, .12); }
+.card.session { border-color: #1f6b3a; }
 
 .pending-summary { margin: 0 0 10px; font-weight: 600; }
+
+/* ── Kept-this-session list ── */
+.staged-list { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 2px; }
+.staged-row { display: flex; gap: 6px; align-items: baseline; font-size: 13.5px; }
+.staged-num { flex: none; color: #8a93a5; font-size: 12px; }
+.staged-summary { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Publish / Discard all sit apart from the per-change controls. */
+.session-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid #eceef3;
+}
 
 .diff { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
 .diff-row { display: flex; gap: 8px; align-items: baseline; }

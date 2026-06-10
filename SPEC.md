@@ -79,7 +79,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (17 proofs)
+  _run-proofs.js        Proof suite (18 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -268,7 +268,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Seventeen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Eighteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -279,15 +279,18 @@ a contrast collision — are all rejected with nothing written, (7) the resolver
 valueless writes (plain set and match form) and leaves content untouched, (8) the
 owner-editor request handlers (§13), exercised directly: an edit writes only the
 candidate and rebuilds its annotated preview, the change card derives old → new from
-the resolved patch, a second edit is held while one is pending, approve writes live
-and produces annotation-free HTML, resolver guards hold on the UI path, uploads
-stay candidate-side until approve and vanish on discard, and non-image bytes under
+the resolved patch, a second edit is held while one is pending, keep stages the
+change and frees the next edit, a pending-discard replays the staged list without
+disturbing it, publish writes the whole session to live in one step and produces
+annotation-free HTML, resolver guards hold on the UI path, uploads stay
+candidate-side until publish and vanish on discard-all, and non-image bytes under
 an image filename are refused by the file-signature guard, (9) the blueprint scaffolder
 (§10): the registry validates all shipped blueprints, invalid inputs are rejected with
 nothing written, ids stay unique site-wide under repeated instantiation, and every
 blueprint × variant builds clean, (10) scaffolding through the owner handlers: the new
 page lands annotated in the candidate only, the pending interlock covers edits and
-scaffolds both ways, and approve puts the page + nav entry + sitemap line live with no
+scaffolds both ways, a kept page survives a pending-discard replay with the same ids,
+and publish puts the page + nav entry + sitemap line live with no
 annotations and no ids, (11) the blueprint authoring kit (§10.2): every shipped
 blueprint clears the acceptance pipeline, the committed demo gallery matches
 deterministic regeneration (a stale gallery fails the suite), the live gallery build
@@ -320,8 +323,12 @@ the preview, the toggle round-trips through `applyPatch` with boolean values,
 type preservation holds both ways (strings rejected on the flag, booleans
 rejected on text fields and in lists) with nothing written on rejection, an
 absent flag means visible, the flag is seeded on every example-client and
-starter block, and the migration script is idempotent. All seventeen must pass
-on a clean tree.
+starter block, and the migration script is idempotent, (18) session batching
+over real git, in a throwaway sandbox repository with a local bare origin:
+keeping changes never touches git, publishing a multi-change session makes
+exactly one pushed commit carrying the `[blockson-publish <client>]` marker,
+and restore refuses while changes are staged then reverts the whole session
+as one unit. All eighteen must pass on a clean tree.
 
 ---
 

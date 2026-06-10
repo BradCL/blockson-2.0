@@ -19,13 +19,16 @@
      GET  /                      editor app
      GET  /ui/<asset>            app assets (allowlisted filenames)
      GET  /preview/...           annotated candidate build (+ overlay in HTML)
-     GET  /api/state             session state: pending card, tokens, pages
+     GET  /api/state             session state: staged list, pending card, tokens, pages
      GET  /api/field?...         describe one editable field (current value, editor kind)
      GET  /api/blueprints        the validated blueprint registry (Add… menu)
      POST /api/edit              { patch, upload? }  → pending change
      POST /api/scaffold          { blueprint, variant, values, uploads? } → pending change
      POST /api/token-check       { token, value }    → live guard run, no write
-     POST /api/approve | /api/discard | /api/restore
+     POST /api/keep              pending change → the session's staged list
+     POST /api/discard           drop the pending change (staged list survives)
+     POST /api/publish           the whole staged session → live, one publish
+     POST /api/discard-all | /api/restore
 
    SECURITY
    - Binds 127.0.0.1 unless configured otherwise; additionally rejects
@@ -307,8 +310,10 @@ async function handle(req, res) {
     if      (pathname === '/api/edit')        r = owner.applyEdit(session, body.patch, body.upload || null);
     else if (pathname === '/api/scaffold')    r = owner.applyScaffold(session, body);
     else if (pathname === '/api/token-check') r = owner.checkToken(session, body.token, body.value);
-    else if (pathname === '/api/approve')     r = owner.approve(session);
+    else if (pathname === '/api/keep')        r = owner.keep(session);
+    else if (pathname === '/api/publish')     r = owner.publish(session);
     else if (pathname === '/api/discard')     r = owner.discard(session);
+    else if (pathname === '/api/discard-all') r = owner.discardAll(session);
     else if (pathname === '/api/restore')     r = owner.restore(session);
     else return sendError(res, 404, 'not found');
     return sendJson(res, r.ok ? 200 : 400, r);

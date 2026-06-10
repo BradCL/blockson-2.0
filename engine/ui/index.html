@@ -24,6 +24,18 @@
 
       <div id="message" class="message" hidden></div>
 
+      <!-- The staged session sits ABOVE the pending card; Publish and
+           Discard all live here, apart from the per-change controls. -->
+      <section id="session-card" class="card session" hidden>
+        <h2>Kept this session</h2>
+        <p class="hint">These changes are in the preview but not on the live site yet.</p>
+        <div id="staged-list" class="staged-list"></div>
+        <div class="session-actions">
+          <button id="btn-publish" class="btn primary">Publish</button>
+          <button id="btn-discard-all" class="btn danger">Discard all</button>
+        </div>
+      </section>
+
       <section id="pending-card" class="card pending" hidden>
         <h2>Pending change</h2>
         <p id="pending-summary" class="pending-summary"></p>
@@ -32,9 +44,10 @@
           <div class="diff-row"><span class="diff-label">After</span><span id="pending-new" class="diff-value new"></span></div>
         </div>
         <div class="btn-row">
-          <button id="btn-approve" class="btn primary">Approve &amp; publish</button>
+          <button id="btn-keep" class="btn primary">Keep</button>
           <button id="btn-discard" class="btn">Discard</button>
         </div>
+        <p class="hint">Keep adds this change to the session above — nothing goes live until you publish.</p>
       </section>
 
       <section id="editor" class="card" hidden></section>

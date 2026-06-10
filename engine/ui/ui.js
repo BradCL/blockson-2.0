@@ -74,6 +74,7 @@
     return apiGet('/api/state').then(function (s) {
       state = s;
       $('client-name').textContent = s.clientName;
+      renderSession();
       renderPending();
       renderTokens();
       $('publish-status').textContent = s.lastPublish ? s.lastPublish.message : '';
@@ -104,6 +105,26 @@
     $('pending-summary').textContent = state.pending.summary;
     diffValue($('pending-old'), state.pending.old);
     diffValue($('pending-new'), state.pending.new);
+    cardEl.hidden = false;
+  }
+
+  // The session card: every KEPT change, summarized from its resolved
+  // patch, with Publish / Discard all apart from the per-change controls.
+  function renderSession() {
+    var cardEl = $('session-card');
+    var staged = state.staged || [];
+    if (!staged.length) { cardEl.hidden = true; return; }
+    var list = $('staged-list');
+    clear(list);
+    staged.forEach(function (entry, i) {
+      var row = el('div', 'staged-row');
+      row.appendChild(el('span', 'staged-num', String(i + 1) + '.'));
+      row.appendChild(el('span', 'staged-summary', entry.summary));
+      list.appendChild(row);
+    });
+    $('btn-publish').textContent = staged.length === 1
+      ? 'Publish 1 change'
+      : 'Publish ' + staged.length + ' changes';
     cardEl.hidden = false;
   }
 
@@ -157,7 +178,7 @@
 
   function openEditor(ref) {
     if (state && state.pending) {
-      showMessage('info', 'You already have a pending change — approve or discard it first.');
+      showMessage('info', 'You already have a pending change — keep or discard it first.');
       return;
     }
     clearMessage();
@@ -410,10 +431,10 @@
   // ── Add… (blueprint scaffolding) ─────────────────────────────
   // The Add… menu lists the validated blueprint registry; choosing one
   // renders a form generated from its declared input schema, and the
-  // result flows into the same candidate → pending → Approve cycle.
+  // result flows into the same candidate → pending → keep → publish cycle.
   function openAddMenu() {
     if (state && state.pending) {
-      showMessage('info', 'You already have a pending change — approve or discard it first.');
+      showMessage('info', 'You already have a pending change — keep or discard it first.');
       return;
     }
     clearMessage();
@@ -578,7 +599,7 @@
   // explanation is shown inline when a value is rejected.
   function openTokenEditor(token) {
     if (state.pending) {
-      showMessage('info', 'You already have a pending change — approve or discard it first.');
+      showMessage('info', 'You already have a pending change — keep or discard it first.');
       return;
     }
     clearMessage();
@@ -648,11 +669,19 @@
     if (valueInput.value) check(valueInput.value);
   }
 
-  // ── Approve / discard / restore ──────────────────────────────
-  $('btn-approve').addEventListener('click', function () {
-    $('btn-approve').disabled = true;
-    apiPost('/api/approve').then(function (r) {
-      $('btn-approve').disabled = false;
+  // ── Keep / publish / discard / restore ───────────────────────
+  $('btn-keep').addEventListener('click', function () {
+    apiPost('/api/keep').then(function (r) {
+      if (!r.ok) { showMessage('error', r.error); return; }
+      showMessage('info', 'Change kept — it goes live when you publish this session.');
+      refreshState();
+    });
+  });
+
+  $('btn-publish').addEventListener('click', function () {
+    $('btn-publish').disabled = true;
+    apiPost('/api/publish').then(function (r) {
+      $('btn-publish').disabled = false;
       if (!r.ok) { showMessage('error', r.error); return; }
       showMessage(r.publish.ok ? 'ok' : 'error', r.publish.message);
       refreshState().then(reloadPreview);
@@ -662,7 +691,16 @@
   $('btn-discard').addEventListener('click', function () {
     apiPost('/api/discard').then(function (r) {
       if (!r.ok) { showMessage('error', r.error); return; }
-      showMessage('info', 'Change discarded — the preview is back to the live site.');
+      showMessage('info', 'Pending change discarded — anything you kept is still staged.');
+      refreshState().then(reloadPreview);
+    });
+  });
+
+  $('btn-discard-all').addEventListener('click', function () {
+    if (!window.confirm('Discard everything from this session? The preview goes back to the live site.')) return;
+    apiPost('/api/discard-all').then(function (r) {
+      if (!r.ok) { showMessage('error', r.error); return; }
+      showMessage('info', 'Session discarded — the preview is back to the live site.');
       refreshState().then(reloadPreview);
     });
   });

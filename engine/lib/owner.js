@@ -4,30 +4,43 @@
    The deterministic core of the click-to-edit owner UI. Every handler
    the HTTP server (engine/serve.js) exposes lives here as a plain
    function over a session object, so the proof suite can exercise the
-   full edit → candidate → approve cycle DIRECTLY, with no socket
+   full edit → keep → publish cycle DIRECTLY, with no socket
    (proof 8).
 
-   THE CANDIDATE MODEL
+   THE SESSION MODEL (Keep is separate from Publish)
    Live content is clients/<client>/. The session works on a full copy,
    clients/<client>__candidate/ (gitignored), built ANNOTATED to
    dist/<client>__candidate__annotated/ — that build is the preview the
-   owner sees. Exactly one pending change exists at a time:
+   owner sees. Exactly one PENDING change exists at a time (unchanged);
+   KEPT changes accumulate on the session's STAGED list until one
+   Publish ships them all:
 
-     edit  → patch constructed deterministically (the UI never invents
-             values for paths; image paths are assigned here)
-           → applyPatch on the CANDIDATE content (all guards run)
-           → candidate rebuild (annotated); a failing build rolls the
-             candidate back — a bad change can never stick
-           → pending card: old → new, both read by resolving the patch
-             address against the candidate content (never from any
-             other description of the change)
-     approve → candidate content.json (+ any uploaded images) copied to
-             live, live rebuilt WITHOUT annotations, publish command run
-     discard → candidate reset from live, rebuilt
-     restore → revert the last publish commit, rebuild, republish
+     edit / scaffold → constructed deterministically (the UI never
+             invents values for paths; image paths are assigned here)
+           → applied to the CANDIDATE (all guards run); a failing
+             build rolls the candidate back — a bad change can never
+             stick
+           → the PENDING change: old → new, both read by resolving the
+             patch address against the candidate content (never from
+             any other description of the change)
+     keep  → the pending change joins the STAGED list — it is already
+             applied to the candidate, so its card travels with it —
+             and the next edit can begin
+     discard → the pending change is dropped; the candidate is rebuilt
+             from live plus a REPLAY of the staged list (deterministic,
+             already-validated patches and scaffolds — never an
+             attempt to invert a patch), so staged changes are never
+             disturbed
+     discard-all → candidate reset from live, session emptied
+     publish → the whole staged session in one step: candidate
+             content.json (+ every image the session uploaded) copied
+             to live, live rebuilt WITHOUT annotations, the publish
+             command run ONCE
+     restore → revert the last publish commit (= the whole session,
+             one unit), rebuild, republish
 
-   Only approve() writes inside clients/<client>/ — the candidate
-   directory cannot leak into live through any other path.
+   Only publish() (and restore()) writes inside clients/<client>/ —
+   Keep included, nothing else touches live.
 
    SAFETY POSTURE — UI input is untrusted input. Every write still goes
    through applyPatch (allowlist, forbidden keys, container guard,
@@ -35,7 +48,8 @@
    adds nothing to the writable surface and never bypasses a guard.
 
    MAINTENANCE LEDGER — every attempt that flows through these handlers
-   (edit | scaffold | approve | discard | restore) appends one JSON line
+   (edit | scaffold | keep | discard | discard-all | publish | restore)
+   appends one JSON line
    to clients/<client>/edits.log.jsonl (gitignored; rotated at 1 MB to
    edits.log.1.jsonl): ISO timestamp, the request as submitted (uploads
    by name/size only — never file bytes), the outcome (ok | rejected |
@@ -191,7 +205,22 @@ function summarize(patch) {
 function publicPending(session) {
   if (!session.pending) return null;
   const p = session.pending;
-  return { summary: p.summary, old: p.old, new: p.new, patch: p.patch, stagedAt: p.stagedAt };
+  return { summary: p.summary, old: p.old, new: p.new, patch: p.patch, at: p.at };
+}
+
+// The staged list as the UI sees it: each entry summarized from its
+// resolved patch (the card derived when it was the pending change —
+// upload bytes and replay records stay server-side).
+function publicStaged(session) {
+  return session.staged.map(s => ({ summary: s.summary, old: s.old, new: s.new, keptAt: s.keptAt }));
+}
+
+// One publish = one commit message covering the whole session.
+function sessionSummary(staged) {
+  if (staged.length === 1) return staged[0].summary;
+  const joined = staged.map(s => s.summary).join('; ');
+  const detail = joined.length > 240 ? joined.slice(0, 237) + '…' : joined;
+  return `${staged.length} changes: ${detail}`;
 }
 
 function publishMode(config) {
@@ -243,7 +272,7 @@ function describeScaffoldRequest(req) {
   return out;
 }
 
-// Approve/discard act on the pending change, so the "request" their ledger
+// Keep/discard act on the pending change, so the "request" their ledger
 // line records is that pending change as it stood when the handler ran.
 function describePendingRequest(session) {
   const p = session.pending;
@@ -254,11 +283,18 @@ function describePendingRequest(session) {
   return out;
 }
 
+// Publish/discard-all act on the whole session, so their ledger line
+// records the staged list (by summary) as it stood when the handler ran.
+function describeSessionRequest(session) {
+  return { staged: session.staged.map(s => s.summary) };
+}
+
 /* Wrap a handler so every call appends one ledger line at this boundary —
-   the chokepoint all UI edits, scaffolds, approves, and discards flow
-   through, whoever the caller is. The request is captured BEFORE the
-   handler runs (approve/discard clear session.pending); the outcome is
-   read off the handler's own result. */
+   the chokepoint all UI edits, scaffolds, keeps, publishes, and discards
+   flow through, whoever the caller is. The request is captured BEFORE the
+   handler runs (keep/discard clear session.pending, publish/discard-all
+   clear session.staged); the outcome is read off the handler's own
+   result. */
 function logged(event, fn, describe) {
   return function (session, ...args) {
     let request = null;
@@ -290,8 +326,9 @@ function loadConfig(client) {
 }
 
 /* Create an editing session: reset the candidate from live and build the
-   annotated preview. Pending state is in-memory, so a fresh session always
-   starts clean — candidate equals live, nothing pending. */
+   annotated preview. Pending and staged state is in-memory, so a fresh
+   session always starts clean — candidate equals live, nothing pending,
+   nothing staged. */
 function createSession(client, overrides) {
   if (!/^[a-zA-Z0-9_-]+$/.test(client || '')) {
     throw new Error(`invalid client name "${client}"`);
@@ -301,6 +338,7 @@ function createSession(client, overrides) {
     candidateClient: client + CANDIDATE_SUFFIX,
     config: { ...loadConfig(client), ...(overrides || {}) },
     pending: null,
+    staged: [],
     lastPublish: null,
   };
   if (!fs.existsSync(liveContentPath(session))) {
@@ -337,6 +375,7 @@ function getState(session) {
     contact: session.config.contact || null,
     publishMode: publishMode(session.config),
     pending: publicPending(session),
+    staged: publicStaged(session),
     lastPublish: session.lastPublish,
     tokens: buildEditMap(content, preset).tokens,
     pages: (content.pages || []).map(p => p.slug),
@@ -459,7 +498,7 @@ function prepareUpload(session, upload, taken) {
    at a time. On any failure nothing is left written. */
 function applyEdit(session, patch, upload) {
   if (session.pending) {
-    return { ok: false, error: 'There is already a pending change — approve or discard it first.' };
+    return { ok: false, error: 'There is already a pending change — keep or discard it first.' };
   }
   if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
     return { ok: false, error: 'patch is not an object' };
@@ -536,7 +575,10 @@ function applyEdit(session, patch, upload) {
     new: newValue,
     summary: summarize(patch),
     uploads: staged ? [staged.name] : [],
-    stagedAt: new Date().toISOString(),
+    // Bytes kept for the staged-list replay (discard-pending rebuilds the
+    // candidate from live + staged, which must rewrite this file).
+    uploadFiles: staged ? [{ name: staged.name, bytes: staged.bytes }] : [],
+    at: new Date().toISOString(),
   };
   return { ok: true, pending: publicPending(session) };
 }
@@ -563,11 +605,11 @@ function listBlueprints() {
 /* The structural counterpart of applyEdit: instantiate a blueprint into
    the CANDIDATE copy → candidate rebuild (annotated; the full build is
    the acceptance gate) → pending change card. Same one-pending-change
-   rule, same rollback-on-failure, same approve/discard flow afterwards.
+   rule, same rollback-on-failure, same keep/discard flow afterwards.
    Never touches applyPatch — structure arrives only through scaffold.js. */
 function applyScaffold(session, req) {
   if (session.pending) {
-    return { ok: false, error: 'There is already a pending change — approve or discard it first.' };
+    return { ok: false, error: 'There is already a pending change — keep or discard it first.' };
   }
   if (!req || typeof req !== 'object') return { ok: false, error: 'bad scaffold request' };
   const loaded = scaffold.loadBlueprints();
@@ -622,33 +664,128 @@ function applyScaffold(session, req) {
   session.pending = {
     patch: null,
     scaffold: { blueprint: entry.key, variant: req.variant },
+    // The full request as resolved here (image paths already assigned), so
+    // the staged-list replay can re-instantiate it deterministically.
+    replayScaffold: { blueprint: entry.key, variant: req.variant, values, targetPage: req.targetPage },
     old: null,
     new: c.kind === 'page'
       ? `New page "${c.navLabel}" (${c.file}) with ${c.blockIds.length} section(s), added to the menu`
       : `New section on ${c.file}`,
     summary: c.kind === 'page' ? `add page "${c.navLabel}" (${c.file})` : `add a section to ${c.slug}`,
     uploads: staged.map(s => s.name),
-    stagedAt: new Date().toISOString(),
+    uploadFiles: staged.map(s => ({ name: s.name, bytes: s.bytes })),
+    at: new Date().toISOString(),
   };
   return { ok: true, pending: publicPending(session), created: c };
 }
 
-/* Approve: the ONLY path that writes into clients/<client>/. Copies the
-   candidate content (and any image the pending change uploaded) to live,
-   rebuilds live WITHOUT annotations, then runs the publish command. */
-function approve(session) {
-  if (!session.pending) return { ok: false, error: 'There is no pending change to approve.' };
+/* Keep: the pending change joins the session's staged list and the next
+   edit can begin. The change is already applied to the candidate, so this
+   writes nothing; its old → new card was derived by resolving the patch
+   against the candidate content when the change was constructed, and the
+   candidate cannot have moved since (every mutating handler refuses while
+   a change is pending) — that card travels with the entry verbatim. */
+function keep(session) {
+  if (!session.pending) return { ok: false, error: 'There is no pending change to keep.' };
+  const p = session.pending;
+  session.staged.push({
+    summary: p.summary,
+    old: p.old,
+    new: p.new,
+    patch: p.patch,
+    scaffold: p.scaffold || null,
+    replay: p.patch
+      ? { kind: 'patch', patch: p.patch }
+      : { kind: 'scaffold', ...p.replayScaffold },
+    uploads: p.uploads,
+    uploadFiles: p.uploadFiles,
+    keptAt: new Date().toISOString(),
+  });
+  session.pending = null;
+  return { ok: true, staged: publicStaged(session) };
+}
+
+/* Rebuild the candidate as live + the staged list, by REPLAY: reset from
+   live, then re-apply every staged change in order through the same gates
+   it originally passed (applyPatch for patches, scaffold.instantiate for
+   scaffolds — both deterministic, both already validated) and rewrite the
+   session's uploaded files. This is how discard-pending leaves the staged
+   list undisturbed without ever trying to invert a patch. */
+function replayStaged(session) {
+  resetCandidate(session);
+  const content = JSON.parse(fs.readFileSync(candContentPath(session), 'utf8'));
+  const presetTokens = presetTokensFor(content);
+  for (const entry of session.staged) {
+    if (entry.replay.kind === 'patch') {
+      const r = applyPatch(content, { ...entry.replay.patch }, presetTokens);
+      if (!r.ok) {
+        return { ok: false, error: `replaying a kept change failed unexpectedly: ${r.error || r.reason}` };
+      }
+    } else {
+      const loaded = scaffold.loadBlueprints();
+      const e = loaded.blueprints.find(b => b.key === entry.replay.blueprint);
+      if (!e) return { ok: false, error: `replaying a kept addition failed: unknown blueprint "${entry.replay.blueprint}"` };
+      const inst = scaffold.instantiate(content, e.blueprint, entry.replay.variant,
+        entry.replay.values, { targetSlug: entry.replay.targetPage });
+      if (!inst.ok) {
+        return { ok: false, error: `replaying a kept addition failed unexpectedly:\n${inst.errors.join('\n')}` };
+      }
+    }
+    for (const f of entry.uploadFiles) {
+      const dir = path.join(candDir(session), 'img');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, f.name), f.bytes);
+    }
+  }
+  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
+  const b = buildCandidate(session);
+  if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
+  return { ok: true };
+}
+
+/* Discard: drop the PENDING change only. The candidate is reconstructed
+   from live plus the staged list — kept changes are never disturbed. */
+function discard(session) {
+  if (!session.pending) return { ok: false, error: 'There is no pending change to discard.' };
+  session.pending = null;
+  return replayStaged(session);
+}
+
+/* Discard all: reset the candidate from live and empty the session —
+   pending change, staged list, and the session's uploads all vanish. */
+function discardAll(session) {
+  session.pending = null;
+  session.staged = [];
+  resetCandidate(session);
+  const b = buildCandidate(session);
+  if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
+  return { ok: true };
+}
+
+/* Publish: the ONLY path that writes into clients/<client>/ (restore
+   aside). Writes the entire staged session to live in one step — the
+   candidate content plus every image the session uploaded — rebuilds
+   live WITHOUT annotations, then runs the publish command ONCE. */
+function publish(session) {
+  if (session.pending) {
+    return { ok: false, error: 'Keep or discard the pending change before publishing.' };
+  }
+  if (session.staged.length === 0) {
+    return { ok: false, error: 'There is nothing to publish — keep at least one change first.' };
+  }
 
   const liveBackup = fs.readFileSync(liveContentPath(session), 'utf8');
   fs.writeFileSync(liveContentPath(session), fs.readFileSync(candContentPath(session), 'utf8'), 'utf8');
 
   const copied = [];
-  for (const name of session.pending.uploads) {
-    const src = path.join(candDir(session), 'img', name);
-    const dst = path.join(liveDir(session), 'img', name);
-    fs.mkdirSync(path.dirname(dst), { recursive: true });
-    fs.copyFileSync(src, dst);
-    copied.push(dst);
+  for (const entry of session.staged) {
+    for (const name of entry.uploads) {
+      const src = path.join(candDir(session), 'img', name);
+      const dst = path.join(liveDir(session), 'img', name);
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.copyFileSync(src, dst);
+      copied.push(dst);
+    }
   }
 
   const b = buildLive(session);
@@ -661,27 +798,20 @@ function approve(session) {
     return { ok: false, buildFailed: true, error: `The live rebuild failed unexpectedly; the live site was left unchanged:\n${b.out}` };
   }
 
-  const summary = session.pending.summary;
-  session.pending = null;
-  const publish = runPublish(session, summary);
-  session.lastPublish = { at: new Date().toISOString(), ok: publish.ok, message: publish.message };
-  return { ok: true, publish };
-}
-
-/* Discard: reset the candidate from live and rebuild the preview. */
-function discard(session) {
-  session.pending = null;
-  resetCandidate(session);
-  const b = buildCandidate(session);
-  if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
-  return { ok: true };
+  const summary = sessionSummary(session.staged);
+  session.staged = [];
+  const result = runPublish(session, summary);
+  session.lastPublish = { at: new Date().toISOString(), ok: result.ok, message: result.message };
+  return { ok: true, publish: result };
 }
 
 /* Restore: revert the last publish commit (found by the marker the
-   default publish message embeds), rebuild live + candidate, republish. */
+   default publish message embeds), rebuild live + candidate, republish.
+   One publish = one commit = the whole session, so restore reverts the
+   whole session as one unit. */
 function restore(session) {
-  if (session.pending) {
-    return { ok: false, error: 'Approve or discard the pending change before restoring a previous version.' };
+  if (session.pending || session.staged.length) {
+    return { ok: false, error: 'Publish or discard your changes before restoring a previous version.' };
   }
   let log = git(['log', '-n', '1', '--fixed-strings', '--grep', PUBLISH_MARKER(session.client), '--format=%H']);
   if (log.error && log.error.code === 'ENOENT') {
@@ -780,15 +910,17 @@ function runPublish(session, summary) {
 
 module.exports = {
   createSession, getState, describeField, checkToken,
-  // The five maintenance-tier handlers are exported through the ledger
+  // The maintenance-tier handlers are exported through the ledger
   // boundary: one JSONL line per attempt, whoever the caller is.
   applyEdit: logged('edit', applyEdit,
     (session, patch, upload) => (upload != null ? { patch, upload: describeUpload(upload) } : { patch })),
   applyScaffold: logged('scaffold', applyScaffold,
     (session, req) => describeScaffoldRequest(req)),
   listBlueprints,
-  approve: logged('approve', approve, describePendingRequest),
+  keep: logged('keep', keep, describePendingRequest),
   discard: logged('discard', discard, describePendingRequest),
+  discardAll: logged('discard-all', discardAll, describeSessionRequest),
+  publish: logged('publish', publish, describeSessionRequest),
   restore: logged('restore', restore, null),
   loadConfig, resetCandidate, buildCandidate, buildLive,
   candDistDir, candContentPath, liveContentPath,
