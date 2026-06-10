@@ -241,7 +241,45 @@ handover) and every build warns loudly until it's replaced.
 
 ---
 
-## 9. Troubleshooting
+## 9. The maintenance ledger (`edits.log.jsonl`)
+
+Every attempt that flows through the owner editor's handlers — every edit,
+blueprint instantiation, Approve, Discard, and Restore, whether it landed or was
+refused — appends one JSON line to `clients/<client-name>/edits.log.jsonl`:
+
+```json
+{"at":"2026-06-10T18:04:11.392Z","event":"edit","request":{"patch":{"action":"set","block":"home-hero","field":"headline","value":"New headline."}},"outcome":"ok"}
+```
+
+- `event` is `edit | scaffold | approve | discard | restore`; `outcome` is
+  `ok | rejected | build-failed`. Rejected lines carry the resolver's or
+  validator's error **verbatim** in `error`.
+- Image uploads are recorded by name and size only — file bytes never enter
+  the ledger.
+- The file is **gitignored by default** and never staged by the publish step:
+  the git history already records what shipped; the ledger's unique value is
+  the attempts that *didn't* — and those don't belong in a client-visible repo.
+- Rotation: past 1 MB the file is renamed to `edits.log.1.jsonl` (replacing any
+  previous one) and a fresh file starts. No other retention logic exists.
+- Logging is a courtesy, not a control: if the ledger can't be written, the
+  edit it describes still proceeds exactly as it would have.
+
+**Harvesting it.** The rejected lines are roadmap data — what owners reached
+for that the maintenance tier wouldn't do. When you next have access to the
+machine running the editor, copy `clients/<client-name>/edits.log.jsonl` (and
+`edits.log.1.jsonl` if present) and skim the refusals:
+
+```
+node -e "require('fs').readFileSync('clients/<client-name>/edits.log.jsonl','utf8').trim().split('\n').map(JSON.parse).filter(l=>l.outcome!=='ok').forEach(l=>console.log(l.at,l.event,'-',l.error))"
+```
+
+When `publish` is `"none"`, the `ok` lines double as the local revision
+history of what the owner accepted — the same file answers "what changed and
+when" without a git log.
+
+---
+
+## 10. Troubleshooting
 
 - **"the live content does not build — fix it before editing"** (on starting
   `serve.js`): `clients/<client-name>/content.json` already fails validation or the

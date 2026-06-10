@@ -79,7 +79,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (15 proofs)
+  _run-proofs.js        Proof suite (16 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -268,7 +268,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Fifteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Sixteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -308,7 +308,13 @@ output plus exactly the honeypot element, netlify mode emits the Netlify form
 attributes with `formAction` optional only under that mode (the `https://` guard
 holds everywhere else), the honeypot never carries an annotation, the documented
 `https://UNCONFIGURED` placeholder warns at build without failing it, and nothing
-under `extras/` is required by engine code. All fifteen must pass on a clean tree.
+under `extras/` is required by engine code, (16) the maintenance ledger: every
+owner-handler attempt appends one JSONL line to `clients/<client>/edits.log.jsonl`
+(ISO timestamp, the request as submitted, the outcome `ok | rejected |
+build-failed`, the resolver's error verbatim on rejection), uploads are logged by
+name/size only — never file bytes, the file rotates to `edits.log.1.jsonl` past
+1 MB, and an unwritable ledger never blocks the edit it describes. All sixteen
+must pass on a clean tree.
 
 ---
 

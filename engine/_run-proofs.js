@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all fifteen end-to-end proofs in sequence and prints results.
+// Runs all sixteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -42,6 +42,11 @@
 //             the https:// guard holds everywhere else; the documented
 //             https://UNCONFIGURED placeholder warns at build without
 //             failing it.
+// Proof 16:   maintenance ledger (engine/lib/owner.js): every handler
+//             attempt appends one JSONL line (timestamp, request as
+//             submitted, outcome, error verbatim); uploads logged by
+//             name/size only; rotation at 1 MB; an unwritable ledger
+//             never blocks the edit it describes.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -135,7 +140,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 15;
+const TOTAL = 16;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1209,6 +1214,152 @@ console.log('\n═══ PROOF 15 — contact-form delivery: endpoint unchanged 
     console.log('       configured success redirect, with formAction optional ONLY there; the');
     console.log('       honeypot is never annotated; https://UNCONFIGURED warns and never fails;');
     console.log('       nothing under extras/ is required by engine code.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 16 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, bytes never, a failed write never blocks ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-ledger';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const ledgerFile  = path.join(liveDir, 'edits.log.jsonl');
+  const rotatedFile = path.join(liveDir, 'edits.log.1.jsonl');
+  const failures = [];
+
+  const readLines = () => fs.readFileSync(ledgerFile, 'utf8').trim().split('\n').map(l => JSON.parse(l));
+  const last = () => { const ls = readLines(); return ls[ls.length - 1]; };
+
+  try {
+    // Throwaway client, publishing off — same setup as proof 8.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+
+    const session = owner.createSession(CLIENT);
+
+    // (a) An accepted edit appends one well-formed line: ISO timestamp,
+    //     event "edit", the patch as submitted, outcome "ok".
+    const okEdit = owner.applyEdit(session,
+      { action: 'set', block: 'home-hero', field: 'headline', value: 'Ledger headline.' });
+    if (!okEdit.ok) failures.push(`setup edit failed: ${okEdit.error}`);
+    let line = last();
+    if (line.event !== 'edit' || line.outcome !== 'ok') failures.push(`accepted edit logged wrong: ${JSON.stringify(line)}`);
+    if (!line.at || Number.isNaN(Date.parse(line.at))) failures.push('ledger line has no parseable ISO timestamp');
+    if (!line.request || !line.request.patch || line.request.patch.field !== 'headline') {
+      failures.push('accepted-edit line does not carry the patch as submitted');
+    }
+
+    // …and discard, which clears the pending change, is itself logged.
+    owner.discard(session);
+    line = last();
+    if (line.event !== 'discard' || line.outcome !== 'ok') failures.push(`discard logged wrong: ${JSON.stringify(line)}`);
+
+    // (b) A rejected edit logs outcome "rejected" with the resolver's
+    //     refusal verbatim.
+    const bad = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'id', value: 'x' });
+    line = last();
+    if (bad.ok) failures.push('a forbidden edit was accepted');
+    if (line.event !== 'edit' || line.outcome !== 'rejected') failures.push(`rejected edit logged wrong: ${JSON.stringify(line)}`);
+    if (!line.error || line.error !== bad.error) failures.push('rejected-edit line does not carry the resolver error verbatim');
+
+    // (c) A scaffold logs event "scaffold" with the request as submitted;
+    //     approve logs "approve" with the pending change it shipped.
+    const sc = owner.applyScaffold(session, {
+      blueprint: 'gallery-page', variant: 'simple',
+      values: { menuLabel: 'Photos', title: 'Our work', intro: 'Pictures.', albumTitle: 'Recent', photo: 'img/sample-1.jpg' },
+    });
+    if (!sc.ok) failures.push(`scaffold failed: ${sc.error}`);
+    line = last();
+    if (line.event !== 'scaffold' || line.outcome !== 'ok' || !line.request || line.request.blueprint !== 'gallery-page') {
+      failures.push(`scaffold logged wrong: ${JSON.stringify(line)}`);
+    }
+    const ap = owner.approve(session);
+    line = last();
+    if (!ap.ok) failures.push(`approve failed: ${ap.error}`);
+    if (line.event !== 'approve' || line.outcome !== 'ok' || !line.request || !line.request.summary) {
+      failures.push(`approve logged wrong: ${JSON.stringify(line)}`);
+    }
+
+    // (d) An upload is logged by name and size only — the ledger never
+    //     contains the file bytes.
+    const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const up = owner.applyEdit(session,
+      { action: 'set', block: 'home-team', item: 'member-chef', field: 'photo' },
+      { name: 'portrait.png', dataBase64: PNG_1PX });
+    if (!up.ok) failures.push(`image edit failed: ${up.error}`);
+    line = last();
+    if (!line.request || !line.request.upload || line.request.upload.name !== 'portrait.png'
+        || line.request.upload.size !== Buffer.from(PNG_1PX, 'base64').length) {
+      failures.push(`upload not logged by name/size: ${JSON.stringify(line.request)}`);
+    }
+    if (fs.readFileSync(ledgerFile, 'utf8').includes(PNG_1PX.slice(0, 24))) {
+      failures.push('ledger contains uploaded file bytes');
+    }
+    owner.discard(session);
+
+    // (e) Every line in the file honors the contract: parseable JSON, ISO
+    //     timestamp, known event and outcome.
+    for (const l of readLines()) {
+      if (Number.isNaN(Date.parse(l.at || ''))) failures.push(`line without ISO timestamp: ${JSON.stringify(l)}`);
+      if (!['edit', 'scaffold', 'approve', 'discard', 'restore'].includes(l.event)) failures.push(`unknown event: ${l.event}`);
+      if (!['ok', 'rejected', 'build-failed'].includes(l.outcome)) failures.push(`unknown outcome: ${l.outcome}`);
+    }
+
+    // (f) Rotation: past 1 MB the ledger is renamed to edits.log.1.jsonl
+    //     (overwriting any previous .1) and a fresh file starts.
+    fs.writeFileSync(rotatedFile, 'old rotation\n', 'utf8');
+    const bulkLine = JSON.stringify({ at: new Date().toISOString(), event: 'edit', outcome: 'ok', pad: 'x'.repeat(1024) }) + '\n';
+    fs.writeFileSync(ledgerFile, bulkLine.repeat(1100), 'utf8');
+    owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'After rotation.' });
+    owner.discard(session);
+    if (!fs.existsSync(rotatedFile) || fs.statSync(rotatedFile).size <= 1024 * 1024) {
+      failures.push('ledger was not rotated to edits.log.1.jsonl at 1 MB');
+    } else {
+      const rot = fs.readFileSync(rotatedFile, 'utf8');
+      if (rot.includes('old rotation')) failures.push('rotation did not overwrite the previous .1 file');
+      if (!rot.includes('"pad"')) failures.push('rotated file does not hold the pre-rotation content');
+    }
+    const fresh = readLines();
+    if (fresh.length !== 2 || fresh[0].event !== 'edit' || fresh[1].event !== 'discard') {
+      failures.push(`fresh post-rotation ledger expected [edit, discard], got ${JSON.stringify(fresh.map(l => l.event))}`);
+    }
+
+    // (g) Logging is a courtesy, not a control: with a directory squatting
+    //     on the ledger path the append fails — and the edit still applies.
+    fs.rmSync(ledgerFile, { force: true });
+    fs.mkdirSync(ledgerFile);
+    const blocked = owner.applyEdit(session,
+      { action: 'set', block: 'home-hero', field: 'subhead', value: 'Still applies.' });
+    if (!blocked.ok) failures.push(`an unwritable ledger blocked the edit: ${blocked.error}`);
+    const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+    if (cand.pages[0].blocks[0].fields.subhead !== 'Still applies.') {
+      failures.push('the edit did not reach the candidate under an unwritable ledger');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — every owner-handler attempt appends one well-formed JSONL line (ISO');
+    console.log('       timestamp, request as submitted, outcome, error verbatim on rejection);');
+    console.log('       uploads are logged by name/size with no file bytes; the file rotates to');
+    console.log('       edits.log.1.jsonl past 1 MB; and an unwritable ledger never blocks the');
+    console.log('       edit it would have described.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

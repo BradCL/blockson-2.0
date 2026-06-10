@@ -34,6 +34,15 @@
    value-type guard, safe tokens, format + contrast guards); this module
    adds nothing to the writable surface and never bypasses a guard.
 
+   MAINTENANCE LEDGER — every attempt that flows through these handlers
+   (edit | scaffold | approve | discard | restore) appends one JSON line
+   to clients/<client>/edits.log.jsonl (gitignored; rotated at 1 MB to
+   edits.log.1.jsonl): ISO timestamp, the request as submitted (uploads
+   by name/size only — never file bytes), the outcome (ok | rejected |
+   build-failed), and the resolver's error or refusal reason verbatim.
+   Logging is a courtesy, not a control: a ledger write failure never
+   blocks, fails, or alters the edit it describes.
+
    PER-CLIENT CONFIG — clients/<client>/owner-config.json (optional):
      {
        "clientName": "Display name",            // default: client id
@@ -185,6 +194,83 @@ function publishMode(config) {
   return 'custom';
 }
 
+// ── Maintenance ledger ─────────────────────────────────────────
+
+const LEDGER_FILE = 'edits.log.jsonl';
+const LEDGER_ROTATED = 'edits.log.1.jsonl';
+const LEDGER_MAX_BYTES = 1024 * 1024;
+
+/* Append one event line to the per-client ledger. Logging is a courtesy,
+   not a control: every failure in here is swallowed by design — a ledger
+   problem must never block, fail, or alter the edit it describes. */
+function ledgerWrite(session, entry) {
+  try {
+    const file = path.join(liveDir(session), LEDGER_FILE);
+    try {
+      if (fs.statSync(file).size > LEDGER_MAX_BYTES) {
+        const rotated = path.join(liveDir(session), LEDGER_ROTATED);
+        fs.rmSync(rotated, { force: true });
+        fs.renameSync(file, rotated);
+      }
+    } catch (e) { /* no existing ledger — nothing to rotate */ }
+    fs.appendFileSync(file, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n', 'utf8');
+  } catch (e) { /* swallowed by design — see above */ }
+}
+
+// Uploads are logged by name and size only — file bytes never enter the ledger.
+function describeUpload(u) {
+  if (!u || typeof u !== 'object') return null;
+  let size = 0;
+  try { size = Buffer.byteLength(String(u.dataBase64 || ''), 'base64'); } catch (e) {}
+  return { name: typeof u.name === 'string' ? u.name : null, size };
+}
+
+function describeScaffoldRequest(req) {
+  if (!req || typeof req !== 'object') return null;
+  const out = { blueprint: req.blueprint, variant: req.variant };
+  if (req.targetPage != null) out.targetPage = req.targetPage;
+  if (req.values && typeof req.values === 'object') out.values = req.values;
+  if (req.uploads && typeof req.uploads === 'object') {
+    out.uploads = {};
+    for (const k of Object.keys(req.uploads)) out.uploads[k] = describeUpload(req.uploads[k]);
+  }
+  return out;
+}
+
+// Approve/discard act on the pending change, so the "request" their ledger
+// line records is that pending change as it stood when the handler ran.
+function describePendingRequest(session) {
+  const p = session.pending;
+  if (!p) return null;
+  const out = { summary: p.summary };
+  if (p.patch) out.patch = p.patch;
+  if (p.scaffold) out.scaffold = p.scaffold;
+  return out;
+}
+
+/* Wrap a handler so every call appends one ledger line at this boundary —
+   the chokepoint all UI edits, scaffolds, approves, and discards flow
+   through, whoever the caller is. The request is captured BEFORE the
+   handler runs (approve/discard clear session.pending); the outcome is
+   read off the handler's own result. */
+function logged(event, fn, describe) {
+  return function (session, ...args) {
+    let request = null;
+    try { request = describe ? describe(session, ...args) : null; } catch (e) {}
+    let result;
+    try { result = fn(session, ...args); }
+    catch (e) {
+      ledgerWrite(session, { event, request, outcome: 'rejected', error: e.message });
+      throw e;
+    }
+    const entry = { event, request, outcome: result.ok ? 'ok' : (result.buildFailed ? 'build-failed' : 'rejected') };
+    const reason = result.ok ? null : (result.error || result.reason);
+    if (reason) entry.error = reason;
+    ledgerWrite(session, entry);
+    return result;
+  };
+}
+
 // ── Config & session ───────────────────────────────────────────
 
 function loadConfig(client) {
@@ -222,7 +308,12 @@ function createSession(client, overrides) {
 
 function resetCandidate(session) {
   fs.rmSync(candDir(session), { recursive: true, force: true });
-  fs.cpSync(liveDir(session), candDir(session), { recursive: true });
+  // The ledger is a live-dir-only artifact, not site content — it never
+  // rides along into the candidate copy.
+  fs.cpSync(liveDir(session), candDir(session), {
+    recursive: true,
+    filter: src => !path.basename(src).startsWith('edits.log'),
+  });
 }
 
 function buildCandidate(session) { return buildClient(session.candidateClient, true); }
@@ -412,7 +503,7 @@ function applyEdit(session, patch, upload) {
     fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
     if (uploadPath) fs.rmSync(uploadPath, { force: true });
     buildCandidate(session); // restore the preview to the last good state
-    return { ok: false, error: `That change did not pass the site's checks, so it was not kept:\n${b.out}` };
+    return { ok: false, buildFailed: true, error: `That change did not pass the site's checks, so it was not kept:\n${b.out}` };
   }
 
   const newValue = (patch.action === 'delete') ? null
@@ -505,7 +596,7 @@ function applyScaffold(session, req) {
     fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
     for (const p of written) fs.rmSync(p, { force: true });
     buildCandidate(session); // restore the preview to the last good state
-    return { ok: false, error: `That addition did not pass the site's checks, so it was not kept:\n${b.out}` };
+    return { ok: false, buildFailed: true, error: `That addition did not pass the site's checks, so it was not kept:\n${b.out}` };
   }
 
   const c = inst.created;
@@ -548,7 +639,7 @@ function approve(session) {
     fs.writeFileSync(liveContentPath(session), liveBackup, 'utf8');
     for (const f of copied) fs.rmSync(f, { force: true });
     buildLive(session);
-    return { ok: false, error: `The live rebuild failed unexpectedly; the live site was left unchanged:\n${b.out}` };
+    return { ok: false, buildFailed: true, error: `The live rebuild failed unexpectedly; the live site was left unchanged:\n${b.out}` };
   }
 
   const summary = session.pending.summary;
@@ -563,7 +654,7 @@ function discard(session) {
   session.pending = null;
   resetCandidate(session);
   const b = buildCandidate(session);
-  if (!b.ok) return { ok: false, error: `candidate rebuild failed:\n${b.out}` };
+  if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
   return { ok: true };
 }
 
@@ -591,7 +682,7 @@ function restore(session) {
   const live = buildLive(session);
   const cand = buildCandidate(session);
   if (!live.ok || !cand.ok) {
-    return { ok: false, error: `The undo was committed but the rebuild failed:\n${(live.ok ? '' : live.out)}\n${(cand.ok ? '' : cand.out)}`.trim() };
+    return { ok: false, buildFailed: true, error: `The undo was committed but the rebuild failed:\n${(live.ok ? '' : live.out)}\n${(cand.ok ? '' : cand.out)}`.trim() };
   }
 
   let publish;
@@ -670,7 +761,16 @@ function runPublish(session, summary) {
 
 module.exports = {
   createSession, getState, describeField, checkToken,
-  applyEdit, applyScaffold, listBlueprints, approve, discard, restore,
+  // The five maintenance-tier handlers are exported through the ledger
+  // boundary: one JSONL line per attempt, whoever the caller is.
+  applyEdit: logged('edit', applyEdit,
+    (session, patch, upload) => (upload != null ? { patch, upload: describeUpload(upload) } : { patch })),
+  applyScaffold: logged('scaffold', applyScaffold,
+    (session, req) => describeScaffoldRequest(req)),
+  listBlueprints,
+  approve: logged('approve', approve, describePendingRequest),
+  discard: logged('discard', discard, describePendingRequest),
+  restore: logged('restore', restore, null),
   loadConfig, resetCandidate, buildCandidate, buildLive,
   candDistDir, candContentPath, liveContentPath,
   CANDIDATE_SUFFIX, SAFE_TOKENS,

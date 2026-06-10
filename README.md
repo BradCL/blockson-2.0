@@ -331,7 +331,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs fifteen end-to-end proofs against the example clients and the full contribution
+Runs sixteen end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -376,8 +376,15 @@ pipeline:
     carries an annotation; the `https://UNCONFIGURED` placeholder warns at
     build without failing it; and nothing under `extras/` is required by
     engine code
+16. the maintenance ledger: every owner-handler attempt (edit, scaffold,
+    approve, discard) appends one JSONL line to
+    `clients/<client>/edits.log.jsonl` carrying an ISO timestamp, the
+    request as submitted, the outcome, and the resolver's error verbatim
+    on rejection; uploads are logged by name/size only (never file
+    bytes); the file rotates at 1 MB; and an unwritable ledger never
+    blocks the edit it describes
 
-All fifteen must pass on a clean tree (`exit 0`).
+All sixteen must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -393,7 +400,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (15 proofs)
+  _run-proofs.js        End-to-end proof suite (16 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)

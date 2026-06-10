@@ -7,5 +7,9 @@ clients/*__candidate/
 # finally blocks, but a hard crash mid-run can leave them behind).
 clients/__*/
 themes/__theme-validate/
+# Per-client maintenance ledger (owner-editor attempt log). The git history
+# already records what shipped; the ledger's unique value is the attempts
+# that DIDN'T — developer telemetry, not client-repo content (OPERATOR.md §9).
+clients/*/edits.log*.jsonl
 *.bak
 .DS_Store
