@@ -31,7 +31,18 @@
    - Binds 127.0.0.1 unless configured otherwise; additionally rejects
      any request whose socket is not loopback, and any request whose
      Host header is not local — unless allowRemote is set explicitly.
-   - Every POST must carry the custom header "x-blockson-ui: 1".
+   - Access token (owner-config.json "accessToken"): when allowRemote
+     is true a non-empty token is REQUIRED — the server refuses to
+     start without one, because the token is what replaces the
+     locality guard. The owner opens http://host:port/?token=…; the
+     server verifies it (crypto.timingSafeEqual over equal-length
+     sha256 digests) and answers with an HttpOnly session cookie;
+     every subsequent request — static and API alike — must carry
+     that cookie (or present the token again). On plain loopback the
+     token is optional, but enforced identically when set. A refused
+     request gets a plain-language page, never a stack trace.
+   - Every POST must carry the custom header "x-blockson-ui: 1" — the
+     session cookie is in ADDITION to this header, never instead of it.
      Cross-origin pages cannot set custom headers without a CORS
      preflight, and this server never answers preflights or sends CORS
      headers — so a malicious web page cannot drive the editor.
@@ -46,9 +57,10 @@
 
 'use strict';
 
-const http = require('http');
-const fs   = require('fs');
-const path = require('path');
+const http   = require('http');
+const fs     = require('fs');
+const path   = require('path');
+const crypto = require('crypto');
 
 const owner = require('./lib/owner');
 
@@ -86,6 +98,17 @@ try {
   if (flagValue('--port')) overrides.port = Number(flagValue('--port'));
   if (flagValue('--host')) overrides.host = flagValue('--host');
   if (args.includes('--allow-remote')) overrides.allowRemote = true;
+  // Remote-open without a token is refused outright, BEFORE the candidate
+  // build: allow-remote disables the locality guard, so the access token
+  // must take its place — an open LAN port must never mean an open editor.
+  const preview = { ...owner.loadConfig(clientName), ...overrides };
+  if (preview.allowRemote && !(typeof preview.accessToken === 'string' && preview.accessToken.trim() !== '')) {
+    console.error('Refusing to start: allow-remote is set but no access token is configured.');
+    console.error('Remote editing needs one — without it, anyone who can reach this port can publish the site.');
+    console.error(`Add  "accessToken": "<a long random string>"  to clients/${clientName}/owner-config.json,`);
+    console.error('then start again and give the owner the link this server prints.');
+    process.exit(1);
+  }
   session = owner.createSession(clientName, overrides);
 } catch (e) {
   console.error(`Error: ${e.message}`);
@@ -105,6 +128,61 @@ function requestAllowed(req) {
     ? hostHeader.slice(0, hostHeader.indexOf(']') + 1)
     : hostHeader.split(':')[0];
   return LOCAL_HOSTNAMES.has(hostname);
+}
+
+// ── Access token (Task 2) ──────────────────────────────────────
+// When owner-config.json sets accessToken, every request must present
+// it once (?token=…) and ride an HttpOnly session cookie thereafter.
+// The session secret is fresh per server start, so a stolen cookie
+// dies with the process; the token itself never goes into a cookie.
+const ACCESS_TOKEN = (typeof cfg.accessToken === 'string' && cfg.accessToken.trim() !== '')
+  ? cfg.accessToken : null;
+const SESSION_COOKIE = 'blockson-session';
+const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
+
+// timingSafeEqual demands equal-length buffers; hashing both sides
+// first guarantees that without an early length-based return.
+function safeEqual(a, b) {
+  return crypto.timingSafeEqual(
+    crypto.createHash('sha256').update(String(a)).digest(),
+    crypto.createHash('sha256').update(String(b)).digest());
+}
+
+function sessionCookieValue(req) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i !== -1 && part.slice(0, i).trim() === SESSION_COOKIE) return part.slice(i + 1).trim();
+  }
+  return null;
+}
+
+// True if the request may proceed; presenting the token in the URL
+// issues the session cookie on this response as a side effect.
+function authorized(req, res, url) {
+  if (!ACCESS_TOKEN) return true;
+  const cookie = sessionCookieValue(req);
+  if (cookie !== null && safeEqual(cookie, SESSION_SECRET)) return true;
+  const token = url.searchParams.get('token');
+  if (token !== null && safeEqual(token, ACCESS_TOKEN)) {
+    res.setHeader('Set-Cookie',
+      `${SESSION_COOKIE}=${SESSION_SECRET}; HttpOnly; SameSite=Strict; Path=/`);
+    return true;
+  }
+  return false;
+}
+
+function sendAccessPage(res) {
+  res.writeHead(403, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+  res.end([
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">',
+    '<title>Access link needed</title></head>',
+    '<body style="font-family: system-ui, sans-serif; max-width: 36em; margin: 4em auto; line-height: 1.5">',
+    '<h1>This editor needs its access link</h1>',
+    '<p>Open the exact link your developer gave you — it ends in <code>?token=…</code>.',
+    ' After that first visit, this browser stays signed in until the editor is restarted.</p>',
+    '<p>If you don’t have the link, ask your developer to send it again.</p>',
+    '</body></html>',
+  ].join('\n'));
 }
 
 // Defense-in-depth headers on every response: nothing this server sends
@@ -174,6 +252,7 @@ async function handle(req, res) {
 
   let url;
   try { url = new URL(req.url, 'http://localhost'); } catch (e) { return sendError(res, 400, 'bad url'); }
+  if (!authorized(req, res, url)) return sendAccessPage(res);
   let pathname;
   try { pathname = decodeURIComponent(url.pathname); } catch (e) { return sendError(res, 400, 'bad path'); }
 
@@ -250,7 +329,8 @@ server.listen(cfg.port, cfg.host, () => {
   // ephemeral port (proof 13 starts the real server that way).
   const port = server.address().port;
   console.log(`Owner editor for "${session.config.clientName || session.client}"`);
-  console.log(`  → http://${cfg.host}:${port}/`);
+  console.log(`  → http://${cfg.host}:${port}/${ACCESS_TOKEN ? '?token=' + encodeURIComponent(ACCESS_TOKEN) : ''}`);
   console.log(`  publish: ${cfg.publish === 'none' ? 'off' : cfg.publish === 'git' || cfg.publish == null ? 'git add/commit/push' : 'custom command'}`);
+  if (ACCESS_TOKEN) console.log('  access token set: the editor opens only through the link above (then a session cookie).');
   if (cfg.allowRemote) console.log('  ⚠ --allow-remote is set: non-local requests are accepted.');
 });

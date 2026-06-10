@@ -31,7 +31,12 @@
 //             fails with each reason named.
 // Proof 13:   editor server request guards over real HTTP (engine/serve.js):
 //             foreign Host header refused, header-less POST refused, encoded
-//             path traversal confined, nosniff + SAMEORIGIN on responses.
+//             path traversal confined, nosniff + SAMEORIGIN on responses;
+//             access token (v4.2 Task 2): remote-open refuses to start
+//             without one; configured, it gates every request — wrong/no
+//             token refused with a plain page, right token admits and sets
+//             an HttpOnly session cookie honored for static + API requests
+//             (POST header still required); loopback-no-token unchanged.
 // Proof 14:   build-time image weight advisory (engine/build.js): a >500 KB
 //             file in img/ is named on stderr with its size, a >2 MB folder
 //             gets a one-line total, and the build still succeeds (exit 0).
@@ -868,14 +873,16 @@ console.log('\n═══ PROOF 12 — Theme validator: every shipped theme passe
 // ── PROOF 13 ────────────────────────────────────────────────────────────────
 console.log('\n═══ PROOF 13 — Editor server request guards, exercised over real HTTP ═══');
 {
-  // serve.js documents four request guards (loopback-only, Host-header check,
-  // editor-header requirement on POST, static-path confinement) plus the
-  // defense-in-depth response headers. They are HTTP plumbing, so unlike the
-  // owner.js handlers they cannot be proved by direct calls — this proof
-  // starts the REAL server (on an OS-assigned port) and probes it with raw
-  // requests. The async client lives in a harness script written under dist/
-  // (the same pattern as the bad-blueprint/bad-theme artifacts) because this
-  // proof runner is deliberately straight-line synchronous.
+  // serve.js documents five request guards (loopback-only, Host-header check,
+  // editor-header requirement on POST, static-path confinement, and the
+  // access-token gate) plus the defense-in-depth response headers. They are
+  // HTTP plumbing, so unlike the owner.js handlers they cannot be proved by
+  // direct calls — this proof starts the REAL server (on an OS-assigned port)
+  // and probes it with raw requests: once with no token configured (the
+  // unchanged loopback behavior) and once remote-style (allowRemote +
+  // accessToken). The async client lives in a harness script written under
+  // dist/ (the same pattern as the bad-blueprint/bad-theme artifacts) because
+  // this proof runner is deliberately straight-line synchronous.
   const CLIENT  = '__proof-serve';
   const liveDir = path.join(ROOT, 'clients', CLIENT);
   const harness = path.join(ROOT, 'dist', '__proof-serve-harness.js');
@@ -885,21 +892,27 @@ console.log('\n═══ PROOF 13 — Editor server request guards, exercised ov
     "'use strict';",
     "const { spawn } = require('child_process');",
     "const http = require('http');",
+    "const fs = require('fs');",
     "const path = require('path');",
     "const ROOT = process.argv[2], CLIENT = process.argv[3];",
     "const failures = [];",
-    "let port = null, done = false;",
-    "const srv = spawn(process.execPath, [path.join(ROOT, 'engine', 'serve.js'), CLIENT, '--port', '0'], { cwd: ROOT });",
-    "let out = '';",
-    "const giveUp = setTimeout(function () { failures.push('server did not start within 30s: ' + out.slice(-400)); finish(); }, 30000);",
-    "srv.stdout.on('data', function (d) {",
-    "  out += d;",
-    "  const m = out.match(/http:\\/\\/127\\.0\\.0\\.1:(\\d+)\\//);",
-    "  if (m && port === null) { port = Number(m[1]); run(); }",
-    "});",
-    "srv.stderr.on('data', function (d) { out += d; });",
-    "srv.on('exit', function () { if (port === null) { failures.push('server exited before listening: ' + out.slice(-400)); finish(); } });",
-    "function req(opts, body) {",
+    "let done = false;",
+    "function startServer() {",
+    "  return new Promise(function (resolve) {",
+    "    const srv = spawn(process.execPath, [path.join(ROOT, 'engine', 'serve.js'), CLIENT, '--port', '0'], { cwd: ROOT });",
+    "    let out = '', settled = false;",
+    "    function settle(port) { if (!settled) { settled = true; clearTimeout(giveUp); resolve({ srv: srv, port: port, out: out }); } }",
+    "    const giveUp = setTimeout(function () { settle(null); }, 30000);",
+    "    srv.stdout.on('data', function (d) {",
+    "      out += d;",
+    "      const m = out.match(/http:\\/\\/127\\.0\\.0\\.1:(\\d+)\\//);",
+    "      if (m) settle(Number(m[1]));",
+    "    });",
+    "    srv.stderr.on('data', function (d) { out += d; });",
+    "    srv.on('exit', function () { settle(null); });",
+    "  });",
+    "}",
+    "function req(port, opts, body) {",
     "  return new Promise(function (resolve) {",
     "    const r = http.request(Object.assign({ host: '127.0.0.1', port: port }, opts), function (res) {",
     "      let data = '';",
@@ -912,49 +925,99 @@ console.log('\n═══ PROOF 13 — Editor server request guards, exercised ov
     "  });",
     "}",
     "async function run() {",
+    "  let s1 = null, s2 = null;",
     "  try {",
-    "    // (a) A local request works, and every response carries the",
-    "    //     defense-in-depth headers.",
-    "    const home = await req({ path: '/' });",
+    "    // ── Phase 1: no accessToken configured, plain loopback — the v4",
+    "    //    behavior, which Task 2 must leave exactly as it was.",
+    "    s1 = await startServer();",
+    "    if (s1.port === null) { failures.push('server (no-token) did not start: ' + s1.out.slice(-400)); return finish(s1, s2); }",
+    "    // (a) A local request works WITHOUT any token or cookie, and every",
+    "    //     response carries the defense-in-depth headers.",
+    "    const home = await req(s1.port, { path: '/' });",
     "    if (home.status !== 200) failures.push('GET / expected 200, got ' + home.status);",
     "    if (home.headers['x-content-type-options'] !== 'nosniff') failures.push('GET / is missing X-Content-Type-Options: nosniff');",
     "    if (home.headers['x-frame-options'] !== 'SAMEORIGIN') failures.push('GET / is missing X-Frame-Options: SAMEORIGIN');",
-    "    const state = await req({ path: '/api/state' });",
+    "    const state = await req(s1.port, { path: '/api/state' });",
+    "    if (state.status !== 200) failures.push('no-token /api/state expected 200, got ' + state.status);",
     "    if (state.headers['x-content-type-options'] !== 'nosniff') failures.push('API responses are missing nosniff');",
     "    // (b) A loopback request wearing a foreign Host header (DNS-rebinding",
     "    //     shape) is refused.",
-    "    const rebind = await req({ path: '/', headers: { Host: 'evil.example.com' } });",
+    "    const rebind = await req(s1.port, { path: '/', headers: { Host: 'evil.example.com' } });",
     "    if (rebind.status !== 403) failures.push('foreign Host header expected 403, got ' + rebind.status);",
     "    // (c) A POST without the editor header (what a cross-origin page",
     "    //     could send) is refused; the same POST with the header reaches",
     "    //     the handler (token-check: a guard run, no write).",
-    "    const naked = await req({ method: 'POST', path: '/api/token-check', headers: { 'Content-Type': 'application/json' } }, '{}');",
+    "    const naked = await req(s1.port, { method: 'POST', path: '/api/token-check', headers: { 'Content-Type': 'application/json' } }, '{}');",
     "    if (naked.status !== 403) failures.push('headerless POST expected 403, got ' + naked.status);",
-    "    const armed = await req({ method: 'POST', path: '/api/token-check',",
+    "    const armed = await req(s1.port, { method: 'POST', path: '/api/token-check',",
     "      headers: { 'Content-Type': 'application/json', 'x-blockson-ui': '1' } },",
     "      JSON.stringify({ token: '--color-primary', value: '#2D6A4F' }));",
     "    if (armed.status !== 200) failures.push('editor POST expected 200, got ' + armed.status + ' ' + armed.body.slice(0, 200));",
     "    // (d) Encoded traversal out of the preview/UI roots must not serve",
     "    //     repo files (package.json is the canary).",
-    "    const t1 = await req({ path: '/preview/%2e%2e%2fpackage.json' });",
+    "    const t1 = await req(s1.port, { path: '/preview/%2e%2e%2fpackage.json' });",
     "    if (t1.status === 200 || t1.body.indexOf('blockson') !== -1) failures.push('encoded ../ escaped the preview root (' + t1.status + ')');",
-    "    const t2 = await req({ path: '/preview/..%5C..%5Cpackage.json' });",
+    "    const t2 = await req(s1.port, { path: '/preview/..%5C..%5Cpackage.json' });",
     "    if (t2.status === 200 || t2.body.indexOf('blockson') !== -1) failures.push('encoded ..\\\\ escaped the preview root (' + t2.status + ')');",
-    "    const t3 = await req({ path: '/ui/%2e%2e%2fserve.js' });",
+    "    const t3 = await req(s1.port, { path: '/ui/%2e%2e%2fserve.js' });",
     "    if (t3.status === 200) failures.push('/ui/ served a file outside its allowlist');",
+    "    s1.srv.kill();",
+    "    // ── Phase 2: accessToken + allowRemote — the Task 2 hardening.",
+    "    //    Requests still arrive over loopback, but allowRemote disables",
+    "    //    the locality guard, so they exercise exactly the remote path.",
+    "    fs.writeFileSync(path.join(ROOT, 'clients', CLIENT, 'owner-config.json'),",
+    "      JSON.stringify({ clientName: 'Proof Client', publish: 'none', allowRemote: true, accessToken: 'proof-secret-token' }) + '\\n', 'utf8');",
+    "    s2 = await startServer();",
+    "    if (s2.port === null) { failures.push('server (token mode) did not start: ' + s2.out.slice(-400)); return finish(s1, s2); }",
+    "    // (e) Remote-style request without token or cookie: refused with a",
+    "    //     plain-language page, never a stack trace.",
+    "    const bare = await req(s2.port, { path: '/' });",
+    "    if (bare.status !== 403) failures.push('token-mode GET / without token expected 403, got ' + bare.status);",
+    "    if (!/access link/i.test(bare.body)) failures.push('refusal is not the plain-language page: ' + bare.body.slice(0, 200));",
+    "    if (bare.body.indexOf('    at ') !== -1) failures.push('refusal page leaks a stack trace');",
+    "    // (f) Wrong token: refused, and no session cookie issued.",
+    "    const wrong = await req(s2.port, { path: '/?token=wrong-token' });",
+    "    if (wrong.status !== 403) failures.push('wrong token expected 403, got ' + wrong.status);",
+    "    if (wrong.headers['set-cookie']) failures.push('wrong token was issued a session cookie');",
+    "    // (g) Right token: admitted, and answered with an HttpOnly cookie.",
+    "    const right = await req(s2.port, { path: '/?token=proof-secret-token' });",
+    "    if (right.status !== 200) failures.push('right token expected 200, got ' + right.status);",
+    "    const setCookie = (right.headers['set-cookie'] || [])[0] || '';",
+    "    if (!/HttpOnly/i.test(setCookie)) failures.push('session cookie is missing or not HttpOnly: ' + setCookie);",
+    "    const cookie = setCookie.split(';')[0];",
+    "    // (h) The cookie alone now admits API and static requests alike;",
+    "    //     without it both are refused.",
+    "    const cApi = await req(s2.port, { path: '/api/state', headers: { Cookie: cookie } });",
+    "    if (cApi.status !== 200) failures.push('cookie-bearing /api/state expected 200, got ' + cApi.status);",
+    "    const cStatic = await req(s2.port, { path: '/ui/ui.js', headers: { Cookie: cookie } });",
+    "    if (cStatic.status !== 200) failures.push('cookie-bearing /ui/ui.js expected 200, got ' + cStatic.status);",
+    "    const nApi = await req(s2.port, { path: '/api/state' });",
+    "    if (nApi.status !== 403) failures.push('cookieless /api/state expected 403, got ' + nApi.status);",
+    "    const nStatic = await req(s2.port, { path: '/ui/ui.js' });",
+    "    if (nStatic.status !== 403) failures.push('cookieless /ui/ui.js expected 403, got ' + nStatic.status);",
+    "    // (i) The custom-header POST requirement is IN ADDITION to the",
+    "    //     cookie: cookie without header refused, cookie + header admitted.",
+    "    const cNakedPost = await req(s2.port, { method: 'POST', path: '/api/token-check',",
+    "      headers: { Cookie: cookie, 'Content-Type': 'application/json' } }, '{}');",
+    "    if (cNakedPost.status !== 403) failures.push('cookie-but-headerless POST expected 403, got ' + cNakedPost.status);",
+    "    const cArmedPost = await req(s2.port, { method: 'POST', path: '/api/token-check',",
+    "      headers: { Cookie: cookie, 'Content-Type': 'application/json', 'x-blockson-ui': '1' } },",
+    "      JSON.stringify({ token: '--color-primary', value: '#2D6A4F' }));",
+    "    if (cArmedPost.status !== 200) failures.push('cookie + header POST expected 200, got ' + cArmedPost.status + ' ' + cArmedPost.body.slice(0, 200));",
     "  } catch (e) {",
     "    failures.push('exception: ' + e.message);",
     "  }",
-    "  finish();",
+    "  finish(s1, s2);",
     "}",
-    "function finish() {",
+    "function finish(s1, s2) {",
     "  if (done) return;",
     "  done = true;",
-    "  clearTimeout(giveUp);",
-    "  try { srv.kill(); } catch (e) {}",
+    "  try { if (s1) s1.srv.kill(); } catch (e) {}",
+    "  try { if (s2) s2.srv.kill(); } catch (e) {}",
     "  console.log('PROOF13RESULT ' + JSON.stringify({ failures: failures }));",
     "  process.exit(0);",
     "}",
+    "run();",
   ].join('\n');
 
   try {
@@ -966,10 +1029,21 @@ console.log('\n═══ PROOF 13 — Editor server request guards, exercised ov
     fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
       JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
 
+    // Remote-open without an access token must refuse to START — checked
+    // here while the throwaway config still has no token (it fails fast,
+    // before the candidate build, so this never hangs the suite).
+    const refusal = spawnSync(process.execPath,
+      [path.join(ROOT, 'engine', 'serve.js'), CLIENT, '--allow-remote', '--port', '0'],
+      { cwd: ROOT, encoding: 'utf8', timeout: 30000 });
+    if (refusal.status === 0 || !/accessToken/.test(refusal.stderr || '')) {
+      failures.push(`--allow-remote without accessToken must refuse to start, naming accessToken; got status ${refusal.status}: ${((refusal.stderr || '') + (refusal.stdout || '')).slice(0, 300)}`);
+    }
+
     fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
     fs.writeFileSync(harness, HARNESS_SRC, 'utf8');
+    // Two server starts (two candidate builds) live inside the harness now.
     const r = spawnSync(process.execPath, [harness, ROOT, CLIENT],
-      { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+      { cwd: ROOT, encoding: 'utf8', timeout: 120000 });
     const m = (r.stdout || '').match(/PROOF13RESULT (\{.*\})/);
     if (!m) failures.push(`harness produced no result:\n${((r.stdout || '') + (r.stderr || '')).slice(-1000)}`);
     else failures.push(...JSON.parse(m[1]).failures);
@@ -988,7 +1062,11 @@ console.log('\n═══ PROOF 13 — Editor server request guards, exercised ov
     console.log('PASS — the real server, probed over HTTP: local requests succeed and carry');
     console.log('       nosniff + SAMEORIGIN headers; a foreign Host header and a header-less');
     console.log('       POST are both refused; encoded path traversal cannot escape the');
-    console.log('       preview or UI roots.');
+    console.log('       preview or UI roots; remote-open refuses to start without an access');
+    console.log('       token; with one set, no-token and wrong-token requests get the plain-');
+    console.log('       language page, the right token is admitted and issued an HttpOnly');
+    console.log('       cookie that then admits static and API alike (the POST header still');
+    console.log('       required on top); loopback without a configured token is unchanged.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

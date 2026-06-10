@@ -50,8 +50,9 @@
        "publishMessage": "template",            // {client} {summary}
        "contact": { "name": "...", "email": "..." },  // shown in the UI
        "host": "127.0.0.1", "port": 4173,
-       "allowRemote": false
-     }
+       "allowRemote": false,
+       "accessToken": ""                        // serve.js login token; REQUIRED
+     }                                          // when allowRemote is true
    "git" publishes with add/commit/push using publishMessage (which
    embeds the [blockson-publish <client>] marker restore() looks for).
    A custom command string runs with {message} and {client} substituted.
@@ -85,6 +86,7 @@ const DEFAULT_CONFIG = {
   host: '127.0.0.1',
   port: 4173,
   allowRemote: false,
+  accessToken: '',             // enforced by serve.js when non-empty; required for allowRemote
 };
 
 // ── Paths & small helpers ──────────────────────────────────────
