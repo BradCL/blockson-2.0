@@ -193,7 +193,40 @@ if (fs.existsSync(imgSrc)) {
 
 console.log(`Built ${content.pages.length} page(s) → dist/${clientName + distSuffix}/${annotate ? '  (annotated preview)' : ''}`);
 
+// ── Image weight advisory ──────────────────────────────────────
+// Page weight is the one quality problem a validating build can't see:
+// a 5 MB phone photo copied verbatim into img/ ships a 5 MB page. Warn
+// (stderr) about every heavy file and a heavy folder total. Advisory
+// only — it never changes the exit code or the build output.
+warnOnHeavyImages(imgSrc);
+
 // ── Helpers ────────────────────────────────────────────────────
+function warnOnHeavyImages(imgDir) {
+  const PER_FILE_LIMIT = 500 * 1024;       // 500 KB per image
+  const TOTAL_LIMIT    = 2 * 1024 * 1024;  // 2 MB for the whole img/ folder
+  if (!fs.existsSync(imgDir)) return;
+  const files = [];
+  (function walk(dir, rel) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      const r = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(p, r);
+      else files.push({ rel: r, bytes: fs.statSync(p).size });
+    }
+  })(imgDir, '');
+  const human = b => b >= 1024 * 1024 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`;
+  let total = 0;
+  for (const f of files) {
+    total += f.bytes;
+    if (f.bytes > PER_FILE_LIMIT) {
+      console.warn(`  ⚠ img/${f.rel} is ${human(f.bytes)} — every visitor downloads it at full size; resize it to ~1920 px on the longest edge and re-save before shipping.`);
+    }
+  }
+  if (total > TOTAL_LIMIT) {
+    console.warn(`  ⚠ img/ totals ${(total / 1048576).toFixed(1)} MB across ${files.length} files`);
+  }
+}
+
 function checkBlockIdUniqueness(content) {
   const seen = new Map(); // blockId -> "page slug"
   const errors = [];

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all thirteen end-to-end proofs in sequence and prints results.
+// Runs all fourteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -32,6 +32,9 @@
 // Proof 13:   editor server request guards over real HTTP (engine/serve.js):
 //             foreign Host header refused, header-less POST refused, encoded
 //             path traversal confined, nosniff + SAMEORIGIN on responses.
+// Proof 14:   build-time image weight advisory (engine/build.js): a >500 KB
+//             file in img/ is named on stderr with its size, a >2 MB folder
+//             gets a one-line total, and the build still succeeds (exit 0).
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -125,7 +128,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 13;
+const TOTAL = 14;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -967,6 +970,58 @@ console.log('\n═══ PROOF 13 — Editor server request guards, exercised ov
     console.log('       nosniff + SAMEORIGIN headers; a foreign Host header and a header-less');
     console.log('       POST are both refused; encoded path traversal cannot escape the');
     console.log('       preview or UI roots.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 14 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 14 — Image weight advisory: heavy files are named, the build still succeeds ═══');
+{
+  const CLIENT  = '__proof-imgweight';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const imgDir  = path.join(liveDir, 'img');
+  const failures = [];
+
+  try {
+    // Throwaway client (oversized files are GENERATED here, never committed).
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(imgDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-contractor', 'content.json'),
+      path.join(liveDir, 'content.json'));
+
+    // (a) One 600 KB file: its per-file warning fires, no folder total
+    //     (600 KB < 2 MB), and the build exits 0 with its normal output.
+    fs.writeFileSync(path.join(imgDir, 'big-photo.jpg'), Buffer.alloc(600 * 1024));
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`build with a heavy image failed (the advisory must never fail a build):\n${b1.out}`);
+    if (!/img\/big-photo\.jpg is 600 KB/.test(b1.out)) failures.push(`per-file warning missing or wrong: ${b1.out}`);
+    if (/img\/ totals/.test(b1.out)) failures.push('folder total fired below the 2 MB threshold');
+    if (!/Built \d+ page\(s\)/.test(b1.out)) failures.push('normal build output is missing');
+
+    // (b) Add a 1.6 MB file: both per-file warnings fire plus the folder
+    //     total line; small files are never named.
+    fs.writeFileSync(path.join(imgDir, 'huge-banner.png'), Buffer.alloc(1600 * 1024));
+    fs.writeFileSync(path.join(imgDir, 'small-icon.png'), Buffer.alloc(20 * 1024));
+    const b2 = build(CLIENT);
+    if (!b2.ok) failures.push(`second build failed:\n${b2.out}`);
+    if (!/img\/big-photo\.jpg is 600 KB/.test(b2.out)) failures.push('first per-file warning missing on rebuild');
+    if (!/img\/huge-banner\.png is 1\.6 MB/.test(b2.out)) failures.push(`second per-file warning missing or wrong: ${b2.out}`);
+    if (!/img\/ totals 2\.2 MB across 3 files/.test(b2.out)) failures.push(`folder total line missing or wrong: ${b2.out}`);
+    if (/small-icon/.test(b2.out)) failures.push('a file under the limit was named in a warning');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', CLIENT), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a >500 KB image is named on stderr with its size and a one-sentence');
+    console.log('       fix, a >2 MB img/ folder gets the one-line total, files under the');
+    console.log('       limit are never named, and the build succeeds unchanged either way.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
