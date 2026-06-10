@@ -1,0 +1,184 @@
+{
+  "site": {
+    "name": "Sage & Ember Bistro",
+    "baseUrl": "https://sage-ember-bistro.com",
+    "theme": "restaurant",
+    "logo": { "white": "img/logo-white.png", "black": "img/logo-black.png", "favicon": "img/favicon.png" },
+    "contact": { "phone": "780-555-0188", "email": "hello@sage-ember-bistro.com", "instagram": "https://instagram.com/sageandember" },
+    "nav": {
+      "links": [
+        { "label": "Home", "href": "index.html" },
+        { "label": "Menu", "href": "menu.html" }
+      ],
+      "cta": { "label": "Book a Table", "href": "contact.html" }
+    },
+    "footer": {
+      "blurb": "Seasonal comfort food, wood-fired and locally sourced, in the heart of the Garneau neighbourhood.",
+      "columns": [
+        { "heading": "Pages", "items": [
+          { "label": "Home", "href": "index.html" },
+          { "label": "Menu", "href": "menu.html" },
+          { "label": "Contact", "href": "contact.html" }
+        ]},
+        { "heading": "Visit", "items": [
+          { "label": "10312 82 Ave NW, Edmonton" },
+          { "label": "780-555-0188", "href": "tel:7805550188" },
+          { "label": "Instagram", "href": "https://instagram.com/sageandember" }
+        ]},
+        { "heading": "Hours", "items": [
+          { "label": "Tue–Sun from 11am" },
+          { "label": "Closed Mondays" }
+        ]}
+      ]
+    },
+    "copyright": "© 2026 Sage & Ember Bistro. All rights reserved.",
+    "tagline": "Wood-fired. Locally sourced."
+  },
+
+  "pages": [
+    {
+      "slug": "index",
+      "meta": { "title": "Sage & Ember Bistro | Wood-Fired Comfort Food in Edmonton", "description": "Seasonal comfort food, wood-fired and locally sourced. Lunch, dinner, and weekend brunch in Garneau." },
+      "blocks": [
+        { "id": "home-hero", "type": "hero", "fields": {
+          "tag": "Garneau, Edmonton",
+          "headline": "Comfort food, wood-fired.",
+          "subhead": "Seasonal plates built on Alberta farms and a nine-year-old sourdough starter.",
+          "background": "img/hero-dining-room.jpg",
+          "actions": [
+            { "label": "See the Menu", "href": "menu.html", "style": "primary" },
+            { "label": "Book a Table", "href": "contact.html", "style": "secondary" }
+          ]
+        }},
+        { "id": "home-stats", "type": "stats-bar", "fields": {
+          "stats": [
+            { "id": "stat-years", "value": "12", "label": "Years in Garneau" },
+            { "id": "stat-farms", "value": "9", "label": "Partner farms" },
+            { "id": "stat-rating", "value": "4.8★", "label": "Average review" }
+          ]
+        }},
+        { "id": "home-offerings", "type": "card-grid", "fields": {
+          "tag": "What We Do", "heading": "Three ways to eat with us", "columns": 3,
+          "cards": [
+            { "id": "card-dinein", "icon": "star", "title": "Dine In", "body": "Wood-fired mains and a rotating seasonal menu, Tuesday through Sunday." },
+            { "id": "card-takeout", "icon": "clock", "title": "Takeout", "body": "The full menu packed to travel, ready in 20 minutes." },
+            { "id": "card-catering", "icon": "people", "title": "Private Events", "body": "The back room seats 28 for family-style dinners." }
+          ]
+        }},
+        { "id": "home-team", "type": "team-grid", "fields": {
+          "tag": "The Kitchen", "heading": "Who's behind the pass",
+          "members": [
+            { "id": "member-chef", "photo": "img/team-aiko.jpg", "name": "Aiko Tanaka", "role": "Chef & Owner", "bio": "Twelve years of prairie-seasonal cooking, trained in Montreal." },
+            { "id": "member-sous", "photo": "img/team-marcus.jpg", "name": "Marcus Bélanger", "role": "Sous Chef", "bio": "Runs the wood oven and the weekend brunch service." },
+            { "id": "member-foh", "photo": "img/team-priya.jpg", "name": "Priya Sharma", "role": "Front of House", "bio": "Builds the wine list from small Okanagan producers." }
+          ]
+        }},
+        { "id": "home-testimonials", "type": "testimonials", "fields": {
+          "tag": "Word of Mouth", "heading": "What guests say",
+          "quotes": [
+            { "id": "testi-brunch", "stars": 5, "quote": "The brunch sourdough pancakes are worth the line. Worth two lines.", "attribution": "Regular, Strathcona" },
+            { "id": "testi-dinner", "stars": 5, "quote": "Best short rib in the city, and the staff remember your name.", "attribution": "Anniversary dinner, Oliver" }
+          ]
+        }},
+        { "id": "home-booking", "type": "booking-cta", "fields": {
+          "tag": "Reservations",
+          "statement": "Tables go fast on weekends.",
+          "subtext": "Book online in under a minute — or walk in and try your luck at the bar.",
+          "provider": "OpenTable",
+          "button": { "label": "Reserve a Table", "href": "https://www.opentable.com/r/sage-and-ember-bistro" },
+          "note": "Groups of 7+ should call us directly."
+        }}
+      ]
+    },
+
+    {
+      "slug": "menu",
+      "meta": { "title": "Menu | Sage & Ember Bistro", "description": "Wood-fired mains, seasonal starters, and weekend brunch. Menu changes with Alberta's seasons." },
+      "blocks": [
+        { "id": "menu-header", "type": "page-header", "fields": {
+          "tag": "The Menu", "heading": "Cooked over fire, changed with the seasons",
+          "subhead": "What's below is this season's core menu — specials change weekly.",
+          "background": "img/menu-banner.jpg"
+        }},
+        { "id": "menu-starters", "type": "pricing-table", "fields": {
+          "tag": "To Start", "heading": "Starters & shareables",
+          "plans": [
+            { "id": "plan-bruschetta", "name": "Ember Bruschetta", "price": "$14", "description": "Charred sourdough, confit tomato, whipped ricotta, basil." },
+            { "id": "plan-soup", "name": "Roasted Squash Soup", "price": "$12", "description": "Cold-pressed canola, toasted pepitas, brown-butter cream." },
+            { "id": "plan-board", "name": "Prairie Board", "price": "$26", "description": "Cured meats, Sylvan Star gouda, pickles, house mustard.", "features": ["Feeds two to three", "Add wood-fired flatbread +$6"] }
+          ],
+          "note": "Most starters can be made gluten-free — ask your server."
+        }},
+        { "id": "menu-mains", "type": "pricing-table", "fields": {
+          "tag": "Mains", "heading": "From the wood oven",
+          "plans": [
+            { "id": "plan-shortrib", "name": "48-Hour Short Rib", "price": "$34", "description": "Braised Alberta beef, root vegetable mash, charred onion jus.", "featured": true },
+            { "id": "plan-trout", "name": "Wood-Fired Trout", "price": "$29", "description": "Whole rainbow trout, lemon butter, fire-roasted potatoes." },
+            { "id": "plan-gnocchi", "name": "Sage Brown-Butter Gnocchi", "price": "$24", "description": "Hand-rolled potato gnocchi, crispy sage, aged parmesan." }
+          ]
+        }},
+        { "id": "menu-hours", "type": "hours-table", "fields": {
+          "tag": "When We're Open", "heading": "Kitchen hours",
+          "rows": [
+            { "id": "row-monday", "day": "Monday", "hours": "Closed" },
+            { "id": "row-tuewed", "day": "Tuesday – Wednesday", "hours": "11am – 9pm" },
+            { "id": "row-thufri", "day": "Thursday – Friday", "hours": "11am – 10pm" },
+            { "id": "row-saturday", "day": "Saturday", "hours": "10am – 10pm" },
+            { "id": "row-sunday", "day": "Sunday", "hours": "10am – 8pm" }
+          ],
+          "note": "Brunch menu runs Saturday and Sunday until 2pm."
+        }},
+        { "id": "menu-faq", "type": "faq", "fields": {
+          "tag": "Good to Know", "heading": "Common questions",
+          "items": [
+            { "id": "faq-reservations", "question": "Do you take reservations?", "answer": "Yes — online through OpenTable, or by phone for groups of seven or more. We hold a third of the room for walk-ins every night." },
+            { "id": "faq-dietary", "question": "Can you handle allergies and dietary restrictions?", "answer": "Almost always. The menu marks gluten-free and vegetarian options, and the kitchen keeps a dedicated prep space for celiac guests. Tell us when you book." },
+            { "id": "faq-parking", "question": "Where do I park?", "answer": "Free street parking on 104 Street after 6pm, and the Garneau lot is half a block east. We validate for the lot on weekends." },
+            { "id": "faq-kids", "question": "Are kids welcome?", "answer": "Absolutely — high chairs, a half-portion menu, and crayons that have drawn on every tablecloth since 2014." }
+          ]
+        }},
+        { "id": "menu-cta", "type": "cta", "fields": {
+          "statement": "Hungry yet?", "subtext": "The wood oven is lit from 11am.",
+          "button": { "label": "Book a Table", "href": "contact.html", "style": "primary" }
+        }}
+      ]
+    },
+
+    {
+      "slug": "contact",
+      "meta": { "title": "Contact & Reservations | Sage & Ember Bistro", "description": "Book a table, plan a private dinner, or just say hello. Find us in Garneau at 10312 82 Ave NW." },
+      "blocks": [
+        { "id": "contact-header", "type": "page-header", "fields": {
+          "tag": "Contact", "heading": "Find us in Garneau",
+          "subhead": "Reservations, private dinners, and everything else."
+        }},
+        { "id": "contact-booking", "type": "booking-cta", "fields": {
+          "statement": "Reserve in under a minute.",
+          "subtext": "Online booking is the fastest way to a table.",
+          "provider": "OpenTable",
+          "button": { "label": "Book on OpenTable", "href": "https://www.opentable.com/r/sage-and-ember-bistro" }
+        }},
+        { "id": "contact-info", "type": "contact-info", "fields": {
+          "items": [
+            { "id": "info-phone", "icon": "phone", "label": "Call", "value": "780-555-0188", "href": "tel:7805550188" },
+            { "id": "info-email", "icon": "mail", "label": "Email", "value": "hello@sage-ember-bistro.com", "href": "mailto:hello@sage-ember-bistro.com" },
+            { "id": "info-address", "icon": "pin", "label": "Visit", "value": "10312 82 Ave NW, Edmonton" }
+          ]
+        }},
+        { "id": "contact-form", "type": "contact-form", "fields": {
+          "tag": "Private Events", "heading": "Plan a dinner in the back room",
+          "formAction": "https://formspree.io/f/xxxxxxx",
+          "subjectLine": "Private event enquiry — Sage & Ember",
+          "fields": [
+            { "name": "name", "label": "Full Name", "type": "text", "required": true, "placeholder": "Jane Smith", "half": true },
+            { "name": "email", "label": "Email", "type": "email", "required": true, "placeholder": "you@example.com", "half": true },
+            { "name": "date", "label": "Preferred Date", "type": "text", "placeholder": "e.g. Saturday, July 18" },
+            { "name": "size", "label": "Group Size", "type": "select", "options": ["8–12", "13–20", "21–28"] },
+            { "name": "message", "label": "Tell us about the occasion", "type": "textarea", "required": true }
+          ],
+          "submitLabel": "Send Enquiry"
+        }}
+      ]
+    }
+  ]
+}

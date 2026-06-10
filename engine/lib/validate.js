@@ -1,0 +1,103 @@
+'use strict';
+
+const fs   = require('fs');
+const path = require('path');
+
+let Ajv, addFormats;
+try {
+  Ajv        = require('ajv/dist/2020');
+  addFormats = require('ajv-formats');
+} catch (e) {
+  Ajv = addFormats = null;
+}
+
+let _schema = null;
+function loadSchema() {
+  if (!_schema) {
+    const schemaPath = path.join(__dirname, '..', 'schema', 'content.schema.json');
+    _schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+  }
+  return _schema;
+}
+
+function formatErrors(errors) {
+  // Suppress the generic "must match then schema" wrapper — the nested required/type
+  // errors that caused it are already reported and are more actionable.
+  const filtered = errors.filter(e => e.keyword !== 'if' && e.keyword !== 'then');
+  return filtered.map(err => {
+    const p     = err.instancePath || '';
+    const field = p.replace(/^\//, '').replace(/\//g, '.');
+    if (err.keyword === 'required') {
+      const missing = err.params && err.params.missingProperty;
+      return `${field ? field + '.' : ''}${missing} is required`;
+    }
+    if (err.keyword === 'enum') {
+      return `${field} must be one of: ${err.params.allowedValues.join(', ')}`;
+    }
+    if (err.keyword === 'type') {
+      return `${field} must be ${err.params.type}`;
+    }
+    if (err.keyword === 'additionalProperties') {
+      return `${field} has unknown property "${err.params.additionalProperty}"`;
+    }
+    return `${field} ${err.message}`;
+  });
+}
+
+function validate(content) {
+  const schema = loadSchema();
+
+  if (!Ajv) {
+    const result = fallbackValidate(content);
+    result.warnings = [
+      'AJV not installed — field-level validation is disabled. Run: npm install',
+    ];
+    return result;
+  }
+
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  if (addFormats) addFormats(ajv);
+
+  const valid = ajv.validate(schema, content);
+  if (!valid) {
+    return { ok: false, errors: formatErrors(ajv.errors) };
+  }
+  return { ok: true, errors: [] };
+}
+
+function fallbackValidate(content) {
+  const errors = [];
+  if (!content || typeof content !== 'object') {
+    errors.push('content.json must be an object');
+    return { ok: false, errors };
+  }
+  if (!content.site) errors.push('site is required');
+  if (!Array.isArray(content.pages) || content.pages.length === 0) {
+    errors.push('pages must be a non-empty array');
+  }
+
+  const VALID_TYPES = new Set([
+    'hero','page-header','text','card-grid','gallery','testimonials',
+    'list-panel','service-area','contact-cards','contact-info','contact-form','cta',
+    // v2 blocks
+    'pricing-table','team-grid','faq','hours-table','before-after',
+    'stats-bar','process-steps','video-embed','booking-cta'
+  ]);
+
+  (content.pages || []).forEach((page, pi) => {
+    if (!page.slug) errors.push(`pages[${pi}].slug is required`);
+    if (!page.meta) errors.push(`pages[${pi}].meta is required`);
+    (page.blocks || []).forEach((block, bi) => {
+      if (!block.id)    errors.push(`pages[${pi}].blocks[${bi}].id is required`);
+      if (!block.type)  errors.push(`pages[${pi}].blocks[${bi}].type is required`);
+      if (block.type && !VALID_TYPES.has(block.type)) {
+        errors.push(`pages[${pi}].blocks[${bi}].type "${block.type}" is not a registered block`);
+      }
+      if (!block.fields) errors.push(`pages[${pi}].blocks[${bi}].fields is required`);
+    });
+  });
+
+  return errors.length ? { ok: false, errors } : { ok: true, errors: [] };
+}
+
+module.exports = { validate };

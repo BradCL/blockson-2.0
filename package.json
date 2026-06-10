@@ -1,0 +1,19 @@
+{
+  "name": "blockson",
+  "version": "2.0.0",
+  "description": "Reusable static-site engine for small local businesses, with a safe local-LLM maintenance tier",
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build:contractor": "node engine/build.js example-contractor",
+    "build:league": "node engine/build.js example-league",
+    "build:restaurant": "node engine/build.js example-restaurant",
+    "build:all": "node engine/build.js example-contractor && node engine/build.js example-league && node engine/build.js example-restaurant",
+    "proofs": "node engine/_run-proofs.js",
+    "test": "node engine/_run-proofs.js"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

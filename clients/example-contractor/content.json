@@ -1,0 +1,201 @@
+{
+  "site": {
+    "name": "Example Contracting",
+    "baseUrl": "https://example-contracting.com",
+    "theme": "default",
+    "logo": { "white": "img/logo-white.png", "black": "img/logo-black.png", "favicon": "img/favicon.png" },
+    "contact": { "phone": "780-000-0000", "email": "hello@example-contracting.com", "facebook": "https://facebook.com/example" },
+    "nav": {
+      "links": [
+        { "label": "Home", "href": "index.html" },
+        { "label": "About", "href": "about.html" },
+        { "label": "Services", "href": "services.html" },
+        { "label": "Gallery", "href": "gallery.html" }
+      ],
+      "cta": { "label": "Contact Us", "href": "contact.html" }
+    },
+    "footer": {
+      "blurb": "Quality-first residential construction in Edmonton and Central Alberta.",
+      "columns": [
+        { "heading": "Pages", "items": [
+          { "label": "Home", "href": "index.html" },
+          { "label": "About", "href": "about.html" },
+          { "label": "Services", "href": "services.html" },
+          { "label": "Gallery", "href": "gallery.html" },
+          { "label": "Contact", "href": "contact.html" }
+        ]},
+        { "heading": "Contact", "items": [
+          { "label": "780-000-0000", "href": "tel:7800000000" },
+          { "label": "Email Us", "href": "mailto:hello@example-contracting.com" },
+          { "label": "Facebook", "href": "https://facebook.com/example" }
+        ]},
+        { "heading": "Service Area", "items": [
+          { "label": "Edmonton & Area" },
+          { "label": "Red Deer & Central AB" }
+        ]}
+      ]
+    },
+    "copyright": "© 2026 Example Contracting. All rights reserved.",
+    "tagline": "Edmonton & Central Alberta"
+  },
+
+  "pages": [
+    {
+      "slug": "index",
+      "meta": { "title": "Example Contracting | Edmonton Renovations", "description": "Framing specialists and full-service general contracting in Edmonton." },
+      "blocks": [
+        { "id": "home-hero", "type": "hero", "fields": {
+          "tag": "Edmonton & Central Alberta",
+          "headline": "Built right, the first time.",
+          "subhead": "Framing specialists offering full renovation and general contracting services.",
+          "background": "img/banner.jpg",
+          "actions": [
+            { "label": "View Our Work", "href": "gallery.html", "style": "primary" },
+            { "label": "Get a Quote", "href": "contact.html", "style": "secondary" }
+          ]
+        }},
+        { "id": "home-services", "type": "card-grid", "fields": {
+          "tag": "What We Do", "heading": "Services", "columns": 3,
+          "cards": [
+            { "id": "card-renovations", "icon": "home", "title": "Renovations", "body": "Kitchens, bathrooms, basements.", "items": ["Design input", "Permits handled", "Clean finish"] },
+            { "id": "card-framing", "icon": "hammer", "title": "Framing", "body": "Our specialty and foundation.", "items": ["New builds", "Infills", "Additions"] },
+            { "id": "card-gc", "icon": "wrench", "title": "General Contracting", "body": "End-to-end project management." }
+          ]
+        }},
+        { "id": "home-testimonials", "type": "testimonials", "fields": {
+          "tag": "Reviews", "heading": "What clients say",
+          "quotes": [
+            { "id": "testi-edmonton", "stars": 5, "quote": "On time, on budget, and the quality speaks for itself.", "attribution": "Homeowner, Edmonton" },
+            { "id": "testi-stalbert", "stars": 5, "quote": "They treated our home like their own.", "attribution": "Homeowner, St. Albert" }
+          ]
+        }},
+        { "id": "home-cta", "type": "cta", "fields": {
+          "statement": "Ready to build something?", "subtext": "Tell us about your project.",
+          "button": { "label": "Get in Touch", "href": "contact.html", "style": "primary" }
+        }}
+      ]
+    },
+
+    {
+      "slug": "about",
+      "meta": { "title": "About | Example Contracting", "description": "Who we are and how we work." },
+      "blocks": [
+        { "id": "about-header", "type": "page-header", "fields": {
+          "tag": "About Us", "heading": "Builders first, managers second", "variant": "light",
+          "subhead": "A small crew that does the work itself."
+        }},
+        { "id": "about-story", "type": "text", "fields": {
+          "tag": "Our Story", "heading": "Two decades on the tools",
+          "body": [
+            "We started as a framing crew and grew into a full-service contractor without ever putting down the hammer.",
+            "Every project is run by someone who builds, not just someone who schedules. That is why our quotes are accurate and our finishes are clean."
+          ]
+        }},
+        { "id": "about-values", "type": "list-panel", "fields": {
+          "tag": "How We Work", "heading": "What you can expect",
+          "items": ["Fixed quotes, no surprises", "Permits handled for you", "Daily site cleanup", "One point of contact", "Licensed and insured", "Warranty on all work"]
+        }},
+        { "id": "about-cta", "type": "cta", "fields": {
+          "statement": "Want to meet the crew?",
+          "button": { "label": "Contact Us", "href": "contact.html", "style": "primary" }
+        }}
+      ]
+    },
+
+    {
+      "slug": "services",
+      "meta": { "title": "Services | Example Contracting", "description": "Renovations, framing, and general contracting across Central Alberta." },
+      "blocks": [
+        { "id": "services-header", "type": "page-header", "fields": {
+          "tag": "Services", "heading": "What we build",
+          "subhead": "From single rooms to whole structures."
+        }},
+        { "id": "services-grid", "type": "card-grid", "fields": {
+          "tag": "Capabilities", "heading": "Full-scope residential work", "columns": 2,
+          "cards": [
+            { "id": "card-kitchens", "icon": "home", "title": "Kitchens & Bathrooms", "body": "Complete tear-out to finish renovations.", "items": ["Cabinet installation", "Tile and flooring", "Plumbing coordination"] },
+            { "id": "card-basements", "icon": "paint", "title": "Basement Development", "body": "Legal suites and family spaces.", "items": ["Egress windows", "Suite permits", "Soundproofing"] },
+            { "id": "card-structures", "icon": "hammer", "title": "Framing & Additions", "body": "New builds, infills, garages, additions." },
+            { "id": "card-exterior", "icon": "wrench", "title": "Decks & Exterior", "body": "Cedar and composite decks, siding, fences." }
+          ]
+        }},
+        { "id": "services-area", "type": "service-area", "fields": {
+          "heading": "Where we work",
+          "body": "Based in Edmonton, building across Central Alberta.",
+          "areas": ["Edmonton", "St. Albert", "Sherwood Park", "Leduc", "Wetaskiwin", "Red Deer"],
+          "mapEmbedUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d300000!2d-113.49!3d53.54!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sca!4v0"
+        }},
+        { "id": "services-paths", "type": "contact-cards", "fields": {
+          "cards": [
+            { "id": "card-project", "icon": "hammer", "title": "Start a Project", "body": "Tell us what you want to build.",
+              "items": ["Free estimates", "Response within one business day"],
+              "cta": { "label": "Get a Quote", "href": "contact.html", "style": "primary" } },
+            { "id": "card-careers", "icon": "people", "title": "Join the Team", "body": "We hire carpenters and apprentices.",
+              "note": "Year-round indoor and outdoor work.",
+              "cta": { "label": "Email Us", "href": "mailto:hello@example-contracting.com", "style": "secondary" } }
+          ]
+        }}
+      ]
+    },
+
+    {
+      "slug": "gallery",
+      "meta": { "title": "Project Gallery | Example Contracting", "description": "Completed renovation projects by type." },
+      "blocks": [
+        { "id": "gallery-header", "type": "page-header", "fields": {
+          "tag": "Project Gallery", "heading": "Our Work",
+          "subhead": "Browse completed projects organized by type."
+        }},
+        { "id": "gallery-main", "type": "gallery", "fields": {
+          "filters": [
+            { "label": "All", "value": "all" },
+            { "label": "Bathroom", "value": "bathroom" },
+            { "label": "Exterior", "value": "exterior" },
+            { "label": "Framing", "value": "framing" }
+          ],
+          "albums": [
+            { "id": "album-bathroom", "category": "bathroom", "title": "Bathroom Remodel", "meta": "Wetaskiwin, AB",
+              "images": ["img/bathroom-1.jpg", "img/bathroom-2.jpg"] },
+            { "id": "album-deck", "category": "exterior", "title": "Cedar Deck", "meta": "Edmonton, AB",
+              "images": ["img/deck-1.jpg"] },
+            { "id": "album-infill", "category": "framing", "title": "Infill Project", "meta": "Edmonton, AB",
+              "images": ["img/infill-1.jpg", "img/infill-2.jpg"] }
+          ]
+        }},
+        { "id": "gallery-cta", "type": "cta", "fields": {
+          "statement": "Like what you see?",
+          "button": { "label": "Get in Touch", "href": "contact.html", "style": "primary" }
+        }}
+      ]
+    },
+
+    {
+      "slug": "contact",
+      "meta": { "title": "Contact | Example Contracting", "description": "Get in touch for a quote." },
+      "blocks": [
+        { "id": "contact-header", "type": "page-header", "fields": {
+          "tag": "Contact", "heading": "Let's talk", "subhead": "We reply within one business day." }},
+        { "id": "contact-form", "type": "contact-form", "fields": {
+          "tag": "Send a Message", "heading": "Tell us about your project.",
+          "formAction": "https://formspree.io/f/xxxxxxx",
+          "subjectLine": "New message from website",
+          "fields": [
+            { "name": "name", "label": "Full Name", "type": "text", "required": true, "placeholder": "John Smith", "half": true },
+            { "name": "email", "label": "Email", "type": "email", "required": true, "placeholder": "you@example.com", "half": true },
+            { "name": "phone", "label": "Phone", "type": "tel", "placeholder": "780-000-0000" },
+            { "name": "project", "label": "Project Type", "type": "select", "options": ["Renovation", "Framing", "General Contracting", "Other"] },
+            { "name": "message", "label": "Message", "type": "textarea", "required": true }
+          ],
+          "submitLabel": "Send Message"
+        }},
+        { "id": "contact-info", "type": "contact-info", "fields": {
+          "items": [
+            { "id": "info-phone", "icon": "phone", "label": "Call", "value": "780-000-0000", "href": "tel:7800000000" },
+            { "id": "info-email", "icon": "mail", "label": "Email", "value": "Email Us", "href": "mailto:hello@example-contracting.com" },
+            { "id": "info-area", "icon": "pin", "label": "Area", "value": "Edmonton & Central AB" }
+          ]
+        }}
+      ]
+    }
+  ]
+}

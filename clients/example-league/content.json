@@ -1,0 +1,118 @@
+{
+  "site": {
+    "name": "Example Community League",
+    "baseUrl": "https://example-league.org",
+    "theme": "default",
+    "logo": { "white": "img/logo-white.png", "black": "img/logo-black.png", "favicon": "img/favicon.png" },
+    "contact": { "phone": "780-000-0000", "email": "info@example-league.org", "facebook": "https://facebook.com/exampleleague" },
+    "nav": {
+      "links": [
+        { "label": "Home", "href": "index.html" },
+        { "label": "About", "href": "about.html" }
+      ],
+      "cta": { "label": "Contact", "href": "contact.html" }
+    },
+    "footer": {
+      "blurb": "Serving our neighbourhood since 1962. Run by volunteers, for residents.",
+      "columns": [
+        { "heading": "Pages", "items": [
+          { "label": "Home", "href": "index.html" },
+          { "label": "About", "href": "about.html" },
+          { "label": "Contact", "href": "contact.html" }
+        ]},
+        { "heading": "Contact", "items": [
+          { "label": "info@example-league.org", "href": "mailto:info@example-league.org" },
+          { "label": "Facebook", "href": "https://facebook.com/exampleleague" }
+        ]},
+        { "heading": "Hall Rental", "items": [
+          { "label": "Available weekends" },
+          { "label": "Member rates apply" }
+        ]}
+      ]
+    },
+    "copyright": "© 2026 Example Community League.",
+    "tagline": "A volunteer-run neighbourhood association"
+  },
+
+  "pages": [
+    {
+      "slug": "index",
+      "meta": { "title": "Example Community League", "description": "Neighbourhood programs, events, and hall rental." },
+      "blocks": [
+        { "id": "home-hero", "type": "hero", "fields": {
+          "tag": "Since 1962",
+          "headline": "Your neighbourhood, your league.",
+          "subhead": "Programs, events, skating, and a hall for hire — run by volunteers.",
+          "background": "img/banner.jpg",
+          "actions": [ { "label": "Become a Member", "href": "contact.html", "style": "primary" } ]
+        }},
+        { "id": "home-programs", "type": "card-grid", "fields": {
+          "tag": "Get Involved", "heading": "Programs", "columns": 3,
+          "cards": [
+            { "id": "card-garden", "icon": "leaf", "title": "Community Garden", "body": "Plots available each spring." },
+            { "id": "card-events", "icon": "people", "title": "Family Events", "body": "Seasonal gatherings for all ages." },
+            { "id": "card-rink", "icon": "star", "title": "Outdoor Rink", "body": "Open and maintained all winter." }
+          ]
+        }},
+        { "id": "home-hours", "type": "list-panel", "fields": {
+          "tag": "Good to Know", "heading": "Hall & rink hours",
+          "items": ["Hall: weekends by booking", "Rink: daily 9am–9pm in season",
+                    "Office: Tuesdays 6–8pm", "Garden: dawn to dusk"]
+        }},
+        { "id": "home-cta", "type": "cta", "fields": {
+          "statement": "Membership keeps the league running.", "subtext": "It's $20 a year and opens every program.",
+          "button": { "label": "Join Now", "href": "contact.html", "style": "primary" }
+        }}
+      ]
+    },
+
+    {
+      "slug": "about",
+      "meta": { "title": "About | Example Community League", "description": "Who we are and the board that runs the league." },
+      "blocks": [
+        { "id": "about-header", "type": "page-header", "fields": {
+          "tag": "About Us", "heading": "Run by neighbours", "variant": "light" }},
+        { "id": "about-story", "type": "text", "fields": {
+          "tag": "Our Story",
+          "body": [
+            "We've served this community since 1962, entirely through volunteers.",
+            "Your membership and participation are what keep the rink flooded and the garden growing."
+          ]
+        }},
+        { "id": "about-board", "type": "card-grid", "fields": {
+          "heading": "Your Board", "columns": 3,
+          "cards": [
+            { "id": "card-president", "icon": "people", "title": "President", "body": "Jane Doe" },
+            { "id": "card-treasurer", "icon": "people", "title": "Treasurer", "body": "John Roe" },
+            { "id": "card-events-lead", "icon": "people", "title": "Events Lead", "body": "Sam Lee" }
+          ]
+        }}
+      ]
+    },
+
+    {
+      "slug": "contact",
+      "meta": { "title": "Contact | Example Community League", "description": "Become a member or rent the hall." },
+      "blocks": [
+        { "id": "contact-header", "type": "page-header", "fields": {
+          "tag": "Contact", "heading": "Get in touch" }},
+        { "id": "contact-paths", "type": "contact-cards", "fields": {
+          "cards": [
+            { "id": "card-membership", "icon": "people", "title": "Become a Member", "body": "Join for $20/year.",
+              "items": ["Access all programs", "Vote at the AGM"],
+              "cta": { "label": "Email to Join", "href": "mailto:info@example-league.org", "style": "primary" } },
+            { "id": "card-hall", "icon": "home", "title": "Rent the Hall", "body": "Available weekends.",
+              "note": "Member rates available.",
+              "cta": { "label": "Enquire", "href": "mailto:info@example-league.org", "style": "secondary" } }
+          ]
+        }},
+        { "id": "contact-info", "type": "contact-info", "fields": {
+          "items": [
+            { "id": "info-email", "icon": "mail", "label": "Email", "value": "info@example-league.org", "href": "mailto:info@example-league.org" },
+            { "id": "info-office", "icon": "clock", "label": "Office", "value": "Tuesdays 6–8pm" }
+          ]
+        }}
+      ]
+    }
+  ]
+}

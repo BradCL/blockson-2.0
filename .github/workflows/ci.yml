@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  proofs:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install --no-audit --no-fund
+      - name: Proof suite (7 proofs, exit 0 required)
+        run: node engine/_run-proofs.js
+      - name: Build all example clients
+        run: npm run build:all
+      - name: Edit maps render for every client
+        run: |
+          node engine/sitemap.js example-contractor > /dev/null
+          node engine/sitemap.js example-league > /dev/null
+          node engine/sitemap.js example-restaurant > /dev/null
