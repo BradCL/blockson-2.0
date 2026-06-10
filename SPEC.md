@@ -1,4 +1,4 @@
-# Static Site Engine — Build Specification (v2)
+# Static Site Engine — Build Specification (v4)
 
 This document is the authoritative spec for a reusable static-site engine. Implement it
 exactly as written. Do not introduce frameworks, alternative architectures, or naming
@@ -7,6 +7,10 @@ consistent with the principles below.
 
 v2 additions over the original spec: §9 (token-level editing via the maintenance tier),
 the v2 block set in BLOCK_CATALOG.md, and the theme-preset system in themes/README.md.
+
+v4: the local model is removed from the runtime entirely. All editing is deterministic
+(click-to-edit UI + blueprint instantiation). The patch pipeline (`applyPatch`) is
+the permanent seam; see §11 for the optional-model attachment point.
 
 ---
 
@@ -21,12 +25,13 @@ The engine exists to support a two-tier maintenance model:
 
 - **Setup tier** (a developer, using full tooling): defines clients, assembles pages from
   blocks, can edit anything.
-- **Maintenance tier** (a small local LLM, ~3B parameters, acting on plain-English email
-  requests from the business owner): edits *only existing values* inside `content.json`,
-  plus the curated safe-token allowlist (§9). It never adds, removes, or reorders blocks,
-  and never touches engine code, CSS, JS, or the build script.
+- **Maintenance tier** (owner, via click-to-edit UI or direct patch CLI): edits *only
+  existing values* inside `content.json`, plus the curated safe-token allowlist (§9).
+  It never adds, removes, or reorders blocks, and never touches engine code, CSS, JS,
+  or the build script.
 
-Every design decision below serves making that maintenance tier *safe for a small model*.
+Every write, regardless of origin, passes through `applyPatch` and a candidate build
+before touching the live site. The owner sees a preview and issues an explicit Approve.
 
 ---
 
@@ -36,7 +41,8 @@ Every design decision below serves making that maintenance tier *safe for a smal
    `content.json`. All structure lives in block templates. All styling lives in the theme
    tokens + shared CSS. These never mix.
 2. **No build-time intelligence required for maintenance.** Editing content is editing
-   JSON values. A model that can find a key and change its value can maintain any site.
+   JSON values. Any system that can produce the patch shapes in §8.1 can maintain any
+   site.
 3. **The schema is the contract.** The build must validate `content.json` against the
    schema and fail loudly (with a clear message naming the offending block and field) if
    it is malformed. A safe failure is better than a broken deploy.
@@ -57,10 +63,10 @@ Every design decision below serves making that maintenance tier *safe for a smal
 ```
 engine/
   build.js              Build script (Node, no external deps beyond a JSON schema validator)
-  apply-patch.js        Production maintenance CLI (content + token patches)
+  apply-patch.js        Patch CLI (content + token patches)
   sitemap.js            Edit-map inspection CLI
   new-client.js         Client scaffolder
-  _run-proofs.js        Proof suite (6 proofs)
+  _run-proofs.js        Proof suite (7 proofs)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, fonts, favicon, token :root)
@@ -73,7 +79,7 @@ engine/
     icons.js            Named inline-SVG set (icon blocks reference these by name)
     patch.js            Canonical patch resolver — single source of truth for write allowlist
                         AND the safeTokens allowlist + token value guards (§9)
-    sitemap.js          Edit-map generator — compact per-client map shown to the model
+    sitemap.js          Edit-map generator — compact per-client map of editable fields
   schema/
     content.schema.json JSON Schema (draft 2020-12) for content.json
 
@@ -88,9 +94,12 @@ clients/
     content.json        The entire site as data
     img/                Client images (logos, hero, gallery photos)
 
+attic/                  Archived v3 model-tier modules (repair, patch-schema, triage,
+                        AGENT_INSTRUCTIONS.md, test harness, scorecards); not imported
+                        by any active code
+
 dist/                   Build output (one folder per client)
 
-AGENT_INSTRUCTIONS.md   Ships INTO each client folder; the local model's operating manual
 BLOCK_CATALOG.md        Reference: every block type and its fields
 SPEC.md                 This file
 ```
@@ -114,9 +123,6 @@ Contract:
   overlay), and client `img/`.
 - **No partial writes.** Either the whole site builds or nothing is written.
 
-The build script is **setup-tier only**. The maintenance model never runs it; the
-developer re-runs the build after a content edit (or it runs in CI on commit).
-
 ---
 
 ## 5. Global vs Per-Page Data
@@ -133,7 +139,7 @@ shape is defined by that block type in BLOCK_CATALOG.md.
 ## 6. Block Instance IDs
 
 Every block instance carries a stable, human-readable `id`. IDs are unique within a
-client. They are the addressing system the maintenance model uses. The same applies to
+client. They are the addressing system the maintenance tier uses. The same applies to
 every repeating object item inside a block (cards, quotes, albums, plans, members, rows,
 pairs, stats, steps, faq items, contact-info items). IDs must never be auto-generated or
 renamed by the maintenance tier, and must never appear in rendered HTML.
@@ -150,12 +156,10 @@ renamed by the maintenance tier, and must never appear in rendered HTML.
    `example-league` (3 pages, proves the abstraction crosses business types), and
    `example-restaurant` (3 pages, `restaurant` theme, demonstrates the v2 blocks).
    Placeholder image filenames; do not fabricate binary images.
-5. `AGENT_INSTRUCTIONS.md` copied into each client folder on build (root copy canonical).
-6. Root `README.md`, `LICENSE` (MIT), `CONTRIBUTING.md`, `themes/README.md`.
+5. Root `README.md`, `LICENSE` (MIT), `CONTRIBUTING.md`, `themes/README.md`.
 
 Build to the spec. If something is underspecified, choose the simplest option that
-preserves data/template separation and small-model safety, and note the choice in the
-README.
+preserves data/template separation and owner safety, and note the choice in the README.
 
 ---
 
@@ -191,7 +195,7 @@ Safety invariants enforced in code:
 - The target field must already exist; the only creation allowed is `append` adding one
   element to an existing list, and `set-token` writing one allowlisted key into
   `site.themeOverrides`.
-- A field may not be set to `null`.
+- A field may not be set without a value.
 - `themeOverrides` is unreachable by plain `set` (container AND dotted paths) — the
   format-guarded `set-token` path is the only way in.
 
@@ -207,17 +211,12 @@ maintenance edit can never leave `content.json` in a modified state with a broke
 
 ### 8.4 Edit-map generator (`engine/lib/sitemap.js` / `engine/sitemap.js`)
 
-The maintenance model is shown a compact "edit map" instead of the full `content.json`.
+The maintenance UI is shown a compact "edit map" instead of the full `content.json`.
 The map opens with a THEME TOKENS section (each safe token with its effective value),
 then SITE fields, then every block/item by id with short previews. This keeps the
-model's input small and roughly constant as sites grow.
+edit surface small and roughly constant as sites grow.
 
-### 8.5 Model instruction file
-
-`AGENT_INSTRUCTIONS.md` is the canonical operating manual for the maintenance model,
-copied into every client folder on build. The root copy is the source of truth.
-
-### 8.6 Proof suite
+### 8.5 Proof suite
 
 ```
 node engine/_run-proofs.js
@@ -228,11 +227,9 @@ across core AND v2 blocks, (2) a real field edit applies and rebuilds, (3) a for
 write is blocked at the resolver, (4) an id-addressed item edit applies end-to-end,
 (5) a valid `set-token` persists in `themeOverrides` and reaches the page `:root`,
 (6) invalid `set-token` patches — unknown token, unsafe value, plain-`set` bypass, and
-a contrast collision — are all rejected with nothing written, (7) the repair pass fixes
-known near-miss shapes and never invents targets. All seven must pass on a clean tree.
-
-A live-model test harness against Ollama (`test-agent-map.js`) scores real models but is
-not part of the pass/fail gate.
+a contrast collision — are all rejected with nothing written, (7) the resolver rejects
+valueless writes (plain set and match form) and leaves content untouched. All seven must
+pass on a clean tree.
 
 ---
 
@@ -241,14 +238,14 @@ not part of the pass/fail gate.
 The maintenance tier may change a narrow, safe class of appearance values: brand-identity
 theme tokens. The design:
 
-- **`safeTokens` allowlist** lives in `engine/lib/patch.js` (exported as `SAFE_TOKENS`):
-  `color-primary`, `color-accent`, `btn-primary-bg`, `nav-bg`, `footer-bg` (type
-  `color`) and `hero-overlay-opacity` (type `opacity`). Inclusion criterion: a wrong
-  value may be ugly but can never break layout or readability on its own. Fonts, sizes,
-  spacing, radii, grid settings, and EVERY text color are excluded by design —
-  pair-exclusion: the model may change only the background/brand side of any contrast
-  pair, never the text side. (`btn-primary-text` was removed in v3 after live-model
-  testing showed small models target it on "text color" requests.)
+- **`SAFE_TOKENS` allowlist** lives in `engine/lib/patch.js`: `color-primary`,
+  `color-accent`, `btn-primary-bg`, `nav-bg`, `footer-bg` (type `color`) and
+  `hero-overlay-opacity` (type `opacity`). Inclusion criterion: a wrong value may be
+  ugly but can never break layout or readability on its own. Fonts, sizes, spacing,
+  radii, grid settings, and EVERY text color are excluded by design — pair-exclusion:
+  the maintenance tier may change only the background/brand side of any contrast pair,
+  never the text side. (`btn-primary-text` was removed in v3 after live-model testing
+  showed small models target it on "text color" requests.)
 - **Patch shape:** `{ "action":"set-token", "token":"--color-primary", "value":"#2D6A4F" }`.
   Token names are accepted with or without the `--` prefix and stored without it,
   matching `tokens.json` keys (the build adds `--` at injection).
@@ -265,32 +262,35 @@ theme tokens. The design:
   guard is deliberately permissive (legitimate low-contrast brand palettes pass); it
   exists to catch collisions, not to police taste.
 - **Visibility:** the edit map's THEME TOKENS section shows each safe token's effective
-  value (preset ⊕ overrides), so the model can answer "what is our brand color?" and
-  knows exactly which names are legal.
+  value (preset ⊕ overrides).
 
 ---
 
-## 10. Small-Model Hardening (v3)
+## 10. Structural Editing (v4)
 
-Three additive layers move intelligence from the model into deterministic code, so the
-maintenance tier keeps working as models shrink:
+Structural changes (new pages and blocks) go through a dedicated scaffolder that
+instantiates developer-authored blueprints. Owners may only instantiate pre-validated
+blueprints; freeform structural editing remains developer work. Blueprint instantiation,
+like value editing, produces a CANDIDATE copy reviewed by the owner before the live site
+is touched.
 
-- **Repair pass** (`engine/lib/repair.js`): rewrites the known family of near-miss
-  patches (site field name written into `block`, token name in the wrong slot, stray
-  keys) BEFORE the resolver. Rules only rewrite to targets that provably exist in the
-  client's content; everything still flows through `applyPatch`. Used by
-  `apply-patch.js` and the harness.
-- **Per-request patch schema** (`engine/lib/patch-schema.js`): generates a JSON Schema
-  whose `block`/`item`/`token` properties are ENUMS of the client's real ids and the
-  safe tokens. Passed as Ollama's `format` (structured outputs), the model is
-  grammar-constrained — it cannot emit an address that doesn't exist. The schema
-  constrains shape, not safety; the resolver remains the gate.
-- **Retry-with-error** (harness, and recommended for any UI integration): when the
-  resolver rejects, the rejected patch plus the exact error message is sent back to the
-  model once for a corrected attempt; small models correct named mistakes far more
-  reliably than they avoid them first-shot. Bounded (default 1 retry), then refuse.
+`applyPatch` is intentionally NOT extended to cover structural changes — the container
+guard and forbidden-key guard must never be weakened. New structure arrives through a
+separate code path (see `engine/lib/scaffold.js`, Task 3).
 
-Evaluation policy: harness scorecards report **safety failures** (a refuse-case patch
-the resolver would have accepted) separately from **helpfulness failures** (refusals of
-valid requests, resolver-caught mistakes). The ship gate for any model is safety = 0;
-helpfulness is best-effort because its failure mode is "email the developer".
+---
+
+## 11. Optional Model Seam
+
+The patch pipeline is the permanent attachment point for an optional copy-assist model
+tier. A future model tier would:
+1. Receive the edit map from `engine/lib/sitemap.js` (`buildEditMap` / `renderEditMap`).
+2. Produce a patch object conforming to one of the shapes in §8.1.
+3. Pass it to `applyPatch` — the same resolver the UI uses — with no changes to the
+   allowlist, the guards, or the build.
+
+No model-specific code belongs in the active runtime. The archived modules in `attic/`
+(`repair.js` — near-miss normalizer, `patch-schema.js` — grammar-constrained schema
+builder, `triage.js` — request pre-filter, `AGENT_INSTRUCTIONS.md` — model operating
+manual) document the v3.1 approach and are the natural starting point for any future
+integration.

@@ -5,7 +5,6 @@ const fs   = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { applyPatch } = require('./lib/patch');
-const { repairPatch } = require('./lib/repair');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -40,13 +39,6 @@ try {
   console.error(`Error: patch argument is not valid JSON — ${e.message}`);
   process.exit(1);
 }
-
-// v3: deterministic repair pass — normalizes known near-miss shapes
-// (e.g. a site field name written into "block") before the resolver.
-// Grants no new capability; the resolver below still gates everything.
-const repaired = repairPatch(content, patch);
-for (const note of repaired.repairs) console.log(`Repaired: ${note}`);
-patch = repaired.patch;
 
 // Load the theme preset so the set-token contrast guard can check the
 // new value against effective paired colors.

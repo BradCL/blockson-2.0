@@ -5,9 +5,9 @@ One engine, many client sites. A client's entire website is described by a singl
 and emits complete, SEO-ready static HTML into `dist/`.
 
 Blockson is built for a "set and forget" business model: a developer sets a site up
-once, hands it over, and the business owner's day-to-day changes are handled by a small
-local LLM that can only make safe, reversible edits. No CMS, no database, no hosting
-bill beyond static files, no maintenance contract required.
+once, hands it over, and the business owner's day-to-day changes flow through a
+deterministic patch system that can only make safe, reversible edits. No CMS, no
+database, no hosting bill beyond static files, no maintenance contract required.
 
 Licensed under the [MIT License](LICENSE). Contributions welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -41,25 +41,23 @@ Netlify, Cloudflare Pages, an S3 bucket, etc.).
 
 ---
 
-## Two-tier maintenance model
+## Two-tier editing model
 
 | Tier | Who | Can do |
 |------|-----|--------|
 | **Setup** | Developer with full tooling | Define clients, add pages, add/remove blocks, change the engine, update CSS/JS, choose themes |
-| **Maintenance** | Small local LLM (~3 B params) acting on plain-English owner requests | Edit _values_ inside `content.json`, plus a curated allowlist of brand-color theme tokens — no structural changes, ever |
+| **Maintenance** | Owner (via click-to-edit UI) or a patch applied directly | Edit _values_ inside `content.json`, plus a curated allowlist of brand-color theme tokens — no structural changes, ever |
 
-The maintenance tier operates exclusively on `content.json`. It reads
-`AGENT_INSTRUCTIONS.md` (copied into every client folder on build) as its operating
-manual. The model is shown a compact **edit map** — not the full file — so its input
-stays small as sites grow. It returns one small patch JSON object; the engine applies it
-through a write-allowlist resolver and rebuilds.
+Every write, regardless of origin, passes through `applyPatch` (the write-allowlist
+resolver in `engine/lib/patch.js`) and a candidate build before touching the live
+site. The owner always sees a preview and issues an explicit Approve.
 
-Safety is layered, in code, never by trusting the model:
-1. `AGENT_INSTRUCTIONS.md` — hard-stop refusals at the top of the prompt
-2. `engine/lib/patch.js` — the write allowlist, the single source of truth imported by
-   both the production CLI and every test harness
-3. JSON Schema validation (AJV, draft 2020-12) before any file is written
-4. `apply-patch.js` backs up `content.json` and restores it automatically if the
+Safety is layered, in code, never by trusting any external input:
+1. `engine/lib/patch.js` — the write allowlist, the single source of truth: forbidden
+   keys, container guard, value-type guard, safe-token allowlist, color format +
+   contrast guards
+2. JSON Schema validation (AJV, draft 2020-12) before any file is written
+3. `apply-patch.js` backs up `content.json` and restores it automatically if the
    rebuild fails — a bad patch can never leave a site broken
 
 ---
@@ -79,7 +77,7 @@ if you need structural CSS changes) add a `css/styles.css` to the theme folder �
 build prefers a theme's own CSS when present.
 
 **Per-client tweaks** go in `site.themeOverrides` (e.g. `"color-primary": "#2D6A4F"`),
-which the developer can write directly — and which the maintenance tier can now reach
+which the developer can write directly — and which the maintenance tier can reach
 through the `set-token` patch.
 
 ### Theme presets (12)
@@ -137,13 +135,13 @@ blocks, restaurant for the v2 blocks.)
 
 ---
 
-## Running a maintenance edit
+## Applying a patch
 
 ```
-# See the compact edit map the model will be shown (tokens section included):
+# See the compact edit map (tokens + all blocks with their current values):
 node engine/sitemap.js <client>
 
-# Apply a patch produced by the model:
+# Apply a patch directly:
 node engine/apply-patch.js <client> '<patch-json>'
 
 # Examples:
@@ -151,11 +149,11 @@ node engine/apply-patch.js example-contractor '{"action":"set","block":"site","f
 node engine/apply-patch.js example-contractor '{"action":"set-token","token":"--color-primary","value":"#2D6A4F"}'
 ```
 
-The apply tool: reads `content.json` → backs it up → applies the patch through the safety
-resolver → rebuilds the site. If the build fails for any reason, the original
+The apply tool: reads `content.json` → backs it up → applies the patch through the
+safety resolver → rebuilds the site. If the build fails for any reason, the original
 `content.json` is restored automatically.
 
-Patch shapes the model may emit:
+Patch shapes:
 
 ```json
 // Set a scalar field on a block
@@ -176,7 +174,7 @@ Patch shapes the model may emit:
 // Delete one line from a plain text list
 { "action":"delete", "block":"home-hours", "field":"items", "match":"Office: Tue 6-8pm" }
 
-// Change a SAFE theme token (brand colors / hero overlay only — see safeTokens in patch.js)
+// Change a SAFE theme token (brand colors / hero overlay only — see SAFE_TOKENS in patch.js)
 { "action":"set-token", "token":"--color-primary", "value":"#2D6A4F" }
 
 // Refuse an out-of-scope request
@@ -189,13 +187,17 @@ blacklist, and a **contrast guard** — an editable background can never be set 
 enough to its theme-controlled text color to become unreadable. Plain `set` patches
 targeting `themeOverrides` are rejected at the resolver.
 
-Before the resolver, `apply-patch.js` runs a deterministic **repair pass**
-(`engine/lib/repair.js`) that normalizes known small-model near-misses — e.g. a site
-field name written into `block` — without granting any new capability: rewrites only
-target things that provably exist, and the resolver still gates everything. For model
-integrations, `engine/lib/patch-schema.js` generates a per-client JSON Schema (block,
-item, and token enums) to pass as Ollama's `format`, so a grammar-constrained model
-cannot emit an address that doesn't exist.
+---
+
+## Optional model seam
+
+The patch pipeline is the permanent seam where a copy-assist model tier could attach
+in a future version. A model tier would: (1) receive the edit map from
+`engine/lib/sitemap.js`, (2) produce a patch object in one of the shapes listed above,
+and (3) hand it to `applyPatch` exactly as the owner UI does — with no changes to the
+resolver, the guards, or the build. The archived modules in `attic/` (`repair.js`,
+`patch-schema.js`, `triage.js`, and `AGENT_INSTRUCTIONS.md`) document the v3.1
+approach and remain available as a reference for any future integration.
 
 ---
 
@@ -213,15 +215,9 @@ Runs seven end-to-end proofs against the example clients:
 5. a valid `set-token` persists in `themeOverrides` and reaches the page `:root`
 6. invalid `set-token` patches (bad token, bad value, plain-`set` bypass, contrast
    collision) are all rejected
-7. the repair pass fixes the known near-miss shapes and never invents targets
+7. the resolver rejects valueless writes (both plain set and match form), nothing written
 
-All seven must pass on a clean tree (`exit 0`). The live-model harness
-(`test-agent-map.js`) scores a local Ollama model against a client's real edit map
-through the full production pipeline (schema-constrained decoding → repair → resolver →
-one retry-with-error → build) and reports **safety failures** (wrong writes that passed
-the resolver — ship gate: 0) separately from **helpfulness failures** (refusals/rejections,
-which degrade to "email the developer"). CI runs the proof suite on every push
-(`.github/workflows/ci.yml`).
+All seven must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -230,14 +226,13 @@ which degrade to "email the developer"). CI runs the proof suite on every push
 ```
 engine/
   build.js              Entry point — run this to build
-  apply-patch.js        Production maintenance CLI (content + token patches)
+  apply-patch.js        Patch CLI (content + token patches)
   sitemap.js            Prints the edit map for a client to stdout
   new-client.js         Scaffolds a new client folder
   _run-proofs.js        End-to-end proof suite (7 proofs)
   blocks/               One module per block type (21 total)
   partials/             head, nav, footer
   lib/                  render, validate, escape, icons, patch (allowlist + token guards),
-                        repair (near-miss normalizer), patch-schema (constrained decoding),
                         sitemap (edit map)
   schema/               content.schema.json (JSON Schema draft 2020-12)
 
@@ -249,7 +244,9 @@ clients/
   <name>/
     content.json        The whole site as data
     img/                Client images
-    AGENT_INSTRUCTIONS.md   Maintenance model's operating manual (overwritten on build)
+
+attic/                  Archived v3 model-tier modules (repair, patch-schema, triage,
+                        AGENT_INSTRUCTIONS.md, test harness, scorecards)
 
 dist/                   Build output — one subfolder per client (gitignored)
 ```
@@ -269,5 +266,4 @@ dist/                   Build output — one subfolder per client (gitignored)
 | Theme assets not present in regeneration context | styles.css/main.js re-implemented token-first against every documented class | Original files were excluded from the code bundle; documented in file headers |
 | `faq` accordion | Native `<details>`, no JS | Zero-dependency, accessible by default |
 | `clean`/`warm` themes | Regenerated as token presets on the default CSS base | One stylesheet to maintain instead of three |
-| Small-model near-misses | Deterministic repair pass before the resolver, never inside it | Repairs only rewrite to targets that provably exist; the allowlist still gates |
-| `btn-primary-text` | Removed from safeTokens (v3) | Live testing showed small models reach for it on "text color" requests; pair-exclusion applies |
+| `btn-primary-text` | Removed from SAFE_TOKENS (v3) | Live testing showed small models reach for it on "text color" requests; pair-exclusion applies |

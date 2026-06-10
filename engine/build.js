@@ -175,14 +175,6 @@ if (fs.existsSync(imgSrc)) {
   copyDir(imgSrc, path.join(distDir, 'img'));
 }
 
-// Root AGENT_INSTRUCTIONS.md is canonical; the client copy is overwritten on every build.
-// Deliberate design: edits made to a client's local copy will be silently lost on the
-// next build. Always edit the root copy only.
-const agentInstructions = path.join(ROOT, 'AGENT_INSTRUCTIONS.md');
-if (fs.existsSync(agentInstructions)) {
-  fs.copyFileSync(agentInstructions, path.join(clientDir, 'AGENT_INSTRUCTIONS.md'));
-}
-
 console.log(`Built ${content.pages.length} page(s) → dist/${clientName}/`);
 
 // ── Helpers ────────────────────────────────────────────────────
