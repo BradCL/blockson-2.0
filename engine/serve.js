@@ -38,6 +38,10 @@
    - Static file paths are resolved and confined to their root
      directory (no traversal), request bodies are size-capped, and the
      UI renders every value via textContent (no HTML injection).
+   - Every response carries X-Content-Type-Options: nosniff (an uploaded
+     file can never be sniffed into HTML) and X-Frame-Options: SAMEORIGIN
+     (no non-local page can frame the editor or the preview).
+   These request guards are exercised over real HTTP by proof 13.
    ============================================================ */
 
 'use strict';
@@ -103,9 +107,17 @@ function requestAllowed(req) {
   return LOCAL_HOSTNAMES.has(hostname);
 }
 
+// Defense-in-depth headers on every response: nothing this server sends
+// may be MIME-sniffed into another type, and nothing may be framed by a
+// non-local page (SAMEORIGIN still lets the editor frame its own preview).
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+};
+
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
-  res.writeHead(status, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store' });
+  res.writeHead(status, { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
   res.end(body);
 }
 
@@ -129,7 +141,7 @@ function sendStatic(res, root, relPath, injectOverlay) {
   }
   const ext = path.extname(target).toLowerCase();
   const type = MIME[ext] || 'application/octet-stream';
-  const headers = { 'Content-Type': type, 'Cache-Control': 'no-store' };
+  const headers = { 'Content-Type': type, 'Cache-Control': 'no-store', ...SECURITY_HEADERS };
   if (injectOverlay && ext === '.html') {
     // The overlay is injected at serve time, only into pages of the
     // annotated candidate build — never written to disk, never live.
@@ -234,8 +246,11 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(cfg.port, cfg.host, () => {
+  // server.address().port, not cfg.port: with --port 0 the OS assigns an
+  // ephemeral port (proof 13 starts the real server that way).
+  const port = server.address().port;
   console.log(`Owner editor for "${session.config.clientName || session.client}"`);
-  console.log(`  → http://${cfg.host}:${cfg.port}/`);
+  console.log(`  → http://${cfg.host}:${port}/`);
   console.log(`  publish: ${cfg.publish === 'none' ? 'off' : cfg.publish === 'git' || cfg.publish == null ? 'git add/commit/push' : 'custom command'}`);
   if (cfg.allowRemote) console.log('  ⚠ --allow-remote is set: non-local requests are accepted.');
 });

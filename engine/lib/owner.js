@@ -298,6 +298,23 @@ function checkToken(session, token, value) {
   return result.ok ? { ok: true } : { ok: false, error: result.error || 'rejected' };
 }
 
+// File-signature (magic-byte) check: the bytes must actually be the image
+// format the extension claims. Extension alone is the browser's word for it;
+// the bytes are checked here so a non-image can never reach the live img/
+// directory under an image name (a rejected upload is an acceptable UX cost;
+// a published non-image is not).
+const IMAGE_SIGNATURES = {
+  '.png':  b => b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47
+                && b[4] === 0x0D && b[5] === 0x0A && b[6] === 0x1A && b[7] === 0x0A,
+  '.jpg':  b => b.length >= 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF,
+  '.jpeg': b => IMAGE_SIGNATURES['.jpg'](b),
+  '.gif':  b => b.length >= 6 && b.toString('latin1', 0, 6).match(/^GIF8[79]a$/) !== null,
+  '.webp': b => b.length >= 12 && b.toString('latin1', 0, 4) === 'RIFF'
+                && b.toString('latin1', 8, 12) === 'WEBP',
+  '.avif': b => b.length >= 12 && b.toString('latin1', 4, 8) === 'ftyp'
+                && /^(avif|avis)$/.test(b.toString('latin1', 8, 12)),
+};
+
 // Validate + decide the final filename for an uploaded image. Never
 // overwrites: a name collision (on disk, or with another upload staged
 // in the same request via `taken`) gets a numeric suffix.
@@ -316,6 +333,9 @@ function prepareUpload(session, upload, taken) {
   if (!bytes || bytes.length === 0) return { error: 'the uploaded image was empty' };
   if (bytes.length > MAX_IMAGE_BYTES) {
     return { error: `the image is too large (${(bytes.length / 1048576).toFixed(1)} MB — the limit is ${MAX_IMAGE_BYTES / 1048576} MB)` };
+  }
+  if (!IMAGE_SIGNATURES[ext](bytes)) {
+    return { error: `"${path.basename(upload.name)}" does not look like a real ${ext.slice(1).toUpperCase()} image — the file's contents don't match its name` };
   }
   const imgDir = path.join(candDir(session), 'img');
   const inUse = name => fs.existsSync(path.join(imgDir, name)) || (taken && taken.has(name));
@@ -607,8 +627,13 @@ function runPublish(session, summary) {
   const message = publishMessageFor(session, summary);
 
   if (mode === 'custom') {
+    // {message} is interpolated into a SHELL command, so it is reduced to a
+    // conservative character set first (the summary embeds free-form owner
+    // text such as a blueprint's menu label). The git path below needs no
+    // such reduction — there the message travels as a spawn argument.
+    const shellSafeMessage = message.replace(/[^\w \[\]().,:'/-]+/g, ' ').trim();
     const cmd = String(session.config.publish)
-      .replace(/\{message\}/g, message.replace(/"/g, "'"))
+      .replace(/\{message\}/g, shellSafeMessage)
       .replace(/\{client\}/g, session.client);
     const r = spawnSync(cmd, { shell: true, cwd: ROOT, encoding: 'utf8' });
     const out = ((r.stdout || '') + (r.stderr || '')).trim();

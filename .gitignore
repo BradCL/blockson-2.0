@@ -3,5 +3,9 @@ dist/
 test-results/
 clients/_candidate/
 clients/*__candidate/
+# Throwaway clients/themes created by validators and proofs (cleaned up in
+# finally blocks, but a hard crash mid-run can leave them behind).
+clients/__*/
+themes/__theme-validate/
 *.bak
 .DS_Store

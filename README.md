@@ -277,8 +277,9 @@ pending-change panel. The candidate build IS the preview; nothing here is mocked
 - **Security:** non-local requests are rejected (socket + `Host` header) unless
   `--allow-remote` is set; every POST requires a custom header no cross-origin page
   can send without a CORS preflight, which this server never grants; static paths
-  are confined to their roots; uploads are extension- and size-limited; all values
-  render via `textContent`.
+  are confined to their roots; uploads are extension-, size-, and file-signature-
+  checked (the bytes must be the image type the name claims); every response
+  carries `nosniff` and `SAMEORIGIN` headers; all values render via `textContent`.
 
 Per-client config (publish command, display name, contact, host/port) lives in
 `clients/<client>/owner-config.json` — see [OPERATOR.md](OPERATOR.md) for the full
@@ -319,7 +320,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs twelve end-to-end proofs against the example clients and the full contribution
+Runs thirteen end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -334,7 +335,8 @@ pipeline:
 8. the owner-editor handlers (*Click-to-edit owner editor*, above): edit → candidate
    → annotated rebuild → change card, Approve writes live with no annotations, one
    pending change at a time, uploads stay candidate-side until Approve and vanish
-   on Discard
+   on Discard, and non-image bytes under an image filename are refused by the
+   file-signature guard
 9. the blueprint scaffolder: every shipped blueprint validates, invalid inputs are
    rejected with nothing written, ids stay unique site-wide under repeated
    instantiation, and every blueprint × variant builds clean
@@ -343,13 +345,18 @@ pipeline:
     ways, and Approve puts the page + nav entry live with no annotations or ids
 11. the blueprint authoring kit: every shipped blueprint clears
     `validate-blueprint.js`, the committed demo gallery matches deterministic
-    regeneration, and a known-bad blueprint fails with named reasons
+    regeneration, a known-bad blueprint fails with named reasons, and a blueprint
+    smuggling a `javascript:` link is stopped at the build gate
 12. the theme validator: every shipped theme passes `validate-theme.js` (token
     completeness, value safety, no JS/external resources, tiered contrast pairs,
     demo-client coverage build), the demo corpus covers the whole block registry,
     and a known-bad theme fails with named reasons
+13. the editor server's request guards, probed over real HTTP: a foreign `Host`
+    header and a header-less POST are refused, encoded path traversal cannot
+    escape the preview/UI roots, and every response carries `nosniff` +
+    `SAMEORIGIN` headers
 
-All twelve must pass on a clean tree (`exit 0`).
+All thirteen must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -365,7 +372,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (12 proofs)
+  _run-proofs.js        End-to-end proof suite (13 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)

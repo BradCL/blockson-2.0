@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all eleven end-to-end proofs in sequence and prints results.
+// Runs all thirteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -29,6 +29,9 @@
 //             rules, contrast pairs, demo-client coverage build); the demo
 //             corpus covers the whole block registry; a known-bad theme
 //             fails with each reason named.
+// Proof 13:   editor server request guards over real HTTP (engine/serve.js):
+//             foreign Host header refused, header-less POST refused, encoded
+//             path traversal confined, nosniff + SAMEORIGIN on responses.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -122,7 +125,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 12;
+const TOTAL = 13;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -422,6 +425,15 @@ console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: 
     if (!disc.ok || candText !== liveText) failures.push('discard did not reset the candidate from live');
     if (fs.existsSync(path.join(candDir, 'img', 'new-portrait.png'))) failures.push('discard left the uploaded image in the candidate');
     if (fs.existsSync(path.join(liveDir, 'img', 'new-portrait.png'))) failures.push('a discarded upload leaked into live img/');
+
+    // (h) Upload signature guard: the bytes must BE the image type the name
+    //     claims — an HTML payload named .png is rejected with nothing staged
+    //     and nothing written.
+    const fake = owner.applyEdit(session,
+      { action: 'set', block: 'home-team', item: 'member-chef', field: 'photo' },
+      { name: 'payload.png', dataBase64: Buffer.from('<html><script>x()</script></html>').toString('base64') });
+    if (fake.ok || session.pending) failures.push('a non-image upload was accepted under an image name');
+    if (fs.existsSync(path.join(candDir, 'img', 'payload.png'))) failures.push('a rejected upload left a file in candidate img/');
   } catch (e) {
     failures.push(`exception: ${e.message}`);
   } finally {
@@ -437,7 +449,8 @@ console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: 
     console.log('       rebuilds its annotated preview; the change card derives old → new from');
     console.log('       the resolved patch; a second edit is held until approve/discard; approve');
     console.log('       writes live + builds clean HTML; guards hold; uploads stay candidate-side');
-    console.log('       until approve and vanish on discard.');
+    console.log('       until approve and vanish on discard; non-image bytes under an image');
+    console.log('       name are refused by the signature guard.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
@@ -634,6 +647,7 @@ console.log('\n═══ PROOF 11 — Authoring kit: every blueprint validates, 
   const failures = [];
   const galleryFile = path.join(ROOT, 'clients', bpcheck.GALLERY_CLIENT, 'content.json');
   const badFile = path.join(ROOT, 'dist', '__proof-bad-blueprint.json');
+  const evilHrefFile = path.join(ROOT, 'dist', '__proof-evil-href-blueprint.json');
 
   const runNode = (args) => {
     const r = spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
@@ -703,17 +717,40 @@ console.log('\n═══ PROOF 11 — Authoring kit: every blueprint validates, 
     for (const named of ['unknown block type "carousel"', 'unknown key "surprise"', '{{undeclared}}']) {
       if (!bad.out.includes(named)) failures.push(`bad-blueprint output does not name the reason: ${named}`);
     }
+
+    // (e) A structurally valid blueprint smuggling a javascript: link must
+    //     fail at the build gate (the content schema's safeHref guard): a
+    //     scheme the renderer would print into an href is a stored-XSS
+    //     vector that no visual check of the demo gallery could catch.
+    fs.writeFileSync(evilHrefFile, JSON.stringify({
+      name: 'Sneaky link blueprint', purpose: 'Must fail the build gate', kind: 'page',
+      variants: [{ key: 'only', label: 'Only layout' }],
+      inputs: [{ key: 'title', label: 'Title', type: 'text', required: true }],
+      template: { only: {
+        navLabel: '{{title}}',
+        meta: { title: '{{title}}', description: 'x' },
+        blocks: [{ id: 'main', type: 'cta', fields: {
+          statement: '{{title}}',
+          button: { label: 'Click me', href: 'javascript:alert(1)', style: 'primary' },
+        } }],
+      } },
+    }, null, 2), 'utf8');
+    const evil = runNode(['engine/validate-blueprint.js', evilHrefFile]);
+    if (evil.status === 0) failures.push('validate-blueprint PASSED a blueprint with a javascript: href');
+    if (!/href/.test(evil.out)) failures.push('the javascript:-href rejection does not name the href field');
   } catch (e) {
     failures.push(`exception: ${e.message}`);
   } finally {
     fs.rmSync(badFile, { force: true });
+    fs.rmSync(evilHrefFile, { force: true });
   }
 
   if (failures.length === 0) {
     console.log('PASS — every shipped blueprint clears the acceptance pipeline (schema → sample');
     console.log('       instantiation → full build → invariant checks); the committed demo gallery');
     console.log('       matches deterministic regeneration and its live build carries no annotations');
-    console.log('       or id attributes; a known-bad blueprint fails the CLI with named reasons.');
+    console.log('       or id attributes; a known-bad blueprint fails the CLI with named reasons,');
+    console.log('       and a javascript: href is stopped at the build gate.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
@@ -799,6 +836,137 @@ console.log('\n═══ PROOF 12 — Theme validator: every shipped theme passe
     console.log('       format guards on values, no JS / no external resources, tiered contrast');
     console.log('       pairs, demo-client coverage build of all 21 block types); a known-bad');
     console.log('       theme fails the CLI with every reason named.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 13 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 13 — Editor server request guards, exercised over real HTTP ═══');
+{
+  // serve.js documents four request guards (loopback-only, Host-header check,
+  // editor-header requirement on POST, static-path confinement) plus the
+  // defense-in-depth response headers. They are HTTP plumbing, so unlike the
+  // owner.js handlers they cannot be proved by direct calls — this proof
+  // starts the REAL server (on an OS-assigned port) and probes it with raw
+  // requests. The async client lives in a harness script written under dist/
+  // (the same pattern as the bad-blueprint/bad-theme artifacts) because this
+  // proof runner is deliberately straight-line synchronous.
+  const CLIENT  = '__proof-serve';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const harness = path.join(ROOT, 'dist', '__proof-serve-harness.js');
+  const failures = [];
+
+  const HARNESS_SRC = [
+    "'use strict';",
+    "const { spawn } = require('child_process');",
+    "const http = require('http');",
+    "const path = require('path');",
+    "const ROOT = process.argv[2], CLIENT = process.argv[3];",
+    "const failures = [];",
+    "let port = null, done = false;",
+    "const srv = spawn(process.execPath, [path.join(ROOT, 'engine', 'serve.js'), CLIENT, '--port', '0'], { cwd: ROOT });",
+    "let out = '';",
+    "const giveUp = setTimeout(function () { failures.push('server did not start within 30s: ' + out.slice(-400)); finish(); }, 30000);",
+    "srv.stdout.on('data', function (d) {",
+    "  out += d;",
+    "  const m = out.match(/http:\\/\\/127\\.0\\.0\\.1:(\\d+)\\//);",
+    "  if (m && port === null) { port = Number(m[1]); run(); }",
+    "});",
+    "srv.stderr.on('data', function (d) { out += d; });",
+    "srv.on('exit', function () { if (port === null) { failures.push('server exited before listening: ' + out.slice(-400)); finish(); } });",
+    "function req(opts, body) {",
+    "  return new Promise(function (resolve) {",
+    "    const r = http.request(Object.assign({ host: '127.0.0.1', port: port }, opts), function (res) {",
+    "      let data = '';",
+    "      res.on('data', function (c) { data += c; });",
+    "      res.on('end', function () { resolve({ status: res.statusCode, headers: res.headers, body: data }); });",
+    "    });",
+    "    r.on('error', function (e) { resolve({ status: 0, headers: {}, body: 'request error: ' + e.message }); });",
+    "    if (body) r.write(body);",
+    "    r.end();",
+    "  });",
+    "}",
+    "async function run() {",
+    "  try {",
+    "    // (a) A local request works, and every response carries the",
+    "    //     defense-in-depth headers.",
+    "    const home = await req({ path: '/' });",
+    "    if (home.status !== 200) failures.push('GET / expected 200, got ' + home.status);",
+    "    if (home.headers['x-content-type-options'] !== 'nosniff') failures.push('GET / is missing X-Content-Type-Options: nosniff');",
+    "    if (home.headers['x-frame-options'] !== 'SAMEORIGIN') failures.push('GET / is missing X-Frame-Options: SAMEORIGIN');",
+    "    const state = await req({ path: '/api/state' });",
+    "    if (state.headers['x-content-type-options'] !== 'nosniff') failures.push('API responses are missing nosniff');",
+    "    // (b) A loopback request wearing a foreign Host header (DNS-rebinding",
+    "    //     shape) is refused.",
+    "    const rebind = await req({ path: '/', headers: { Host: 'evil.example.com' } });",
+    "    if (rebind.status !== 403) failures.push('foreign Host header expected 403, got ' + rebind.status);",
+    "    // (c) A POST without the editor header (what a cross-origin page",
+    "    //     could send) is refused; the same POST with the header reaches",
+    "    //     the handler (token-check: a guard run, no write).",
+    "    const naked = await req({ method: 'POST', path: '/api/token-check', headers: { 'Content-Type': 'application/json' } }, '{}');",
+    "    if (naked.status !== 403) failures.push('headerless POST expected 403, got ' + naked.status);",
+    "    const armed = await req({ method: 'POST', path: '/api/token-check',",
+    "      headers: { 'Content-Type': 'application/json', 'x-blockson-ui': '1' } },",
+    "      JSON.stringify({ token: '--color-primary', value: '#2D6A4F' }));",
+    "    if (armed.status !== 200) failures.push('editor POST expected 200, got ' + armed.status + ' ' + armed.body.slice(0, 200));",
+    "    // (d) Encoded traversal out of the preview/UI roots must not serve",
+    "    //     repo files (package.json is the canary).",
+    "    const t1 = await req({ path: '/preview/%2e%2e%2fpackage.json' });",
+    "    if (t1.status === 200 || t1.body.indexOf('blockson') !== -1) failures.push('encoded ../ escaped the preview root (' + t1.status + ')');",
+    "    const t2 = await req({ path: '/preview/..%5C..%5Cpackage.json' });",
+    "    if (t2.status === 200 || t2.body.indexOf('blockson') !== -1) failures.push('encoded ..\\\\ escaped the preview root (' + t2.status + ')');",
+    "    const t3 = await req({ path: '/ui/%2e%2e%2fserve.js' });",
+    "    if (t3.status === 200) failures.push('/ui/ served a file outside its allowlist');",
+    "  } catch (e) {",
+    "    failures.push('exception: ' + e.message);",
+    "  }",
+    "  finish();",
+    "}",
+    "function finish() {",
+    "  if (done) return;",
+    "  done = true;",
+    "  clearTimeout(giveUp);",
+    "  try { srv.kill(); } catch (e) {}",
+    "  console.log('PROOF13RESULT ' + JSON.stringify({ failures: failures }));",
+    "  process.exit(0);",
+    "}",
+  ].join('\n');
+
+  try {
+    // Throwaway client, publishing off — same setup as proof 8.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+
+    fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
+    fs.writeFileSync(harness, HARNESS_SRC, 'utf8');
+    const r = spawnSync(process.execPath, [harness, ROOT, CLIENT],
+      { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+    const m = (r.stdout || '').match(/PROOF13RESULT (\{.*\})/);
+    if (!m) failures.push(`harness produced no result:\n${((r.stdout || '') + (r.stderr || '')).slice(-1000)}`);
+    else failures.push(...JSON.parse(m[1]).failures);
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(harness, { force: true });
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'clients', CLIENT + '__candidate'), { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the real server, probed over HTTP: local requests succeed and carry');
+    console.log('       nosniff + SAMEORIGIN headers; a foreign Host header and a header-less');
+    console.log('       POST are both refused; encoded path traversal cannot escape the');
+    console.log('       preview or UI roots.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

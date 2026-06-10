@@ -65,6 +65,29 @@ function validate(content) {
   return { ok: true, errors: [] };
 }
 
+// Mirrors $defs/safeHref in content.schema.json: a link target is either a
+// known-safe scheme or carries no scheme at all (relative path / anchor).
+// Keeping a copy here means the scheme guard holds even when AJV is absent.
+const SAFE_HREF_RE = /^(?:(?:https?:\/\/|mailto:|tel:|sms:|#).*|[^:]*)$/;
+// Keys whose values become iframe/form/network targets: https only.
+const HTTPS_ONLY_KEYS = new Set(['formAction', 'mapEmbedUrl', 'videoUrl']);
+
+function scanLinkTargets(node, where, errors) {
+  if (Array.isArray(node)) {
+    node.forEach((el, i) => scanLinkTargets(el, `${where}[${i}]`, errors));
+  } else if (node && typeof node === 'object') {
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if (k === 'href' && typeof v === 'string' && !SAFE_HREF_RE.test(v)) {
+        errors.push(`${where}.${k}: "${v}" uses a disallowed URL scheme (allowed: https, http, mailto, tel, sms, or a relative path)`);
+      } else if (HTTPS_ONLY_KEYS.has(k) && typeof v === 'string' && !/^https:\/\//.test(v)) {
+        errors.push(`${where}.${k}: "${v}" must be an https:// URL`);
+      }
+      scanLinkTargets(v, `${where}.${k}`, errors);
+    }
+  }
+}
+
 function fallbackValidate(content) {
   const errors = [];
   if (!content || typeof content !== 'object') {
@@ -92,6 +115,9 @@ function fallbackValidate(content) {
       if (!block.fields) errors.push(`pages[${pi}].blocks[${bi}].fields is required`);
     });
   });
+
+  if (content.site) scanLinkTargets(content.site, 'site', errors);
+  scanLinkTargets(content.pages || [], 'pages', errors);
 
   return errors.length ? { ok: false, errors } : { ok: true, errors: [] };
 }

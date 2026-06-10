@@ -205,6 +205,13 @@ Field types: `string` (plain text), `richtext` (array of paragraph strings), `im
 (path under the client's `img/`), `url`, `int`, `bool`. Optional fields are marked
 `?` — everything else is required and its absence fails the build.
 
+Every `href` is scheme-checked at the build gate: allowed forms are `https://…`,
+`http://…`, `mailto:…`, `tel:…`, `sms:…`, `#anchor`, or a relative path
+(`about.html`). Anything else — `javascript:`, `data:`, any unrecognized scheme —
+fails the build, so it can never reach a rendered page. `formAction` and
+`mapEmbedUrl` must be `https://` URLs, and `videoUrl` is restricted to the embed
+hosts listed under `video-embed` below.
+
 ### Page furniture
 
 **`hero`** — full-viewport landing section (homepage opener; one per site, typically).

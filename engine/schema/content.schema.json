@@ -48,7 +48,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "label": { "type": "string" },
-                  "href":  { "type": "string" }
+                  "href":  { "$ref": "#/$defs/safeHref" }
                 }
               }
             },
@@ -58,7 +58,7 @@
               "additionalProperties": false,
               "properties": {
                 "label": { "type": "string" },
-                "href":  { "type": "string" }
+                "href":  { "$ref": "#/$defs/safeHref" }
               }
             }
           }
@@ -85,7 +85,7 @@
                       "additionalProperties": false,
                       "properties": {
                         "label": { "type": "string" },
-                        "href":  { "type": "string" }
+                        "href":  { "$ref": "#/$defs/safeHref" }
                       }
                     }
                   }
@@ -235,13 +235,17 @@
   },
   "$defs": {
     "buttonStyle": { "type": "string", "enum": ["primary", "secondary"] },
+    "safeHref": {
+      "type": "string",
+      "pattern": "^(?:(?:https?://|mailto:|tel:|sms:|#).*|[^:]*)$"
+    },
     "action": {
       "type": "object",
       "required": ["label", "href", "style"],
       "additionalProperties": false,
       "properties": {
         "label": { "type": "string" },
-        "href":  { "type": "string" },
+        "href":  { "$ref": "#/$defs/safeHref" },
         "style": { "$ref": "#/$defs/buttonStyle" }
       }
     },
@@ -407,7 +411,7 @@
           "items": { "type": "string" },
           "minItems": 1
         },
-        "mapEmbedUrl": { "type": "string" }
+        "mapEmbedUrl": { "type": "string", "pattern": "^https://" }
       }
     },
     "contactCardsFields": {
@@ -455,7 +459,7 @@
               "icon":  { "type": "string" },
               "label": { "type": "string" },
               "value": { "type": "string" },
-              "href":  { "type": "string" }
+              "href":  { "$ref": "#/$defs/safeHref" }
             }
           }
         }
@@ -468,7 +472,7 @@
       "properties": {
         "tag":         { "type": "string" },
         "heading":     { "type": "string" },
-        "formAction":  { "type": "string" },
+        "formAction":  { "type": "string", "pattern": "^https://" },
         "subjectLine": { "type": "string" },
         "submitLabel": { "type": "string" },
         "fields": {

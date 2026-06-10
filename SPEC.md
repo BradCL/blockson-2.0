@@ -79,7 +79,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (12 proofs)
+  _run-proofs.js        Proof suite (13 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -153,7 +153,11 @@ Contract:
   `clients/<name>/content.json` and `clients/<name>/img/`.
 - **Step 1 — Validate.** Validate `content.json` against `schema/content.schema.json`.
   On failure, print the failing path and exit non-zero. Do not write any output.
-  Also verify block-id and item-id uniqueness.
+  Also verify block-id and item-id uniqueness. The schema scheme-checks every link
+  target (`$defs/safeHref`): an `href` may be `https`/`http`/`mailto`/`tel`/`sms`,
+  a `#anchor`, or a relative path — `javascript:` and friends fail the build;
+  `formAction` and `mapEmbedUrl` must be `https://`. The stdlib fallback validator
+  (used only when AJV is absent) enforces the same scheme rules.
 - **Step 2 — Assemble.** For each page, build a full HTML document: `head` partial
   (including the `:root` token block from `tokens.json` ⊕ `site.themeOverrides`) → `nav`
   → each block in order → `footer`.
@@ -264,7 +268,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Twelve proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -276,8 +280,9 @@ valueless writes (plain set and match form) and leaves content untouched, (8) th
 owner-editor request handlers (§13), exercised directly: an edit writes only the
 candidate and rebuilds its annotated preview, the change card derives old → new from
 the resolved patch, a second edit is held while one is pending, approve writes live
-and produces annotation-free HTML, resolver guards hold on the UI path, and uploads
-stay candidate-side until approve and vanish on discard, (9) the blueprint scaffolder
+and produces annotation-free HTML, resolver guards hold on the UI path, uploads
+stay candidate-side until approve and vanish on discard, and non-image bytes under
+an image filename are refused by the file-signature guard, (9) the blueprint scaffolder
 (§10): the registry validates all shipped blueprints, invalid inputs are rejected with
 nothing written, ids stay unique site-wide under repeated instantiation, and every
 blueprint × variant builds clean, (10) scaffolding through the owner handlers: the new
@@ -286,11 +291,15 @@ scaffolds both ways, and approve puts the page + nav entry + sitemap line live w
 annotations and no ids, (11) the blueprint authoring kit (§10.2): every shipped
 blueprint clears the acceptance pipeline, the committed demo gallery matches
 deterministic regeneration (a stale gallery fails the suite), the live gallery build
-carries no annotations or id attributes, and a known-bad blueprint fails the validator
-CLI with named reasons, (12) the theme validator: every shipped theme passes (token
+carries no annotations or id attributes, a known-bad blueprint fails the validator
+CLI with named reasons, and a blueprint smuggling a `javascript:` link is stopped at
+the build gate, (12) the theme validator: every shipped theme passes (token
 completeness, injection + format guards on values, no JS / no external resources,
 tiered contrast pairs, demo-client coverage build), the demo corpus covers the whole
-block registry, and a known-bad theme fails with each reason named. All twelve must
+block registry, and a known-bad theme fails with each reason named, (13) the editor
+server's request guards, probed over real HTTP: a foreign `Host` header and a
+header-less POST are refused, encoded path traversal cannot escape the preview/UI
+roots, and every response carries `nosniff` + `SAMEORIGIN` headers. All thirteen must
 pass on a clean tree.
 
 ---
@@ -557,4 +566,8 @@ exercises the handlers directly.
   explicitly configured; POSTs require a custom header no cross-origin page can send
   without a CORS preflight (which the server never grants); static paths are confined
   to their roots; upload names are sanitized against an image-extension allowlist and
-  size cap; the UI renders all values via `textContent`.
+  size cap, and the bytes must carry the file signature (magic bytes) of the claimed
+  image type; every response carries `X-Content-Type-Options: nosniff` and
+  `X-Frame-Options: SAMEORIGIN`; a `{message}` interpolated into a custom publish
+  command is reduced to a conservative character set first; the UI renders all values
+  via `textContent`. The request guards are exercised over real HTTP by proof 13.
