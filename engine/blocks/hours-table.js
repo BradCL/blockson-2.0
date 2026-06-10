@@ -5,13 +5,13 @@
 // maintenance tier edits "Saturday" hours directly instead of text-matching.
 const { esc } = require('../lib/escape');
 
-module.exports = function hoursTable(fields) {
-  const tag     = fields.tag     ? `<div class="section-tag">${esc(fields.tag)}</div>` : '';
-  const heading = fields.heading ? `<h2>${esc(fields.heading)}</h2>` : '';
-  const note    = fields.note    ? `<p class="hours-note">${esc(fields.note)}</p>` : '';
+module.exports = function hoursTable(fields, site, bk) {
+  const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
+  const heading = fields.heading ? `<h2${bk.f('heading')}>${esc(fields.heading)}</h2>` : '';
+  const note    = fields.note    ? `<p class="hours-note"${bk.f('note')}>${esc(fields.note)}</p>` : '';
 
   const rows = (fields.rows || []).map(r =>
-    `<tr><th scope="row">${esc(r.day)}</th><td>${esc(r.hours)}</td></tr>`
+    `<tr><th scope="row"${bk.i(r.id, 'day')}>${esc(r.day)}</th><td${bk.i(r.id, 'hours')}>${esc(r.hours)}</td></tr>`
   ).join('\n          ');
 
   return `<section class="hours fade-in">

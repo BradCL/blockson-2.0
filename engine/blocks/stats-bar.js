@@ -5,11 +5,11 @@
 // "2,400+" or "98%" — the engine never does math on them.
 const { esc } = require('../lib/escape');
 
-module.exports = function statsBar(fields) {
+module.exports = function statsBar(fields, site, bk) {
   const stats = (fields.stats || []).map(s =>
     `<div class="stat fade-in">
-        <div class="stat-value">${esc(s.value)}</div>
-        <div class="stat-label">${esc(s.label)}</div>
+        <div class="stat-value"${bk.i(s.id, 'value')}>${esc(s.value)}</div>
+        <div class="stat-label"${bk.i(s.id, 'label')}>${esc(s.label)}</div>
       </div>`
   ).join('\n      ');
 

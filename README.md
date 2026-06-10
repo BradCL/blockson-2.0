@@ -189,6 +189,39 @@ targeting `themeOverrides` are rejected at the resolver.
 
 ---
 
+## Annotated preview build
+
+```
+node engine/build.js <client> --annotate
+```
+
+The owner click-to-edit UI (in progress) needs to know, for each element on
+the page, which content field it came from. An annotated build stamps every
+editable element with `data-bk-block` / `data-bk-item` / `data-bk-field` (and
+`data-bk-index` for text-list lines), driven by the **same edit map**
+(`engine/lib/sitemap.js`) the patch resolver's editable surface is derived
+from — so UI coverage and engine coverage can never diverge
+(`engine/lib/annotate.js`). An overlay script can then highlight elements on
+hover and open the right editor on click.
+
+An annotated build is a **preview-only artifact** and is written to a separate
+directory, `dist/<client>__annotated/`, so it can never be mistaken for or
+deployed as the live site. **Live builds (no flag) never contain ids or any
+`data-bk-*` attribute** — proof 1 guards both halves: live HTML is clean, and
+the annotated build carries an annotation for every editable field the map
+reports.
+
+Annotations live on the per-element click-to-edit surface: every block scalar,
+item field, and text-list line. Two classes of edit-map field are editable by
+the engine but have no dedicated clickable element and so are reached through a
+settings/field-group affordance rather than an on-page click — site config
+fields rendered only into `<head>`/attributes (`baseUrl`, `theme`, `logo.*`),
+and dotted object-leaf scalars that share one rendered element (e.g.
+`button.label`/`button.href`/`button.style` on one `<a>`). The edit map remains
+the single source of truth for both surfaces.
+
+---
+
 ## Optional model seam
 
 The patch pipeline is the permanent seam where a copy-assist model tier could attach
@@ -208,7 +241,9 @@ node engine/_run-proofs.js     # or: npm test
 ```
 
 Runs seven end-to-end proofs against the example clients:
-1. ids never leak into rendered HTML (checked across contractor AND restaurant/v2 blocks)
+1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
+   build (`--annotate`) carries a `data-bk` annotation for every editable field
+   the edit map reports, and none it does not (checked across all three clients)
 2. a real field edit applies and rebuilds
 3. a forbidden structural write is blocked at the resolver
 4. an id-addressed item edit applies end-to-end
@@ -233,7 +268,7 @@ engine/
   blocks/               One module per block type (21 total)
   partials/             head, nav, footer
   lib/                  render, validate, escape, icons, patch (allowlist + token guards),
-                        sitemap (edit map)
+                        sitemap (edit map), annotate (preview-build data-bk-* stamping)
   schema/               content.schema.json (JSON Schema draft 2020-12)
 
 themes/
@@ -249,6 +284,8 @@ attic/                  Archived v3 model-tier modules (repair, patch-schema, tr
                         AGENT_INSTRUCTIONS.md, test harness, scorecards)
 
 dist/                   Build output — one subfolder per client (gitignored)
+  <client>/             Live build (no ids, no annotations — deployable)
+  <client>__annotated/  Annotated preview build (--annotate; never deploy)
 ```
 
 ---

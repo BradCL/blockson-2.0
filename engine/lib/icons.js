@@ -30,10 +30,13 @@ function getIcon(name) {
   return ICONS[name] || null;
 }
 
-function iconSvg(name, wrapperClass) {
+// `attrs` (optional) is a pre-built attribute string spliced into the wrapper
+// div's opening tag — used by annotated builds to stamp data-bk-* on the icon
+// without adding any new element (empty string in live builds → unchanged).
+function iconSvg(name, wrapperClass, attrs = '') {
   const paths = getIcon(name);
   if (!paths) return '';
-  return `<div class="${wrapperClass}"><svg viewBox="0 0 24 24">${paths}</svg></div>`;
+  return `<div class="${wrapperClass}"${attrs}><svg viewBox="0 0 24 24">${paths}</svg></div>`;
 }
 
 module.exports = { getIcon, iconSvg, ICONS };

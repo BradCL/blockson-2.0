@@ -35,14 +35,22 @@
 const fs   = require('fs');
 const path = require('path');
 
-// ── Resolve paths ──────────────────────────────────────────────
+// ── Resolve paths & flags ──────────────────────────────────────
 const ROOT    = path.resolve(__dirname, '..');
-const clientName = process.argv[2];
+const args    = process.argv.slice(2);
+const annotate = args.includes('--annotate');
+const clientName = args.find(a => !a.startsWith('--'));
 
 if (!clientName) {
-  console.error('Usage: node engine/build.js <client-name>');
+  console.error('Usage: node engine/build.js <client-name> [--annotate]');
   process.exit(1);
 }
+
+// An annotated build is a PREVIEW-ONLY artifact: it carries data-bk-* edit
+// annotations and so must never be mistaken for, or deployed as, the live
+// site. It is written to a clearly separate directory for that reason
+// (the "live builds never contain annotations" invariant, enforced by path).
+const distSuffix = annotate ? '__annotated' : '';
 
 const clientDir  = path.join(ROOT, 'clients', clientName);
 const contentPath = path.join(clientDir, 'content.json');
@@ -103,12 +111,20 @@ if (fs.existsSync(tokensPath)) {
   console.warn(`  ⚠ themes/${theme}/tokens.json not found — token injection skipped`);
 }
 
+// In annotate mode, build the edit-map-driven annotator once and thread it
+// into every page render (engine/lib/annotate.js). Live builds pass nothing.
+let annotator = null;
+if (annotate) {
+  const { buildAnnotator } = require('./lib/annotate');
+  annotator = buildAnnotator(content, resolvedTokens);
+}
+
 const outputs = [];   // { destPath, content }
 
 for (const page of content.pages) {
   let html;
   try {
-    html = renderPage(page, site, resolvedTokens);
+    html = renderPage(page, site, resolvedTokens, annotator);
   } catch (e) {
     console.error(`Error rendering page "${page.slug}": ${e.message}`);
     process.exit(1);
@@ -138,7 +154,7 @@ outputs.push({
 });
 
 // ── Step 3: Write everything ───────────────────────────────────
-const distDir = path.join(ROOT, 'dist', clientName);
+const distDir = path.join(ROOT, 'dist', clientName + distSuffix);
 
 // Wipe and recreate dist/<client>
 if (fs.existsSync(distDir)) {
@@ -175,7 +191,7 @@ if (fs.existsSync(imgSrc)) {
   copyDir(imgSrc, path.join(distDir, 'img'));
 }
 
-console.log(`Built ${content.pages.length} page(s) → dist/${clientName}/`);
+console.log(`Built ${content.pages.length} page(s) → dist/${clientName + distSuffix}/${annotate ? '  (annotated preview)' : ''}`);
 
 // ── Helpers ────────────────────────────────────────────────────
 function checkBlockIdUniqueness(content) {

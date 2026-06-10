@@ -2,7 +2,7 @@
 
 const { esc } = require('../lib/escape');
 
-module.exports = function footer(site) {
+module.exports = function footer(site, bk) {
   const cols = (site.footer.columns || []).map(col => {
     const items = col.items.map(item =>
       item.href
@@ -15,7 +15,7 @@ module.exports = function footer(site) {
     </div>`;
   }).join('\n    ');
 
-  const tagline = site.tagline ? `<span>${esc(site.tagline)}</span>` : '';
+  const tagline = site.tagline ? `<span${bk.f('tagline')}>${esc(site.tagline)}</span>` : '';
 
   return `<footer class="footer">
   <div class="container">
@@ -24,12 +24,12 @@ module.exports = function footer(site) {
         <div class="footer-logo">
           <img src="${esc(site.logo.white)}" alt="${esc(site.name)}">
         </div>
-        <p>${esc(site.footer.blurb)}</p>
+        <p${bk.f('footer.blurb')}>${esc(site.footer.blurb)}</p>
       </div>
       ${cols}
     </div>
     <div class="footer-bottom">
-      <span>${esc(site.copyright)}</span>
+      <span${bk.f('copyright')}>${esc(site.copyright)}</span>
       ${tagline}
     </div>
   </div>

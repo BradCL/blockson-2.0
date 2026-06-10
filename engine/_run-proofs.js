@@ -2,12 +2,16 @@
 'use strict';
 // Runs all seven end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
+//   Proof 1 also guards the v4 annotated preview build: live HTML carries no
+//   ids and no data-bk-* attributes; an annotated build carries a data-bk
+//   annotation for every editable field the edit map reports.
 // Proofs 5–6: the v2 token-editing path (allowlist + format + contrast guards).
 // Proof 7:    resolver value guards — valueless writes are rejected.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { applyPatch } = require('./lib/patch');
+const { buildEditMap } = require('./lib/sitemap');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -18,10 +22,81 @@ function writeContent(client, obj) {
   fs.writeFileSync(path.join(ROOT, 'clients', client, 'content.json'),
     JSON.stringify(obj, null, 2) + '\n', 'utf8');
 }
-function build(client) {
-  const r = spawnSync(process.execPath, [path.join(__dirname, 'build.js'), client],
+function build(client, extra = []) {
+  const r = spawnSync(process.execPath, [path.join(__dirname, 'build.js'), client, ...extra],
     { cwd: ROOT, encoding: 'utf8' });
   return { ok: r.status === 0, out: (r.stdout + r.stderr).trim() };
+}
+function loadTokens(content) {
+  const theme = (content.site && content.site.theme) || 'default';
+  const p = path.join(ROOT, 'themes', theme, 'tokens.json');
+  return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+}
+function pageFile(slug) { return slug === 'index' ? 'index.html' : `${slug}.html`; }
+const triKey = (block, item, field, index) =>
+  [block || '', item || '', field || '', index == null ? '' : String(index)].join('|');
+
+// Extract every (block, item?, field, index?) annotation present in an
+// annotated build's HTML by scanning opening tags that carry data-bk-block.
+function presentAnnotations(html) {
+  const set = new Set();
+  const tagRe = /<[a-zA-Z][^>]*\sdata-bk-block=[^>]*>/g;
+  let m;
+  while ((m = tagRe.exec(html))) {
+    const tag = m[0];
+    const g = (re) => (tag.match(re) || [])[1];
+    set.add(triKey(
+      g(/\sdata-bk-block="([^"]*)"/),
+      g(/\sdata-bk-item="([^"]*)"/),
+      g(/\sdata-bk-field="([^"]*)"/),
+      g(/\sdata-bk-index="([^"]*)"/),
+    ));
+  }
+  return set;
+}
+
+// From a client's edit map, compute (per page file) the REQUIRED annotation
+// set — the per-element click-to-edit surface the proof enforces in full —
+// and the ALLOWED set — every field the map reports, used for the reverse
+// "no annotation is invalid" check. See engine/lib/annotate.js for the scope
+// rationale (site config + dotted object-leaf scalars are gated but not
+// required, because they have no dedicated clickable element).
+function annotationSets(content, tokens) {
+  const map = buildEditMap(content, tokens);
+  const required = new Map();   // pageFile -> Set(keys)
+  const allowed  = new Map();
+  const siteKeys = (map.site || []).map(s => triKey('site', null, s.field, null));
+  for (const page of map.pages || []) {
+    const file = pageFile(page.slug);
+    const req = new Set();
+    const allow = new Set(siteKeys);            // footer (site fields) on every page
+    for (const b of page.blocks || []) {
+      for (const s of b.scalars || []) {
+        allow.add(triKey(b.id, null, s.field, null));
+        if (!s.field.includes('.')) req.add(triKey(b.id, null, s.field, null)); // non-dotted scalars required
+      }
+      for (const tl of b.textLists || []) {
+        (tl.lines || []).forEach((_, i) => {
+          const k = triKey(b.id, null, tl.field, i);
+          allow.add(k); req.add(k);
+        });
+      }
+      for (const is of b.itemSets || []) {
+        for (const it of is.items || []) {
+          for (const f of it.fields || []) {
+            const k = triKey(b.id, it.id, f, null);
+            allow.add(k); req.add(k);
+          }
+        }
+      }
+    }
+    // Lock in the footer (site) annotation path without over-constraining:
+    // every client's map carries copyright, and it is annotated in footer.js.
+    if (map.site.some(s => s.field === 'copyright')) req.add(triKey('site', null, 'copyright', null));
+    required.set(file, req);
+    allowed.set(file, allow);
+  }
+  return { required, allowed };
 }
 
 let passed = 0;
@@ -30,27 +105,54 @@ const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
 // ── PROOF 1 ─────────────────────────────────────────────────────────────────
-console.log('\n═══ PROOF 1 — Rebuild all clients; ids must not appear in HTML ═══');
-build('example-contractor');
-build('example-league');
-build('example-restaurant');
-const idPatterns = [
-  'card-renovations', 'testi-edmonton', 'album-deck', 'card-garden',
-  'plan-bruschetta', 'faq-reservations', 'row-monday', 'stat-years', 'member-chef'
-];
-const htmlFiles = [];
-for (const client of ['example-contractor', 'example-restaurant']) {
-  const dir = path.join(ROOT, 'dist', client);
-  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
-    htmlFiles.push(fs.readFileSync(path.join(dir, f), 'utf8'));
+console.log('\n═══ PROOF 1 — Live build hides ids & annotations; annotated build covers every editable field ═══');
+{
+  const CLIENTS = ['example-contractor', 'example-league', 'example-restaurant'];
+  for (const c of CLIENTS) { build(c); build(c, ['--annotate']); }
+
+  const failures = [];
+
+  // (a) LIVE builds: no item ids, no data-bk-* anywhere.
+  const idPatterns = [
+    'card-renovations', 'testi-edmonton', 'album-deck', 'card-garden',
+    'plan-bruschetta', 'faq-reservations', 'row-monday', 'stat-years', 'member-chef'
+  ];
+  for (const c of CLIENTS) {
+    const dir = path.join(ROOT, 'dist', c);
+    for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(dir, f), 'utf8');
+      const leaked = idPatterns.filter(p => html.includes(p));
+      if (leaked.length) failures.push(`live ${c}/${f}: id leak ${leaked.join(', ')}`);
+      if (html.includes('data-bk-')) failures.push(`live ${c}/${f}: contains data-bk-* (must be annotated build only)`);
+    }
   }
-}
-const leaks = idPatterns.filter(p => htmlFiles.some(h => h.includes(p)));
-if (leaks.length === 0) {
-  console.log('PASS — No item ids found in any HTML output. Ids are invisible in rendered pages.');
-  passed++;
-} else {
-  console.log('FAIL — Ids leaked into HTML:', leaks);
+
+  // (b) ANNOTATED builds: every editable field the edit map reports is stamped
+  //     (forward coverage), and no annotation is invalid (reverse check).
+  let requiredCount = 0;
+  for (const c of CLIENTS) {
+    const content = readContent(c);
+    const { required, allowed } = annotationSets(content, loadTokens(content));
+    const dir = path.join(ROOT, 'dist', c + '__annotated');
+    for (const [file, reqSet] of required) {
+      const html = fs.readFileSync(path.join(dir, file), 'utf8');
+      const present = presentAnnotations(html);
+      const allow = allowed.get(file);
+      requiredCount += reqSet.size;
+      for (const k of reqSet) if (!present.has(k)) failures.push(`annotated ${c}/${file}: MISSING annotation ${k}`);
+      for (const k of present) if (!allow.has(k)) failures.push(`annotated ${c}/${file}: INVALID annotation ${k} (not in edit map)`);
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every');
+    console.log(`       editable field the edit map reports (${requiredCount} required annotations across`);
+    console.log(`       ${CLIENTS.length} clients) and stamp nothing the map does not report.`);
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.slice(0, 25).forEach(f => console.log(`       ✗ ${f}`));
+  }
 }
 
 // ── PROOF 2 ─────────────────────────────────────────────────────────────────

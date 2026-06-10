@@ -6,17 +6,17 @@
 const { esc }    = require('../lib/escape');
 const { iconSvg } = require('../lib/icons');
 
-module.exports = function processSteps(fields) {
-  const tag     = fields.tag     ? `<div class="section-tag">${esc(fields.tag)}</div>` : '';
-  const heading = fields.heading ? `<h2>${esc(fields.heading)}</h2>` : '';
+module.exports = function processSteps(fields, site, bk) {
+  const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
+  const heading = fields.heading ? `<h2${bk.f('heading')}>${esc(fields.heading)}</h2>` : '';
 
   const steps = (fields.steps || []).map((s, i) => {
-    const icon = s.icon ? iconSvg(s.icon, 'step-icon') : '';
+    const icon = s.icon ? iconSvg(s.icon, 'step-icon', bk.i(s.id, 'icon')) : '';
     return `<li class="process-step fade-in">
         <div class="step-num" aria-hidden="true">${i + 1}</div>
         ${icon}
-        <h3>${esc(s.title)}</h3>
-        <p>${esc(s.body)}</p>
+        <h3${bk.i(s.id, 'title')}>${esc(s.title)}</h3>
+        <p${bk.i(s.id, 'body')}>${esc(s.body)}</p>
       </li>`;
   }).join('\n      ');
 

@@ -25,11 +25,11 @@ function renderField(f) {
       </div>`;
 }
 
-module.exports = function contactForm(fields) {
-  const tag     = fields.tag     ? `<div class="section-tag">${esc(fields.tag)}</div>` : '';
-  const heading = fields.heading ? `<h2>${esc(fields.heading)}</h2>` : '';
+module.exports = function contactForm(fields, site, bk) {
+  const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
+  const heading = fields.heading ? `<h2${bk.f('heading')}>${esc(fields.heading)}</h2>` : '';
   const subject = fields.subjectLine
-    ? `<input type="hidden" name="_subject" value="${esc(fields.subjectLine)}">` : '';
+    ? `<input type="hidden" name="_subject" value="${esc(fields.subjectLine)}"${bk.f('subjectLine')}>` : '';
   const submitLabel = fields.submitLabel || 'Send Message';
 
   // Group half-width fields into rows
@@ -51,11 +51,11 @@ module.exports = function contactForm(fields) {
   <div class="container">
     ${tag}
     ${heading}
-    <form class="contact-form" method="POST" action="${esc(fields.formAction)}">
+    <form class="contact-form" method="POST" action="${esc(fields.formAction)}"${bk.f('formAction')}>
       ${subject}
       ${rows.join('\n      ')}
       <div class="form-submit">
-        <button type="submit" class="btn btn-primary">${esc(submitLabel)}</button>
+        <button type="submit" class="btn btn-primary"${bk.f('submitLabel')}>${esc(submitLabel)}</button>
       </div>
     </form>
   </div>

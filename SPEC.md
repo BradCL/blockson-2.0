@@ -122,6 +122,9 @@ Contract:
   copy theme CSS (theme's own css/ or its cssBase's), shared JS (default base + theme
   overlay), and client `img/`.
 - **No partial writes.** Either the whole site builds or nothing is written.
+- **`--annotate` (preview only).** Emits an annotated build to a separate directory
+  `dist/<name>__annotated/` (§12). Live builds (no flag) are byte-identical to pre-v4
+  output and carry no ids or annotations.
 
 ---
 
@@ -222,8 +225,10 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Seven proofs run in sequence: (1) block and item ids do not appear in rendered HTML
-across core AND v2 blocks, (2) a real field edit applies and rebuilds, (3) a forbidden
+Seven proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+attributes, while an annotated build (§12) carries a `data-bk` annotation for every
+editable field the edit map reports and none it does not (all three clients),
+(2) a real field edit applies and rebuilds, (3) a forbidden
 write is blocked at the resolver, (4) an id-addressed item edit applies end-to-end,
 (5) a valid `set-token` persists in `themeOverrides` and reaches the page `:root`,
 (6) invalid `set-token` patches — unknown token, unsafe value, plain-`set` bypass, and
@@ -294,3 +299,39 @@ No model-specific code belongs in the active runtime. The archived modules in `a
 builder, `triage.js` — request pre-filter, `AGENT_INSTRUCTIONS.md` — model operating
 manual) document the v3.1 approach and are the natural starting point for any future
 integration.
+
+---
+
+## 12. Annotated Preview Build (v4)
+
+The owner click-to-edit UI needs to map each on-page element back to the content
+field it was rendered from. `node engine/build.js <client> --annotate` produces a
+build in which every editable element carries a `data-bk-*` attribute:
+
+- block scalar field → `data-bk-block`, `data-bk-field`
+- addressable item field → `data-bk-block`, `data-bk-item`, `data-bk-field`
+- text-list line → `data-bk-block`, `data-bk-field`, `data-bk-index`
+- site field → `data-bk-block="site"`, `data-bk-field`
+
+**Single source of truth.** The annotator (`engine/lib/annotate.js`) is built from
+`buildEditMap` (`engine/lib/sitemap.js`) — the same map the resolver's editable
+surface derives from — and every annotation method is gated against it. A renderer
+cannot stamp a field the map does not report, and proof 1 enforces the converse: every
+field the map reports is stamped. UI coverage and engine coverage therefore cannot
+diverge.
+
+**Preview-only, never live.** Annotated builds go to `dist/<client>__annotated/`, a
+separate directory, so they can never be mistaken for or deployed as the live site.
+Live builds substitute no-op annotators (`render.js`), so their HTML is byte-identical
+to pre-v4 output and contains no ids or `data-bk-*` (the live half of proof 1). This is
+how the "live builds never contain ids or editing annotations" invariant is enforced.
+
+**Coverage scope.** Annotations live on the per-element click-to-edit surface: every
+block scalar, item field, and text-list line (proof 1 enforces this in full). Two
+classes of edit-map field are editable by the engine but have no dedicated clickable
+element, so they are gated (any annotation present is valid) but not proof-required:
+site config fields rendered only into `<head>`/attributes (`baseUrl`, `theme`,
+`logo.*`), reached via a settings affordance; and dotted object-leaf block scalars that
+share one rendered element (e.g. `button.label`/`button.href`/`button.style` on one
+`<a>`), reached via the field-group editor. The edit map remains the single source of
+truth for both surfaces.

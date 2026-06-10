@@ -5,14 +5,14 @@
 // (Chosen over a JS accordion deliberately: no runtime dependency to break.)
 const { esc } = require('../lib/escape');
 
-module.exports = function faq(fields) {
-  const tag     = fields.tag     ? `<div class="section-tag">${esc(fields.tag)}</div>` : '';
-  const heading = fields.heading ? `<h2>${esc(fields.heading)}</h2>` : '';
+module.exports = function faq(fields, site, bk) {
+  const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
+  const heading = fields.heading ? `<h2${bk.f('heading')}>${esc(fields.heading)}</h2>` : '';
 
   const items = (fields.items || []).map(item =>
     `<details class="faq-item fade-in">
-        <summary>${esc(item.question)}</summary>
-        <p>${esc(item.answer)}</p>
+        <summary${bk.i(item.id, 'question')}>${esc(item.question)}</summary>
+        <p${bk.i(item.id, 'answer')}>${esc(item.answer)}</p>
       </details>`
   ).join('\n      ');
 
