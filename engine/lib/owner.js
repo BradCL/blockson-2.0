@@ -58,6 +58,7 @@ const { spawnSync } = require('child_process');
 
 const { applyPatch, SAFE_TOKENS, indexHosts, findItemById } = require('./patch');
 const { buildEditMap } = require('./sitemap');
+const scaffold = require('./scaffold');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CANDIDATE_SUFFIX = '__candidate';
@@ -298,8 +299,9 @@ function checkToken(session, token, value) {
 }
 
 // Validate + decide the final filename for an uploaded image. Never
-// overwrites: a name collision gets a numeric suffix.
-function prepareUpload(session, upload) {
+// overwrites: a name collision (on disk, or with another upload staged
+// in the same request via `taken`) gets a numeric suffix.
+function prepareUpload(session, upload, taken) {
   if (!upload || typeof upload.name !== 'string' || typeof upload.dataBase64 !== 'string') {
     return { error: 'an image upload needs "name" and "dataBase64"' };
   }
@@ -316,8 +318,9 @@ function prepareUpload(session, upload) {
     return { error: `the image is too large (${(bytes.length / 1048576).toFixed(1)} MB — the limit is ${MAX_IMAGE_BYTES / 1048576} MB)` };
   }
   const imgDir = path.join(candDir(session), 'img');
+  const inUse = name => fs.existsSync(path.join(imgDir, name)) || (taken && taken.has(name));
   let name = stem + ext;
-  for (let n = 2; fs.existsSync(path.join(imgDir, name)); n++) name = `${stem}-${n}${ext}`;
+  for (let n = 2; inUse(name); n++) name = `${stem}-${n}${ext}`;
   return { name, bytes, imgDir };
 }
 
@@ -406,6 +409,98 @@ function applyEdit(session, patch, upload) {
     stagedAt: new Date().toISOString(),
   };
   return { ok: true, pending: publicPending(session) };
+}
+
+/* List the blueprint registry for the Add… menu. Invalid blueprint
+   files are excluded by the loader and reported with named reasons —
+   the validator is the sole gate, whoever authored the file. */
+function listBlueprints() {
+  const loaded = scaffold.loadBlueprints();
+  return {
+    ok: true,
+    blueprints: loaded.blueprints.map(({ key, blueprint }) => ({
+      key,
+      name: blueprint.name,
+      purpose: blueprint.purpose,
+      kind: blueprint.kind,
+      variants: blueprint.variants,
+      inputs: blueprint.inputs,
+    })),
+    invalid: loaded.invalid,
+  };
+}
+
+/* The structural counterpart of applyEdit: instantiate a blueprint into
+   the CANDIDATE copy → candidate rebuild (annotated; the full build is
+   the acceptance gate) → pending change card. Same one-pending-change
+   rule, same rollback-on-failure, same approve/discard flow afterwards.
+   Never touches applyPatch — structure arrives only through scaffold.js. */
+function applyScaffold(session, req) {
+  if (session.pending) {
+    return { ok: false, error: 'There is already a pending change — approve or discard it first.' };
+  }
+  if (!req || typeof req !== 'object') return { ok: false, error: 'bad scaffold request' };
+  const loaded = scaffold.loadBlueprints();
+  const entry = loaded.blueprints.find(b => b.key === req.blueprint);
+  if (!entry) return { ok: false, error: `unknown blueprint "${req.blueprint}"` };
+  const bp = entry.blueprint;
+  if (!(bp.variants || []).some(v => v.key === req.variant)) {
+    return { ok: false, error: `unknown layout "${req.variant}" for ${bp.name}` };
+  }
+
+  // Image inputs may arrive as uploads; like applyEdit, the file is
+  // validated and its img/ path assigned HERE, never by the browser.
+  const values = { ...(req.values && typeof req.values === 'object' ? req.values : {}) };
+  const staged = [];
+  if (req.uploads && typeof req.uploads === 'object') {
+    const active = scaffold.activeInputs(bp, req.variant);
+    const taken = new Set();
+    for (const key of Object.keys(req.uploads)) {
+      const inp = active.find(i => i.key === key && i.type === 'image');
+      if (!inp) return { ok: false, error: `"${key}" does not accept an image upload` };
+      const prep = prepareUpload(session, req.uploads[key], taken);
+      if (prep.error) return { ok: false, error: prep.error };
+      taken.add(prep.name);
+      staged.push(prep);
+      values[key] = 'img/' + prep.name;
+    }
+  }
+
+  const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
+  const content = JSON.parse(beforeText);
+  const inst = scaffold.instantiate(content, bp, req.variant, values, { targetSlug: req.targetPage });
+  if (!inst.ok) return { ok: false, error: inst.errors.join('\n') };
+
+  const written = [];
+  for (const s of staged) {
+    fs.mkdirSync(s.imgDir, { recursive: true });
+    const p = path.join(s.imgDir, s.name);
+    fs.writeFileSync(p, s.bytes);
+    written.push(p);
+  }
+  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
+
+  const b = buildCandidate(session);
+  if (!b.ok) {
+    fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
+    for (const p of written) fs.rmSync(p, { force: true });
+    buildCandidate(session); // restore the preview to the last good state
+    return { ok: false, error: `That addition did not pass the site's checks, so it was not kept:\n${b.out}` };
+  }
+
+  const c = inst.created;
+  session.pending = {
+    patch: null,
+    scaffold: { blueprint: entry.key, variant: req.variant },
+    old: null,
+    new: c.kind === 'page'
+      ? `New page "${c.navLabel}" (${c.file}) with ${c.blockIds.length} section(s), added to the menu`
+      : `New section on ${c.file}`,
+    summary: c.kind === 'page' ? `add page "${c.navLabel}" (${c.file})` : `add a section to ${c.slug}`,
+    uploads: staged.map(s => s.name),
+    stagedAt: new Date().toISOString(),
+  };
+  return { ok: true, pending: publicPending(session), created: c };
 }
 
 /* Approve: the ONLY path that writes into clients/<client>/. Copies the
@@ -550,7 +645,7 @@ function runPublish(session, summary) {
 
 module.exports = {
   createSession, getState, describeField, checkToken,
-  applyEdit, approve, discard, restore,
+  applyEdit, applyScaffold, listBlueprints, approve, discard, restore,
   loadConfig, resetCandidate, buildCandidate, buildLive,
   candDistDir, candContentPath, liveContentPath,
   CANDIDATE_SUFFIX, SAFE_TOKENS,

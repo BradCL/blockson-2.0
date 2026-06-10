@@ -1,0 +1,50 @@
+{
+  "name": "Photo gallery page",
+  "purpose": "A page of photo albums visitors can browse — starts with one album; add photos to it any time.",
+  "kind": "page",
+  "variants": [
+    { "key": "banner", "label": "With a photo banner across the top" },
+    { "key": "simple", "label": "Simple heading, photos first" }
+  ],
+  "inputs": [
+    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20 },
+    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70 },
+    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160 },
+    { "key": "albumTitle", "label": "First album name", "type": "text", "required": true, "maxLength": 60 },
+    { "key": "photo", "label": "First photo", "type": "image", "required": true },
+    { "key": "bannerPhoto", "label": "Banner photo", "type": "image", "required": true, "variants": ["banner"] }
+  ],
+  "template": {
+    "banner": {
+      "navLabel": "{{menuLabel}}",
+      "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
+      "blocks": [
+        { "id": "header", "type": "page-header", "fields": {
+          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}", "background": "{{bannerPhoto}}"
+        } },
+        { "id": "albums", "type": "gallery", "fields": {
+          "filters": [ { "label": "All", "value": "all" } ],
+          "albums": [
+            { "id": "album-1", "category": "photos", "title": "{{albumTitle}}", "images": ["{{photo}}"] }
+          ]
+        } }
+      ]
+    },
+    "simple": {
+      "navLabel": "{{menuLabel}}",
+      "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
+      "blocks": [
+        { "id": "header", "type": "page-header", "fields": {
+          "tag": "Gallery", "heading": "{{title}}", "subhead": "{{intro}}"
+        } },
+        { "id": "albums", "type": "gallery", "fields": {
+          "heading": "{{albumTitle}}",
+          "filters": [ { "label": "All", "value": "all" } ],
+          "albums": [
+            { "id": "album-1", "category": "photos", "title": "{{albumTitle}}", "images": ["{{photo}}"] }
+          ]
+        } }
+      ]
+    }
+  }
+}

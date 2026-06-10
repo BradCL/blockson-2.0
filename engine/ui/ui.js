@@ -329,6 +329,158 @@
     ed.appendChild(row);
   }
 
+  // ── Add… (blueprint scaffolding) ─────────────────────────────
+  // The Add… menu lists the validated blueprint registry; choosing one
+  // renders a form generated from its declared input schema, and the
+  // result flows into the same candidate → pending → Approve cycle.
+  function openAddMenu() {
+    if (state && state.pending) {
+      showMessage('info', 'You already have a pending change — approve or discard it first.');
+      return;
+    }
+    clearMessage();
+    apiGet('/api/blueprints').then(function (r) {
+      var ed = editorShell('Add to the site');
+      if (!r.ok) { editorError(ed, r.error); return; }
+      var list = el('div', 'line-list');
+      r.blueprints.forEach(function (bp) {
+        var row = el('div', 'bp-row');
+        var text = el('div', 'bp-text');
+        text.appendChild(el('div', 'bp-name', bp.name));
+        text.appendChild(el('div', 'hint', bp.purpose));
+        row.appendChild(text);
+        row.appendChild(button('Choose', null, function () { openScaffoldForm(bp); }));
+        list.appendChild(row);
+      });
+      if (!r.blueprints.length) list.appendChild(el('div', 'hint', 'No blueprints are installed.'));
+      ed.appendChild(list);
+      (r.invalid || []).forEach(function (bad) {
+        ed.appendChild(el('div', 'message error',
+          'Blueprint "' + bad.file + '" is invalid and was not listed:\n' + bad.errors.join('\n')));
+      });
+      var row = el('div', 'btn-row');
+      row.appendChild(button('Cancel', null, closeEditor));
+      ed.appendChild(row);
+    });
+  }
+
+  function openScaffoldForm(bp) {
+    var ed = editorShell('Add: ' + bp.name);
+    ed.appendChild(el('p', 'hint', bp.purpose));
+
+    var variantKey = bp.variants[0].key;
+    ed.appendChild(el('div', 'field-label', 'Layout'));
+    var variantBox = el('div', 'variant-box');
+    bp.variants.forEach(function (v) {
+      var lab = el('label', 'variant-option');
+      var radio = el('input');
+      radio.type = 'radio';
+      radio.name = 'bk-variant';
+      radio.checked = v.key === variantKey;
+      radio.addEventListener('change', function () {
+        if (radio.checked) { variantKey = v.key; renderInputs(); }
+      });
+      lab.appendChild(radio);
+      lab.appendChild(document.createTextNode(' ' + v.label));
+      variantBox.appendChild(lab);
+    });
+    ed.appendChild(variantBox);
+
+    // Target page selector for block-kind blueprints.
+    var targetSelect = null;
+    if (bp.kind === 'block') {
+      ed.appendChild(el('div', 'field-label', 'Add to which page?'));
+      targetSelect = el('select');
+      (state.pages || []).forEach(function (slug) {
+        var opt = el('option', null, slug);
+        opt.value = slug;
+        targetSelect.appendChild(opt);
+      });
+      ed.appendChild(targetSelect);
+    }
+
+    // Inputs are re-rendered when the variant changes, showing only the
+    // inputs active for that layout. Entered values survive the switch.
+    var inputsBox = el('div');
+    ed.appendChild(inputsBox);
+    var controls = {};   // key -> {get: fn} or {file: input}
+
+    function inputActive(inp) {
+      return !inp.variants || inp.variants.indexOf(variantKey) !== -1;
+    }
+
+    function renderInputs() {
+      clear(inputsBox);
+      bp.inputs.forEach(function (inp) {
+        if (!inputActive(inp)) return;
+        inputsBox.appendChild(el('div', 'field-label', inp.label + (inp.required ? '' : ' (optional)')));
+        if (inp.type === 'select') {
+          var sel = controls[inp.key] && controls[inp.key].node ? controls[inp.key].node : el('select');
+          if (!sel.options.length) {
+            inp.options.forEach(function (o) {
+              var val = typeof o === 'string' ? o : o.value;
+              var opt = el('option', null, typeof o === 'string' ? o : o.label);
+              opt.value = val;
+              sel.appendChild(opt);
+            });
+          }
+          controls[inp.key] = { node: sel, get: function () { return sel.value; } };
+          inputsBox.appendChild(sel);
+        } else if (inp.type === 'image') {
+          var file = controls[inp.key] && controls[inp.key].node ? controls[inp.key].node : el('input');
+          file.type = 'file';
+          file.accept = 'image/png,image/jpeg,image/gif,image/webp,image/avif';
+          controls[inp.key] = { node: file, file: file };
+          inputsBox.appendChild(file);
+        } else {
+          var field = controls[inp.key] && controls[inp.key].node
+            ? controls[inp.key].node
+            : (inp.type === 'textarea' ? el('textarea') : el('input'));
+          if (field.tagName === 'INPUT') field.type = 'text';
+          if (inp.maxLength) field.maxLength = inp.maxLength;
+          controls[inp.key] = { node: field, get: function () { return field.value; } };
+          inputsBox.appendChild(field);
+        }
+      });
+    }
+    renderInputs();
+
+    var row = el('div', 'btn-row');
+    row.appendChild(button('Create preview', 'primary', function () {
+      var values = {};
+      var filePromises = [];
+      var uploads = {};
+      bp.inputs.forEach(function (inp) {
+        if (!inputActive(inp)) return;
+        var c = controls[inp.key];
+        if (!c) return;
+        if (c.file) {
+          if (c.file.files && c.file.files[0]) {
+            filePromises.push(readFileAsUpload(c.file.files[0]).then(function (u) { uploads[inp.key] = u; }));
+          }
+        } else {
+          values[inp.key] = c.get();
+        }
+      });
+      Promise.all(filePromises).then(function () {
+        var body = { blueprint: bp.key, variant: variantKey, values: values, uploads: uploads };
+        if (targetSelect) body.targetPage = targetSelect.value;
+        apiPost('/api/scaffold', body).then(function (r) {
+          if (!r.ok) { editorError(ed, r.error); return; }
+          clearMessage();
+          closeEditor();
+          if (r.created && r.created.file) currentPath = '/preview/' + r.created.file;
+          refreshState().then(reloadPreview);
+        });
+      }, function (e) { editorError(ed, e.message); });
+    }));
+    row.appendChild(button('Back', null, openAddMenu));
+    row.appendChild(button('Cancel', null, closeEditor));
+    ed.appendChild(row);
+  }
+
+  $('btn-add').addEventListener('click', openAddMenu);
+
   // ── Brand colors ─────────────────────────────────────────────
   function renderTokens() {
     var list = $('token-list');

@@ -1,0 +1,53 @@
+{
+  "name": "Content page",
+  "purpose": "A general written page — an About, a story, a policy, anything made of headings and paragraphs.",
+  "kind": "page",
+  "variants": [
+    { "key": "textOnly", "label": "Just the text" },
+    { "key": "withCta", "label": "Text, then a button inviting action" }
+  ],
+  "inputs": [
+    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20 },
+    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70 },
+    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160 },
+    { "key": "headerStyle", "label": "Header style", "type": "select", "required": true,
+      "options": [
+        { "value": "default", "label": "Dark band" },
+        { "value": "light", "label": "Light band" }
+      ] },
+    { "key": "body", "label": "Page text (leave a blank line between paragraphs)", "type": "textarea", "required": true, "maxLength": 4000 },
+    { "key": "ctaStatement", "label": "Closing line above the button", "type": "text", "required": true, "maxLength": 120, "variants": ["withCta"] },
+    { "key": "ctaLabel", "label": "Button text", "type": "text", "required": true, "maxLength": 30, "variants": ["withCta"] },
+    { "key": "ctaHref", "label": "Where the button goes (a page like contact.html, or a full URL)", "type": "text", "required": true, "maxLength": 200, "variants": ["withCta"] }
+  ],
+  "template": {
+    "textOnly": {
+      "navLabel": "{{menuLabel}}",
+      "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
+      "blocks": [
+        { "id": "header", "type": "page-header", "fields": {
+          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}"
+        } },
+        { "id": "body", "type": "text", "fields": {
+          "body": "{{body|paragraphs}}"
+        } }
+      ]
+    },
+    "withCta": {
+      "navLabel": "{{menuLabel}}",
+      "meta": { "title": "{{title}} | {{site.name}}", "description": "{{intro}}" },
+      "blocks": [
+        { "id": "header", "type": "page-header", "fields": {
+          "tag": "{{menuLabel}}", "heading": "{{title}}", "subhead": "{{intro}}", "variant": "{{headerStyle}}"
+        } },
+        { "id": "body", "type": "text", "fields": {
+          "body": "{{body|paragraphs}}"
+        } },
+        { "id": "cta", "type": "cta", "fields": {
+          "statement": "{{ctaStatement}}",
+          "button": { "label": "{{ctaLabel}}", "href": "{{ctaHref}}", "style": "primary" }
+        } }
+      ]
+    }
+  }
+}

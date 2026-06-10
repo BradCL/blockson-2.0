@@ -67,7 +67,7 @@ engine/
   serve.js              Owner-editor server (localhost; HTTP plumbing over lib/owner.js)
   sitemap.js            Edit-map inspection CLI
   new-client.js         Client scaffolder
-  _run-proofs.js        Proof suite (8 proofs)
+  _run-proofs.js        Proof suite (10 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -84,9 +84,13 @@ engine/
                         AND the safeTokens allowlist + token value guards (§9)
     owner.js            Owner-editor request handlers: candidate copy, pending change,
                         approve/discard/restore, publish (§13)
+    scaffold.js         Blueprint scaffolder — the only structural-addition path (§10)
     sitemap.js          Edit-map generator — compact per-client map of editable fields
   schema/
     content.schema.json JSON Schema (draft 2020-12) for content.json
+
+blueprints/             Developer-authored page/block layouts the owner may instantiate
+                        (one JSON file each; validated on load — see §10)
 
 themes/
   default/              Full theme: tokens.json + css/styles.css + js/main.js (shared base)
@@ -234,7 +238,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Eight proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Ten proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -247,8 +251,13 @@ owner-editor request handlers (§13), exercised directly: an edit writes only th
 candidate and rebuilds its annotated preview, the change card derives old → new from
 the resolved patch, a second edit is held while one is pending, approve writes live
 and produces annotation-free HTML, resolver guards hold on the UI path, and uploads
-stay candidate-side until approve and vanish on discard. All eight must
-pass on a clean tree.
+stay candidate-side until approve and vanish on discard, (9) the blueprint scaffolder
+(§10): the registry validates all shipped blueprints, invalid inputs are rejected with
+nothing written, ids stay unique site-wide under repeated instantiation, and every
+blueprint × variant builds clean, (10) scaffolding through the owner handlers: the new
+page lands annotated in the candidate only, the pending interlock covers edits and
+scaffolds both ways, and approve puts the page + nav entry + sitemap line live with no
+annotations and no ids. All ten must pass on a clean tree.
 
 ---
 
@@ -287,15 +296,45 @@ theme tokens. The design:
 
 ## 10. Structural Editing (v4)
 
-Structural changes (new pages and blocks) go through a dedicated scaffolder that
-instantiates developer-authored blueprints. Owners may only instantiate pre-validated
-blueprints; freeform structural editing remains developer work. Blueprint instantiation,
-like value editing, produces a CANDIDATE copy reviewed by the owner before the live site
-is touched.
+Structural changes (new pages and blocks) go through a dedicated scaffolder
+(`engine/lib/scaffold.js`) that instantiates developer-authored blueprints. Owners may
+only instantiate pre-validated blueprints; freeform structural editing remains developer
+work. Blueprint instantiation, like value editing, lands in the CANDIDATE copy, is
+rebuilt annotated (the full build is the acceptance gate), and waits for the owner's
+Approve — the instantiated candidate IS the preview; there are no mocked previews.
 
 `applyPatch` is intentionally NOT extended to cover structural changes — the container
-guard and forbidden-key guard must never be weakened. New structure arrives through a
-separate code path (see `engine/lib/scaffold.js`, Task 3).
+guard and forbidden-key guard must never be weakened. New structure arrives only through
+the scaffolder.
+
+A blueprint is one JSON file in `blueprints/` — `{ name, purpose, kind: "page"|"block",
+variants: [{key,label}], inputs: [{key, label, type: text|textarea|image|select,
+required?, maxLength?, pattern?, options?, variants?}], template: { <variantKey>:
+fragment } }` — whose template may use ONLY existing block types (checked against the
+block registry). Template strings carry `{{inputKey}}` placeholders, the builtins
+`{{site.name}}` / `{{site.contact.phone}}` / `{{site.contact.email}}` (so blueprints
+reuse the site's single source of truth instead of asking the owner to retype it), and
+`{{inputKey|paragraphs}}` to expand a textarea into a paragraph array. The header
+comment of `engine/lib/scaffold.js` is the authoritative format reference.
+
+Guarantees, enforced in code and proved by proofs 9–10:
+
+- **The registry is the gate.** `loadBlueprints()` schema-validates every file in
+  `blueprints/` on load; invalid files are excluded with named reasons and can never be
+  offered for instantiation. Adding a blueprint = dropping a JSON file in `blueprints/`
+  — zero changes to `scaffold.js` or any other code.
+- **Inputs are schema-validated** (type, required, maxLength, pattern, select options,
+  image-path shape), with HARD per-type length ceilings that a blueprint's own
+  `maxLength` may tighten but never exceed. Any failure: rejected with nothing written.
+- **Ids cannot collide.** Page slugs and block ids are slugified from the template's
+  hints and numeric-suffixed against everything already in the content — unique
+  site-wide under repeated instantiation of the same blueprint.
+- **Pages join the site fully**: a nav entry is added alongside the page; the sitemap
+  picks it up at build; the new blocks are click-to-editable in the annotated candidate
+  and carry no ids or annotations in the live build.
+
+Three blueprints ship — contact page, photo gallery page, generic content page — each
+with two layout variants.
 
 ---
 
@@ -374,6 +413,10 @@ exercises the handlers directly.
   the path itself); gallery image list → append/remove; brand colors → picker bound to
   `SAFE_TOKENS`, running the format + contrast guards live (`/api/token-check`) with
   the resolver's own plain-language explanation shown inline on rejection.
+- **Add… menu.** Structural additions ride the same panel: the menu lists the validated
+  blueprint registry by name + purpose, a form is generated from the chosen blueprint's
+  input schema (variant-scoped inputs included), and the instantiated candidate enters
+  the identical pending → Approve/Discard cycle (§10).
 - **Flow.** Edit → patch constructed deterministically → `applyPatch` on the candidate
   (every guard runs; UI input is untrusted input) → candidate rebuild (annotated;
   a failing build rolls the candidate back) → iframe refresh + change card whose

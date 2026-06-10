@@ -21,7 +21,9 @@
      GET  /preview/...           annotated candidate build (+ overlay in HTML)
      GET  /api/state             session state: pending card, tokens, pages
      GET  /api/field?...         describe one editable field (current value, editor kind)
+     GET  /api/blueprints        the validated blueprint registry (Add… menu)
      POST /api/edit              { patch, upload? }  → pending change
+     POST /api/scaffold          { blueprint, variant, values, uploads? } → pending change
      POST /api/token-check       { token, value }    → live guard run, no write
      POST /api/approve | /api/discard | /api/restore
 
@@ -181,6 +183,9 @@ async function handle(req, res) {
     if (pathname === '/api/state') {
       return sendJson(res, 200, owner.getState(session));
     }
+    if (pathname === '/api/blueprints') {
+      return sendJson(res, 200, owner.listBlueprints());
+    }
     if (pathname === '/api/field') {
       const q = url.searchParams;
       const ref = {
@@ -209,6 +214,7 @@ async function handle(req, res) {
 
     let r;
     if      (pathname === '/api/edit')        r = owner.applyEdit(session, body.patch, body.upload || null);
+    else if (pathname === '/api/scaffold')    r = owner.applyScaffold(session, body);
     else if (pathname === '/api/token-check') r = owner.checkToken(session, body.token, body.value);
     else if (pathname === '/api/approve')     r = owner.approve(session);
     else if (pathname === '/api/discard')     r = owner.discard(session);

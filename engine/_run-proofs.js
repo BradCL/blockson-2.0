@@ -11,6 +11,13 @@
 //             directly: edit → candidate-only write + annotated rebuild →
 //             approve → live write + clean live build; one-pending-change
 //             gate, resolver guards on the UI path, image upload, discard.
+// Proof 9:    blueprint scaffolder (engine/lib/scaffold.js): registry loads
+//             and validates all shipped blueprints; invalid inputs rejected
+//             with nothing written; ids unique site-wide under repeated
+//             instantiation; every blueprint × variant builds clean.
+// Proof 10:   scaffold through the owner handlers: candidate-only page add
+//             with annotations, pending interlock with edits, approve →
+//             page + nav entry live with no annotations and no ids.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -104,7 +111,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 8;
+const TOTAL = 10;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -420,6 +427,188 @@ console.log('\n═══ PROOF 8 — Owner-editor handlers, exercised directly: 
     console.log('       the resolved patch; a second edit is held until approve/discard; approve');
     console.log('       writes live + builds clean HTML; guards hold; uploads stay candidate-side');
     console.log('       until approve and vanish on discard.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 9 ─────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 9 — Scaffolder: schema-validated inputs, collision-proof ids, every blueprint builds ═══');
+{
+  const scaffold = require('./lib/scaffold');
+  const CLIENT = '__proof-scaffold';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const failures = [];
+
+  try {
+    // (a) Registry: the three shipped blueprints load and validate; nothing invalid.
+    const reg = scaffold.loadBlueprints();
+    const keys = reg.blueprints.map(b => b.key);
+    for (const want of ['contact-page', 'content-page', 'gallery-page']) {
+      if (!keys.includes(want)) failures.push(`registry is missing blueprint "${want}"`);
+    }
+    if (reg.invalid.length) failures.push(`registry reports invalid blueprints: ${JSON.stringify(reg.invalid)}`);
+    const bp = key => (reg.blueprints.find(b => b.key === key) || {}).blueprint;
+
+    // (b) Invalid inputs: every rejection leaves the content byte-identical.
+    const content = readContent('example-restaurant');
+    const orig = JSON.stringify(content);
+    const good = { menuLabel: 'Story', title: 'Our story', intro: 'How we started.', headerStyle: 'default', body: 'One.\n\nTwo.' };
+    const rejects = [
+      ['missing required input', scaffold.instantiate(content, bp('contact-page'), 'detailsOnly', { menuLabel: 'Contact' })],
+      ['over-length menu label', scaffold.instantiate(content, bp('content-page'), 'textOnly', { ...good, menuLabel: 'A label far too long for any menu bar' })],
+      ['pattern (http, not https)', scaffold.instantiate(content, bp('contact-page'), 'withForm',
+        { menuLabel: 'Contact', title: 'Reach us', intro: 'Say hello.', address: '1 Main St', formAction: 'http://insecure.example/f' })],
+      ['select value not offered', scaffold.instantiate(content, bp('content-page'), 'textOnly', { ...good, headerStyle: 'purple' })],
+      ['image path traversal', scaffold.instantiate(content, bp('gallery-page'), 'simple',
+        { menuLabel: 'Photos', title: 'Photos', intro: 'Pics.', albumTitle: 'Work', photo: '../../evil.png' })],
+      ['image wrong extension', scaffold.instantiate(content, bp('gallery-page'), 'simple',
+        { menuLabel: 'Photos', title: 'Photos', intro: 'Pics.', albumTitle: 'Work', photo: 'img/x.exe' })],
+      ['unknown variant', scaffold.instantiate(content, bp('content-page'), 'fancy', good)],
+      ['undeclared value key', scaffold.instantiate(content, bp('content-page'), 'textOnly', { ...good, hack: 'x' })],
+    ];
+    for (const [label, r] of rejects) {
+      if (r.ok) failures.push(`accepted what should be rejected: ${label}`);
+    }
+    if (JSON.stringify(content) !== orig) failures.push('a rejected instantiation modified the content');
+
+    // (c) Repeated instantiation: same name 12 times → unique slugs and
+    //     block ids site-wide, all in nav; then every blueprint × variant
+    //     into the same content; the full build accepts the result.
+    for (let i = 0; i < 12; i++) {
+      const r = scaffold.instantiate(content, bp('content-page'), 'textOnly', good);
+      if (!r.ok) { failures.push(`repeat ${i + 1} failed: ${r.errors.join('; ')}`); break; }
+    }
+    const more = [
+      ['contact-page', 'withForm', { menuLabel: 'Contact', title: 'Reach us', intro: 'Say hello.', address: '1 Main St', formAction: 'https://formspree.io/f/x' }],
+      ['contact-page', 'detailsOnly', { menuLabel: 'Visit', title: 'Find us', intro: 'Drop by.', address: '1 Main St' }],
+      ['gallery-page', 'banner', { menuLabel: 'Photos', title: 'Our work', intro: 'Pictures.', albumTitle: 'Recent', photo: 'img/a.jpg', bannerPhoto: 'img/b.jpg' }],
+      ['gallery-page', 'simple', { menuLabel: 'More photos', title: 'More work', intro: 'More pictures.', albumTitle: 'Older', photo: 'img/c.jpg' }],
+      ['content-page', 'withCta', { ...good, menuLabel: 'About', ctaStatement: 'Like what you read?', ctaLabel: 'Get in touch', ctaHref: 'contact.html' }],
+    ];
+    for (const [key, variant, values] of more) {
+      const r = scaffold.instantiate(content, bp(key), variant, values);
+      if (!r.ok) failures.push(`${key}/${variant} failed: ${r.errors.join('; ')}`);
+    }
+    const slugs = content.pages.map(p => p.slug);
+    if (new Set(slugs).size !== slugs.length) failures.push('page slugs collided');
+    const ids = [];
+    for (const p of content.pages) for (const b of p.blocks) ids.push(b.id);
+    if (new Set(ids).size !== ids.length) failures.push('block ids collided');
+    const storyNavs = content.site.nav.links.filter(l => l.label === 'Story');
+    if (storyNavs.length !== 12) failures.push(`expected 12 "Story" nav entries, found ${storyNavs.length}`);
+    const story = content.pages.find(p => p.slug === 'story');
+    if (!story || !Array.isArray(story.blocks[1].fields.body) || story.blocks[1].fields.body.length !== 2) {
+      failures.push('|paragraphs did not split the body into 2 paragraphs');
+    }
+
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const b = build(CLIENT);
+    if (!b.ok) failures.push(`full build rejected the scaffolded content:\n${b.out}`);
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', CLIENT), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — registry validates all 3 blueprints; 8 classes of bad input rejected with');
+    console.log('       content untouched; 12 same-name instantiations + every blueprint × variant');
+    console.log('       coexist with unique slugs and block ids, and the full build accepts the result.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 10 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candidate page → approve → live, no annotations ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-scaffold2';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+
+    const session = owner.createSession(CLIENT);
+    const livePages = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8')).pages.length;
+
+    // (a) Scaffold a gallery page into the CANDIDATE only.
+    const sc = owner.applyScaffold(session, {
+      blueprint: 'gallery-page', variant: 'simple',
+      values: { menuLabel: 'Photos', title: 'Our work in pictures', intro: 'A look at recent projects.', albumTitle: 'Recent work', photo: 'img/sample-1.jpg' },
+    });
+    if (!sc.ok) failures.push(`scaffold failed: ${sc.error}`);
+    else {
+      if (sc.created.slug !== 'photos') failures.push(`unexpected slug: ${sc.created.slug}`);
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (cand.pages.length !== livePages + 1) failures.push('candidate did not gain the page');
+      if (live.pages.length !== livePages) failures.push('LIVE gained the page before approve');
+      const ann = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__candidate__annotated', 'photos.html'), 'utf8');
+      if (!ann.includes('data-bk-block="photos-header"') || !ann.includes('data-bk-block="photos-albums"')) {
+        failures.push('the scaffolded candidate page is not annotated for click-to-edit');
+      }
+    }
+
+    // (b) The pending interlock covers both directions: no edit and no
+    //     second scaffold while a scaffold is pending.
+    const e = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'x' });
+    const sc2 = owner.applyScaffold(session, {
+      blueprint: 'content-page', variant: 'textOnly',
+      values: { menuLabel: 'About', title: 'About', intro: 'x', headerStyle: 'default', body: 'x' },
+    });
+    if (e.ok || sc2.ok) failures.push('the one-pending-change rule did not hold across edit/scaffold');
+
+    // (c) Approve: page + nav entry live; live HTML free of annotations and ids.
+    const a = owner.approve(session);
+    if (!a.ok) failures.push(`approve failed: ${a.error}`);
+    else {
+      const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if (!live2.pages.some(p => p.slug === 'photos')) failures.push('approved page missing from live content');
+      if (!live2.site.nav.links.some(l => l.label === 'Photos' && l.href === 'photos.html')) {
+        failures.push('nav entry missing from live content');
+      }
+      const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'photos.html'), 'utf8');
+      if (!html.includes('Our work in pictures')) failures.push('live page is missing its heading');
+      if (html.includes('data-bk-')) failures.push('live scaffolded page contains data-bk-*');
+      if (html.includes('photos-header') || html.includes('photos-albums') || html.includes('album-1')) {
+        failures.push('live scaffolded page leaks block/item ids');
+      }
+      const index = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!index.includes('photos.html')) failures.push('live nav does not link the new page');
+      const sitemap = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'sitemap.xml'), 'utf8');
+      if (!sitemap.includes('photos.html')) failures.push('sitemap.xml does not list the new page');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a blueprint page lands in the CANDIDATE with full click-to-edit');
+    console.log('       annotations; edits and further scaffolds are held while it is pending;');
+    console.log('       approve puts the page, its nav entry, and its sitemap line live with no');
+    console.log('       annotations and no ids in the HTML.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
