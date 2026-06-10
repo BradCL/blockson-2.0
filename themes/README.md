@@ -12,8 +12,7 @@ here instead of in the preset files.)
 | Key | Role | Safe-token? |
 |-----|------|-------------|
 | `cssBase` | Which theme's css/ to copy when this theme has none | no (meta) |
-| `googleFontsUrl` | Real Google Fonts URL for the two families | no (meta) |
-| `font-heading`, `font-body` | Type families | no |
+| `font-heading`, `font-body` | Type stacks (self-contained — see below) | no |
 | `color-bg`, `color-surface` | Page and card backgrounds | no |
 | `color-text`, `color-muted` | Body and secondary text | no |
 | `color-primary` | Brand color: accents, links, icons, stars | **yes** |
@@ -30,6 +29,15 @@ here instead of in the preset files.)
 break readability or layout, not just taste. Editable backgrounds are additionally
 protected by a contrast guard: a `set-token` value too close to its theme-controlled
 counterpart (e.g. `btn-primary-bg` vs `btn-primary-text`) is rejected at the resolver.
+
+**Local-first (hard rule).** Built sites reference no external network resources —
+no CDN fonts, no remote scripts, no `@import` of anything off-site. Font tokens are
+self-contained stacks: the preset's signature family first (it applies wherever it is
+installed or self-hosted), followed by system fallbacks matching the preset's character
+(serif presets fall back to Georgia, condensed ones to Arial Narrow, the rest to the
+platform sans). A theme that must render a specific face ships the font files in its
+own `css/` directory with `@font-face` — never a remote URL. (`googleFontsUrl` was
+removed from presets in v4; the build ignores it if a stale preset still carries it.)
 
 ## The presets
 

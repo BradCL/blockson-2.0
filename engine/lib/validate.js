@@ -76,13 +76,9 @@ function fallbackValidate(content) {
     errors.push('pages must be a non-empty array');
   }
 
-  const VALID_TYPES = new Set([
-    'hero','page-header','text','card-grid','gallery','testimonials',
-    'list-panel','service-area','contact-cards','contact-info','contact-form','cta',
-    // v2 blocks
-    'pricing-table','team-grid','faq','hours-table','before-after',
-    'stats-bar','process-steps','video-embed','booking-cta'
-  ]);
+  // Derived from the block registry — the single source of truth for what
+  // block types exist — so the fallback can never drift from the engine.
+  const VALID_TYPES = new Set(Object.keys(require('../blocks/_registry')));
 
   (content.pages || []).forEach((page, pi) => {
     if (!page.slug) errors.push(`pages[${pi}].slug is required`);

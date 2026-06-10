@@ -7,12 +7,17 @@
     { "key": "detailsOnly", "label": "Details only, with a call-us banner" }
   ],
   "inputs": [
-    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20 },
-    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70 },
-    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160 },
-    { "key": "address", "label": "Street address", "type": "text", "required": true, "maxLength": 120 },
+    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20,
+      "example": "Contact" },
+    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70,
+      "example": "Get in touch" },
+    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160,
+      "example": "Call, email, or send us a message — we reply within one business day." },
+    { "key": "address", "label": "Street address", "type": "text", "required": true, "maxLength": 120,
+      "example": "12 Main Street, Springfield" },
     { "key": "formAction", "label": "Form endpoint URL", "type": "text", "required": true, "maxLength": 200,
       "pattern": "^https://", "hint": "a form service URL starting with https:// (e.g. from formspree.io)",
+      "example": "https://formspree.io/f/your-form-id",
       "variants": ["withForm"] }
   ],
   "template": {

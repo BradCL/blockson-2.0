@@ -10,6 +10,7 @@
     "build:restaurant": "node engine/build.js example-restaurant",
     "build:all": "node engine/build.js example-contractor && node engine/build.js example-league && node engine/build.js example-restaurant",
     "serve": "node engine/serve.js",
+    "blueprints:check": "node engine/blueprints-check.js",
     "proofs": "node engine/_run-proofs.js",
     "test": "node engine/_run-proofs.js"
   },

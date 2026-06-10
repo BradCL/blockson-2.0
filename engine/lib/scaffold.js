@@ -14,11 +14,21 @@
        "kind":    "page" | "block",
        "variants": [ { "key": "with-form", "label": "…" }, … ],
        "inputs":  [ { "key", "label", "type": "text"|"textarea"|"image"|"select",
-                      "required"?, "maxLength"?, "pattern"?,
+                      "required"?, "maxLength"?, "pattern"?, "hint"?,
                       "options"?: [{value,label}|string …]   (select only)
-                      "variants"?: ["with-form"]  (active only for these) } … ],
+                      "variants"?: ["with-form"]  (active only for these)
+                      "example"?: a value passing this input's own
+                        constraints — used by the authoring validator and
+                        the demo gallery to instantiate the blueprint.
+                        Required in practice when "pattern" is declared
+                        (no generic value can satisfy an arbitrary regex). } … ],
        "template": { "<variantKey>": <fragment>, … }
      }
+
+   Validation is STRICT: unknown keys anywhere in a blueprint are
+   rejected with named reasons. A typo like "requried" would otherwise
+   silently make an input optional — in the two-ledger model a rejected
+   blueprint is an acceptable UX cost; a silently weakened one is not.
 
    A page fragment is { navLabel, meta:{title,description}, blocks:[…] };
    a block fragment is one { id, type, fields } object. Template block
@@ -103,6 +113,41 @@ function collectBlockIds(content) {
 
 function optionValue(opt) { return typeof opt === 'string' ? opt : opt && opt.value; }
 
+// Allowed keys per object shape — anything else is rejected by name.
+const BP_KEYS       = new Set(['name', 'purpose', 'kind', 'variants', 'inputs', 'template']);
+const VARIANT_KEYS  = new Set(['key', 'label']);
+const INPUT_KEYS    = new Set(['key', 'label', 'type', 'required', 'maxLength', 'pattern',
+                               'hint', 'options', 'variants', 'example']);
+const PAGE_FRAG_KEYS = new Set(['navLabel', 'meta', 'blocks']);
+const META_KEYS     = new Set(['title', 'description', 'ogImage']);
+const BLOCK_KEYS    = new Set(['id', 'type', 'fields']);
+
+function checkKeys(obj, allowed, where, errors) {
+  for (const k of Object.keys(obj)) {
+    if (!allowed.has(k)) errors.push(`${where}: unknown key "${k}"`);
+  }
+}
+
+/* Check one non-empty TRIMMED value against an input's declared
+   constraints (length cap incl. the hard ceiling, pattern, image-path
+   shape, select options). Returns null when valid, else a plain-language
+   error. Shared by validateInputs (owner values) and validateBlueprint
+   (declared examples) so the two can never diverge. */
+function validateValue(inp, v) {
+  const cap = Math.min(inp.maxLength != null ? inp.maxLength : DEFAULT_MAX[inp.type], HARD_MAX[inp.type]);
+  if (v.length > cap) return `${inp.label} is too long (${v.length} characters — the limit is ${cap})`;
+  if (inp.pattern && !(new RegExp(inp.pattern)).test(v)) {
+    return `${inp.label} doesn't look right${inp.hint ? ` — ${inp.hint}` : ''}`;
+  }
+  if (inp.type === 'image' && !IMG_RE.test(v)) {
+    return `${inp.label} must be an image in the site's img folder (img/name.jpg)`;
+  }
+  if (inp.type === 'select' && !(inp.options || []).map(optionValue).includes(v)) {
+    return `${inp.label}: "${v}" is not one of the offered choices`;
+  }
+  return null;
+}
+
 // Inputs active for one variant (no `variants` key = active everywhere).
 function activeInputs(bp, variantKey) {
   return (bp.inputs || []).filter(i => !Array.isArray(i.variants) || i.variants.includes(variantKey));
@@ -128,6 +173,7 @@ function validateTemplateBlock(block, where, errors) {
   if (!block || typeof block !== 'object' || Array.isArray(block)) {
     errors.push(`${where}: block is not an object`); return;
   }
+  checkKeys(block, BLOCK_KEYS, where, errors);
   if (typeof block.id !== 'string' || !HINT_RE.test(block.id)) {
     errors.push(`${where}: block "id" must be a lowercase slug hint (got ${JSON.stringify(block.id)})`);
   }
@@ -147,6 +193,7 @@ function validateBlueprint(bp) {
   if (!bp || typeof bp !== 'object' || Array.isArray(bp)) {
     return { ok: false, errors: ['blueprint is not an object'] };
   }
+  checkKeys(bp, BP_KEYS, 'blueprint', errors);
   if (typeof bp.name !== 'string' || !bp.name.trim()) errors.push('"name" must be a non-empty string');
   if (typeof bp.purpose !== 'string' || !bp.purpose.trim()) errors.push('"purpose" must be a non-empty string');
   if (!KINDS.includes(bp.kind)) errors.push(`"kind" must be one of ${KINDS.join('|')}`);
@@ -157,6 +204,7 @@ function validateBlueprint(bp) {
     errors.push('"variants" must be a non-empty array');
   } else {
     bp.variants.forEach((v, i) => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) checkKeys(v, VARIANT_KEYS, `variants[${i}]`, errors);
       if (!v || typeof v.key !== 'string' || !KEY_RE.test(v.key)) errors.push(`variants[${i}]: "key" must be an identifier`);
       else if (variantKeys.has(v.key)) errors.push(`variants[${i}]: duplicate key "${v.key}"`);
       else variantKeys.add(v.key);
@@ -173,17 +221,31 @@ function validateBlueprint(bp) {
     bp.inputs.forEach((inp, i) => {
       const where = `inputs[${i}]`;
       if (!inp || typeof inp !== 'object') { errors.push(`${where}: not an object`); return; }
+      checkKeys(inp, INPUT_KEYS, where, errors);
       if (typeof inp.key !== 'string' || !KEY_RE.test(inp.key)) errors.push(`${where}: "key" must be an identifier`);
       else if (inputKeys.has(inp.key)) errors.push(`${where}: duplicate key "${inp.key}"`);
       else { inputKeys.add(inp.key); inputsByKey.set(inp.key, inp); }
       if (typeof inp.label !== 'string' || !inp.label.trim()) errors.push(`${where}: "label" must be a non-empty string`);
       if (!INPUT_TYPES.includes(inp.type)) errors.push(`${where}: "type" must be one of ${INPUT_TYPES.join('|')}`);
+      if (inp.required != null && typeof inp.required !== 'boolean') {
+        errors.push(`${where}: "required" must be true or false`);
+      }
+      if (inp.hint != null && typeof inp.hint !== 'string') errors.push(`${where}: "hint" must be a string`);
       if (inp.maxLength != null && (!Number.isInteger(inp.maxLength) || inp.maxLength < 1)) {
         errors.push(`${where}: "maxLength" must be a positive integer`);
       }
+      let patternOk = true;
       if (inp.pattern != null) {
-        if (typeof inp.pattern !== 'string') errors.push(`${where}: "pattern" must be a string`);
-        else { try { new RegExp(inp.pattern); } catch (e) { errors.push(`${where}: "pattern" is not a valid regex`); } }
+        if (typeof inp.pattern !== 'string') { patternOk = false; errors.push(`${where}: "pattern" must be a string`); }
+        else { try { new RegExp(inp.pattern); } catch (e) { patternOk = false; errors.push(`${where}: "pattern" is not a valid regex`); } }
+      }
+      if (inp.example != null) {
+        if (typeof inp.example !== 'string' || !inp.example.trim()) {
+          errors.push(`${where}: "example" must be a non-empty string`);
+        } else if (INPUT_TYPES.includes(inp.type) && patternOk) {
+          const bad = validateValue(inp, inp.example.trim());
+          if (bad) errors.push(`${where}: "example" fails the input's own constraints — ${bad}`);
+        }
       }
       if (inp.type === 'select') {
         const vals = Array.isArray(inp.options) ? inp.options.map(optionValue) : null;
@@ -212,9 +274,13 @@ function validateBlueprint(bp) {
       const where = `template.${k}`;
       if (bp.kind === 'page') {
         if (!frag || typeof frag !== 'object' || Array.isArray(frag)) { errors.push(`${where}: not an object`); continue; }
+        checkKeys(frag, PAGE_FRAG_KEYS, where, errors);
         if (typeof frag.navLabel !== 'string' || !frag.navLabel.trim()) errors.push(`${where}: "navLabel" must be a non-empty string`);
         if (!frag.meta || typeof frag.meta.title !== 'string' || typeof frag.meta.description !== 'string') {
           errors.push(`${where}: "meta" must carry string "title" and "description"`);
+        }
+        if (frag.meta && typeof frag.meta === 'object' && !Array.isArray(frag.meta)) {
+          checkKeys(frag.meta, META_KEYS, `${where}.meta`, errors);
         }
         if (!Array.isArray(frag.blocks) || frag.blocks.length === 0) {
           errors.push(`${where}: "blocks" must be a non-empty array`);
@@ -279,22 +345,10 @@ function validateInputs(bp, variantKey, rawValues) {
     if (v === undefined || v === null) v = '';
     if (typeof v !== 'string') { errors.push(`${inp.label}: must be text`); continue; }
     v = v.trim();
-    const cap = Math.min(inp.maxLength != null ? inp.maxLength : DEFAULT_MAX[inp.type], HARD_MAX[inp.type]);
     if (inp.required && v === '') { errors.push(`${inp.label} is required`); continue; }
-    if (v.length > cap) { errors.push(`${inp.label} is too long (${v.length} characters — the limit is ${cap})`); continue; }
     if (v !== '') {
-      if (inp.pattern && !(new RegExp(inp.pattern)).test(v)) {
-        errors.push(`${inp.label} doesn't look right${inp.hint ? ` — ${inp.hint}` : ''}`);
-        continue;
-      }
-      if (inp.type === 'image' && !IMG_RE.test(v)) {
-        errors.push(`${inp.label} must be an image in the site's img folder (img/name.jpg)`);
-        continue;
-      }
-      if (inp.type === 'select' && !(inp.options || []).map(optionValue).includes(v)) {
-        errors.push(`${inp.label}: "${v}" is not one of the offered choices`);
-        continue;
-      }
+      const bad = validateValue(inp, v);
+      if (bad) { errors.push(bad); continue; }
     }
     values[inp.key] = v;
   }

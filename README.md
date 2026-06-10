@@ -65,9 +65,11 @@ Safety is layered, in code, never by trusting any external input:
 ## Tokens, themes, and `themeOverrides`
 
 Each theme is a `themes/<name>/tokens.json` — a flat map of CSS custom property names
-to values (plus `cssBase` naming the stylesheet it rides on, and `googleFontsUrl`). At
+to values (plus `cssBase` naming the stylesheet it rides on). At
 build time the preset is merged with the client's optional `site.themeOverrides` map and
-injected into every page as a `:root { … }` block. The shared stylesheet references
+injected into every page as a `:root { … }` block. Built sites are local-first:
+no CDN fonts or other external resources — font tokens are self-contained stacks
+(see [themes/README.md](themes/README.md)). The shared stylesheet references
 tokens via `var(--token-name)`, so one proven CSS file serves every theme.
 
 **Selecting a preset:** set `site.theme` in `content.json` to the preset folder name.
@@ -111,6 +113,13 @@ v2: `pricing-table`, `team-grid`, `faq`, `hours-table`, `before-after`, `stats-b
 `process-steps`, `video-embed`, `booking-cta`
 
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
+
+Page layouts owners can instantiate themselves are **blueprints** (`blueprints/`) —
+recombinations of these block types behind a validated input form. The complete
+authoring contract is [BLUEPRINT_AUTHORING.md](BLUEPRINT_AUTHORING.md); validate with
+`node engine/validate-blueprint.js <file>` and `npm run blueprints:check` (which also
+regenerates the `clients/blueprint-gallery/` demo client — the visual gallery and
+regression corpus).
 
 ---
 

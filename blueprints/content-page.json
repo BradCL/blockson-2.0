@@ -7,18 +7,26 @@
     { "key": "withCta", "label": "Text, then a button inviting action" }
   ],
   "inputs": [
-    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20 },
-    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70 },
-    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160 },
+    { "key": "menuLabel", "label": "Menu label", "type": "text", "required": true, "maxLength": 20,
+      "example": "Our story" },
+    { "key": "title", "label": "Page heading", "type": "text", "required": true, "maxLength": 70,
+      "example": "How we got here" },
+    { "key": "intro", "label": "One-sentence introduction (also shown to search engines)", "type": "textarea", "required": true, "maxLength": 160,
+      "example": "The story of how a one-truck operation became a local fixture." },
     { "key": "headerStyle", "label": "Header style", "type": "select", "required": true,
       "options": [
         { "value": "default", "label": "Dark band" },
         { "value": "light", "label": "Light band" }
-      ] },
-    { "key": "body", "label": "Page text (leave a blank line between paragraphs)", "type": "textarea", "required": true, "maxLength": 4000 },
-    { "key": "ctaStatement", "label": "Closing line above the button", "type": "text", "required": true, "maxLength": 120, "variants": ["withCta"] },
-    { "key": "ctaLabel", "label": "Button text", "type": "text", "required": true, "maxLength": 30, "variants": ["withCta"] },
-    { "key": "ctaHref", "label": "Where the button goes (a page like contact.html, or a full URL)", "type": "text", "required": true, "maxLength": 200, "variants": ["withCta"] }
+      ],
+      "example": "default" },
+    { "key": "body", "label": "Page text (leave a blank line between paragraphs)", "type": "textarea", "required": true, "maxLength": 4000,
+      "example": "We started small, with one truck and a borrowed ladder.\n\nTwenty years later the trucks are newer, but the promise is the same: do the job right, charge what was quoted, and leave the site cleaner than we found it." },
+    { "key": "ctaStatement", "label": "Closing line above the button", "type": "text", "required": true, "maxLength": 120, "variants": ["withCta"],
+      "example": "Like what you've read?" },
+    { "key": "ctaLabel", "label": "Button text", "type": "text", "required": true, "maxLength": 30, "variants": ["withCta"],
+      "example": "Get in touch" },
+    { "key": "ctaHref", "label": "Where the button goes (a page like contact.html, or a full URL)", "type": "text", "required": true, "maxLength": 200, "variants": ["withCta"],
+      "example": "contact.html" }
   ],
   "template": {
     "textOnly": {

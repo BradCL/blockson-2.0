@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all eight end-to-end proofs in sequence and prints results.
+// Runs all eleven end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -18,6 +18,12 @@
 // Proof 10:   scaffold through the owner handlers: candidate-only page add
 //             with annotations, pending interlock with edits, approve →
 //             page + nav entry live with no annotations and no ids.
+// Proof 11:   blueprint authoring kit (engine/lib/bpcheck.js + the
+//             validate-blueprint / blueprints-check CLIs): every shipped
+//             blueprint passes the acceptance pipeline; the committed demo
+//             gallery client matches deterministic regeneration (stale =
+//             fail); the live gallery build is annotation/id free; a
+//             known-bad blueprint fails the CLI with named reasons.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -111,7 +117,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 10;
+const TOTAL = 11;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -609,6 +615,100 @@ console.log('\n═══ PROOF 10 — Scaffold through the owner handlers: candi
     console.log('       annotations; edits and further scaffolds are held while it is pending;');
     console.log('       approve puts the page, its nav entry, and its sitemap line live with no');
     console.log('       annotations and no ids in the HTML.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 11 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 11 — Authoring kit: every blueprint validates, the demo gallery is fresh, a bad blueprint fails with reasons ═══');
+{
+  const bpcheck = require('./lib/bpcheck');
+  const failures = [];
+  const galleryFile = path.join(ROOT, 'clients', bpcheck.GALLERY_CLIENT, 'content.json');
+  const badFile = path.join(ROOT, 'dist', '__proof-bad-blueprint.json');
+
+  const runNode = (args) => {
+    const r = spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
+    return { status: r.status, out: ((r.stdout || '') + (r.stderr || '')) };
+  };
+
+  try {
+    // (a) The whole registry passes the acceptance pipeline AND the demo
+    //     gallery regenerates byte-identically to the committed file —
+    //     a contributor who adds/changes a blueprint without rerunning
+    //     `npm run blueprints:check` (and committing) fails here.
+    const before = fs.existsSync(galleryFile) ? fs.readFileSync(galleryFile, 'utf8') : null;
+    const check = runNode(['engine/blueprints-check.js']);
+    if (check.status !== 0) failures.push(`blueprints:check exited ${check.status}:\n${check.out.slice(-1500)}`);
+    const after = fs.readFileSync(galleryFile, 'utf8');
+    if (before === null) failures.push('clients/blueprint-gallery/content.json was not committed');
+    else if (before !== after) {
+      failures.push('demo gallery is STALE — run `npm run blueprints:check` and commit clients/blueprint-gallery/content.json');
+    }
+
+    // (b) The gallery is the regression corpus: one page per blueprint ×
+    //     variant, plus index, all built live with no annotations and no
+    //     id attributes for the created blocks.
+    const demo = bpcheck.demoContent();
+    if (!demo.ok) failures.push(`demoContent failed: ${demo.errors.join('; ')}`);
+    else {
+      if (JSON.stringify(demo.content, null, 2) + '\n' !== after) {
+        failures.push('regenerated gallery content does not match the file blueprints:check wrote');
+      }
+      const distDir = path.join(ROOT, 'dist', bpcheck.GALLERY_CLIENT);
+      for (const c of demo.created) {
+        const p = path.join(distDir, c.file);
+        if (!fs.existsSync(p)) { failures.push(`gallery build is missing ${c.file} (${c.blueprint}/${c.variant})`); continue; }
+        const html = fs.readFileSync(p, 'utf8');
+        if (html.includes('data-bk-')) failures.push(`live gallery ${c.file} contains data-bk-*`);
+        for (const id of c.blockIds) {
+          if (html.includes(`id="${id}"`)) failures.push(`live gallery ${c.file} leaks block id "${id}"`);
+        }
+      }
+      const reg = require('./lib/scaffold').loadBlueprints();
+      const variantCount = reg.blueprints.reduce((n, b) => n + b.blueprint.variants.length, 0);
+      if (demo.created.length !== variantCount) {
+        failures.push(`gallery has ${demo.created.length} instantiations, expected ${variantCount} (every blueprint × variant)`);
+      }
+    }
+
+    // (c) The single-file CLI passes a shipped blueprint…
+    const good = runNode(['engine/validate-blueprint.js', path.join('blueprints', 'contact-page.json')]);
+    if (good.status !== 0) failures.push(`validate-blueprint rejected a shipped blueprint:\n${good.out.slice(-800)}`);
+
+    // (d) …and fails a known-bad one (unknown block type, undeclared
+    //     placeholder, unknown key) with each reason NAMED. The bad file
+    //     lives under dist/ — never inside the scanned blueprints/ dir.
+    fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
+    fs.writeFileSync(badFile, JSON.stringify({
+      name: 'Bad blueprint', purpose: 'Must fail the validator', kind: 'page', surprise: true,
+      variants: [{ key: 'only', label: 'Only layout' }],
+      inputs: [{ key: 'title', label: 'Title', type: 'text', required: true }],
+      template: { only: {
+        navLabel: '{{title}}',
+        meta: { title: '{{title}}', description: 'x' },
+        blocks: [{ id: 'main', type: 'carousel', fields: { heading: '{{title}}', oops: '{{undeclared}}' } }],
+      } },
+    }, null, 2), 'utf8');
+    const bad = runNode(['engine/validate-blueprint.js', badFile]);
+    if (bad.status === 0) failures.push('validate-blueprint PASSED a known-bad blueprint');
+    for (const named of ['unknown block type "carousel"', 'unknown key "surprise"', '{{undeclared}}']) {
+      if (!bad.out.includes(named)) failures.push(`bad-blueprint output does not name the reason: ${named}`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(badFile, { force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — every shipped blueprint clears the acceptance pipeline (schema → sample');
+    console.log('       instantiation → full build → invariant checks); the committed demo gallery');
+    console.log('       matches deterministic regeneration and its live build carries no annotations');
+    console.log('       or id attributes; a known-bad blueprint fails the CLI with named reasons.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

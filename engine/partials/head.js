@@ -2,12 +2,11 @@
 
 const { esc } = require('../lib/escape');
 
-// Fallback font URLs when no tokens.json is present (backwards compatibility).
-const THEME_FONTS = {
-  default: 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap',
-  clean:   'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:ital,wght@0,400;0,500;1,400&display=swap',
-  warm:    'https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Nunito+Sans:ital,wght@0,400;0,500;1,400&display=swap',
-};
+/* LOCAL-FIRST: built pages reference no external network resources —
+   no CDN fonts, no remote scripts. Font tokens are self-contained
+   stacks; a theme that wants a specific face ships it in its own css/
+   via @font-face. (Remote Google Fonts links were removed in v4 to
+   honor this invariant; tokens may no longer declare googleFontsUrl.) */
 
 module.exports = function head(page, site, tokens) {
   const title       = esc(page.meta.title);
@@ -17,9 +16,6 @@ module.exports = function head(page, site, tokens) {
     ? `${site.baseUrl}/${page.meta.ogImage}`
     : (site.logo && site.logo.black ? `${site.baseUrl}/${site.logo.black}` : '');
   const favicon     = site.logo.favicon;
-  const fontUrl     = (tokens && tokens.googleFontsUrl)
-    || THEME_FONTS[site.theme || 'default']
-    || THEME_FONTS.default;
 
   const rootBlock = tokens
     ? buildRootBlock(tokens)
@@ -42,17 +38,14 @@ module.exports = function head(page, site, tokens) {
   <!-- Favicon -->
   <link rel="icon" href="${esc(favicon)}">
 
-  <!-- Google Fonts (preconnect avoids render-blocking @import in CSS) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="${fontUrl}">
-
   <!-- Theme stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
 ${rootBlock}</head>`;
 };
 
 function buildRootBlock(tokens) {
+  // googleFontsUrl is filtered for backward compatibility with stale
+  // third-party presets — it must not surface as a custom property.
   const entries = Object.entries(tokens)
     .filter(([k]) => k !== 'googleFontsUrl' && k !== 'cssBase')
     .map(([k, v]) => `    --${k}: ${v};`)
