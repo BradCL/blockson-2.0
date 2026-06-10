@@ -206,8 +206,9 @@ pairs with Before/After badges — no slider JS to break.
 - `tag?`, `heading?`
 - `pairs` Repeats: `{id, title?, before image, after image, caption?}`
 CSS: `.before-after`, `.ba-grid`, `.ba-pair`, `.ba-images`, `.ba-side`, `.ba-label`.
-**Maintenance:** titles and captions editable by item id. Images: developer (filenames
-the owner hasn't confirmed are a hard-stop in AGENT_INSTRUCTIONS).
+**Maintenance:** titles, captions, and the before/after images editable by item id via
+the click-to-edit editor (image fields use the file picker); adding or removing pairs
+is developer work.
 
 ### `stats-bar`
 2–4 large numbers with labels ("14 years in business", "2,400 jobs done"). Values are

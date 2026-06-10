@@ -26,9 +26,12 @@ The engine exists to support a two-tier maintenance model:
 - **Setup tier** (a developer, using full tooling): defines clients, assembles pages from
   blocks, can edit anything.
 - **Maintenance tier** (owner, via click-to-edit UI or direct patch CLI): edits *only
-  existing values* inside `content.json`, plus the curated safe-token allowlist (§9).
-  It never adds, removes, or reorders blocks, and never touches engine code, CSS, JS,
-  or the build script.
+  existing values* inside `content.json`, plus the curated safe-token allowlist (§9),
+  and may instantiate developer-blessed **blueprints** — new pages recombining
+  existing block types — through the scaffolder (§10). It never reorders existing
+  blocks, never authors freeform structure, and never touches engine code, CSS, JS,
+  or the build script. The structural-edit policy in one line: **owners instantiate
+  blessed blueprints; freeform structure remains developer work.**
 
 Every write, regardless of origin, passes through `applyPatch` and a candidate build
 before touching the live site. The owner sees a preview and issues an explicit Approve.
@@ -135,6 +138,8 @@ BLUEPRINT_AUTHORING.md  The complete, self-sufficient contract for authoring a
 THEME_AUTHORING.md      The complete contract for contributing a theme (required
                         tokens, hard rules, contrast pairs, coverage)
 CONTRIBUTING.md         The three contribution lanes and their review bar
+OPERATOR.md             Developer deploy guide: hosting, owner-config.json,
+                        publish/rollback story (§13)
 SPEC.md                 This file
 ```
 
@@ -435,18 +440,41 @@ The library is self-serve. Three pieces, proved by proof 11:
 
 ## 11. Optional Model Seam
 
-The patch pipeline is the permanent attachment point for an optional copy-assist model
-tier. A future model tier would:
-1. Receive the edit map from `engine/lib/sitemap.js` (`buildEditMap` / `renderEditMap`).
-2. Produce a patch object conforming to one of the shapes in §8.1.
-3. Pass it to `applyPatch` — the same resolver the UI uses — with no changes to the
-   allowlist, the guards, or the build.
+The owner-editor request handlers (`engine/lib/owner.js`, §13) are the permanent
+attachment point for an optional copy-assist model tier, with no change to the
+allowlist, the guards, or the build. Every place such a tier would attach already
+exists and is exercised today — by the click-to-edit UI for the human path, and by
+proofs 8 and 10 for the handler path directly:
 
-No model-specific code belongs in the active runtime. The archived modules in `attic/`
-(`repair.js` — near-miss normalizer, `patch-schema.js` — grammar-constrained schema
-builder, `triage.js` — request pre-filter, `AGENT_INSTRUCTIONS.md` — model operating
-manual) document the v3.1 approach and are the natural starting point for any future
-integration.
+1. **Read the editable surface.** `engine/lib/sitemap.js` (`buildEditMap` for a
+   structured view, `renderEditMap` for a text outline) for content fields and
+   `SAFE_TOKENS`; `owner.listBlueprints()` (`GET /api/blueprints` over HTTP) for the
+   structural menu — name, purpose, variants, and input schema of every blessed
+   blueprint.
+2. **Produce a content patch.** One of the shapes in §8.1, addressed by the stable
+   ids the edit map prints. No other write surface exists.
+3. **Produce a structural request.** `{ blueprint, variant, values, uploads? }`,
+   validated by the same `validateInputs` (§10) every Add… submission goes through —
+   the model's structural vocabulary is exactly the blueprint registry, never
+   freeform HTML/JSON.
+4. **Apply it.** `owner.applyEdit` / `owner.applyScaffold` — the exact functions
+   `engine/serve.js` calls for a human. Same guards, same candidate build, same
+   one-pending-change interlock; a model-produced change is indistinguishable, at
+   every layer below this one, from a UI-produced change.
+5. **Approve.** Either left to the owner (model drafts, human confirms via the
+   pending-change card) or, for a fully autonomous mode, `owner.approve()` itself —
+   still gated by the configured publish step (OPERATOR.md §5/§7) and reversible via
+   `owner.restore()`.
+
+No model-specific code belongs in the active runtime; nothing above requires it. The
+archived v3.1 modules in `attic/` (`repair.js` — near-miss normalizer,
+`patch-schema.js` — grammar-constrained schema builder, `triage.js` — request
+pre-filter, `AGENT_INSTRUCTIONS.md` — model operating manual) document the previous
+in-runtime approach, in which the model's output had to be repaired and triaged
+because it could name fields that didn't exist; the v4 seam instead bounds the
+model's vocabulary to ids and blueprints the registry already validated, which is
+why none of those modules are needed for a future integration — they remain only as
+a reference.
 
 ---
 

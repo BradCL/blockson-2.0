@@ -37,7 +37,9 @@ node engine/build.js example-contractor
 ```
 
 Deploy the contents of `dist/<client-name>/` to any static host (GitHub Pages,
-Netlify, Cloudflare Pages, an S3 bucket, etc.).
+Netlify, Cloudflare Pages, an S3 bucket, etc.). For connecting a client repo to a
+host, per-client editor configuration, and the publish/rollback story, see
+[OPERATOR.md](OPERATOR.md).
 
 ---
 
@@ -45,12 +47,20 @@ Netlify, Cloudflare Pages, an S3 bucket, etc.).
 
 | Tier | Who | Can do |
 |------|-----|--------|
-| **Setup** | Developer with full tooling | Define clients, add pages, add/remove blocks, change the engine, update CSS/JS, choose themes |
-| **Maintenance** | Owner (via click-to-edit UI) or a patch applied directly | Edit _values_ inside `content.json`, plus a curated allowlist of brand-color theme tokens — no structural changes, ever |
+| **Setup** | Developer with full tooling | Define clients, write new block types, change the engine, update CSS/JS, author themes and blueprints |
+| **Maintenance** | Owner, via the click-to-edit editor (`engine/serve.js`) or a patch applied directly | Edit _values_ inside `content.json`, adjust a curated allowlist of brand-color theme tokens, and instantiate developer-blessed **blueprints** (new pages from `blueprints/`) |
 
 Every write, regardless of origin, passes through `applyPatch` (the write-allowlist
 resolver in `engine/lib/patch.js`) and a candidate build before touching the live
 site. The owner always sees a preview and issues an explicit Approve.
+
+**Structural-edit policy:** owners may instantiate blessed blueprints — that's the
+entire structural surface available to the maintenance tier. Freeform structural
+editing (new block types, hand-built page layouts, anything not expressible as a
+blueprint) remains developer work. `applyPatch` itself is never extended to cover
+structure; blueprint instantiation is a separate, dedicated path
+(`engine/lib/scaffold.js`, §10 of SPEC.md) with its own validation and its own
+candidate/Approve cycle.
 
 Safety is layered, in code, never by trusting any external input:
 1. `engine/lib/patch.js` — the write allowlist, the single source of truth: forbidden
@@ -117,7 +127,8 @@ v2: `pricing-table`, `team-grid`, `faq`, `hours-table`, `before-after`, `stats-b
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
 
 Page layouts owners can instantiate themselves are **blueprints** (`blueprints/`) —
-recombinations of these block types behind a validated input form. The complete
+recombinations of these block types behind a validated input form. Owners instantiate
+them through the click-to-edit editor's **Add…** menu (below). The complete
 authoring contract is [BLUEPRINT_AUTHORING.md](BLUEPRINT_AUTHORING.md); validate with
 `node engine/validate-blueprint.js <file>` and `npm run blueprints:check` (which also
 regenerates the `clients/blueprint-gallery/` demo client — the visual gallery and
@@ -206,8 +217,8 @@ targeting `themeOverrides` are rejected at the resolver.
 node engine/build.js <client> --annotate
 ```
 
-The owner click-to-edit UI (in progress) needs to know, for each element on
-the page, which content field it came from. An annotated build stamps every
+The owner click-to-edit editor (`engine/serve.js`, below) needs to know, for each
+element on the page, which content field it came from. An annotated build stamps every
 editable element with `data-bk-block` / `data-bk-item` / `data-bk-field` (and
 `data-bk-index` for text-list lines), driven by the **same edit map**
 (`engine/lib/sitemap.js`) the patch resolver's editable surface is derived
@@ -233,15 +244,72 @@ the single source of truth for both surfaces.
 
 ---
 
+## Click-to-edit owner editor
+
+```
+node engine/serve.js <client> [--port N] [--host ADDR] [--allow-remote]
+```
+
+A local server (binds `127.0.0.1` by default) serving one page: an iframe showing
+the client's **candidate** copy (`clients/<client>__candidate/`, gitignored — a full
+copy of live, reset on session start and on Discard) built **annotated**, beside a
+pending-change panel. The candidate build IS the preview; nothing here is mocked.
+
+- **Overlay** (`engine/ui/overlay.js`, injected at serve time into the candidate
+  preview only — never written to disk, never in live builds) highlights every
+  `data-bk-*` element on hover; clicking one opens the editor matching its field:
+  short text → inline input, long text → textarea, a text-list line → edit/append/
+  remove that line, an image field → file picker (saved into the candidate's
+  `img/`), brand colors → a picker bound to `SAFE_TOKENS` that runs the format and
+  contrast guards live and explains a rejection in plain language.
+- **Add… menu** lists the validated blueprint registry by name + purpose; choosing
+  one shows a form generated from its input schema, and instantiating it enters the
+  same pending → preview → Approve/Discard cycle as a content edit.
+- **One pending change at a time.** Edit or scaffold → `applyPatch`/`scaffold`
+  resolves and validates on the candidate (every guard runs — UI input is untrusted
+  input) → candidate rebuilds annotated (a failing build rolls the candidate back) →
+  the change card shows old → new, read by resolving the patch against the
+  candidate content (never from any other description of the change).
+- **Approve** writes live `content.json` (+ any uploaded image), rebuilds live
+  WITHOUT annotations, and runs the configured publish step. **Discard** resets the
+  candidate from live. **Restore** reverts the last published change, rebuilds, and
+  republishes.
+- **Security:** non-local requests are rejected (socket + `Host` header) unless
+  `--allow-remote` is set; every POST requires a custom header no cross-origin page
+  can send without a CORS preflight, which this server never grants; static paths
+  are confined to their roots; uploads are extension- and size-limited; all values
+  render via `textContent`.
+
+Per-client config (publish command, display name, contact, host/port) lives in
+`clients/<client>/owner-config.json` — see [OPERATOR.md](OPERATOR.md) for the full
+field reference, hosting setup, and the publish/rollback story.
+
+---
+
 ## Optional model seam
 
-The patch pipeline is the permanent seam where a copy-assist model tier could attach
-in a future version. A model tier would: (1) receive the edit map from
-`engine/lib/sitemap.js`, (2) produce a patch object in one of the shapes listed above,
-and (3) hand it to `applyPatch` exactly as the owner UI does — with no changes to the
-resolver, the guards, or the build. The archived modules in `attic/` (`repair.js`,
-`patch-schema.js`, `triage.js`, and `AGENT_INSTRUCTIONS.md`) document the v3.1
-approach and remain available as a reference for any future integration.
+The owner-editor request handlers (`engine/lib/owner.js`) are the permanent seam
+where an optional copy-assist model tier could attach in a future version, with no
+change to the resolver, the guards, or the build. Every attachment point already
+exists and is exercised today by the editor above and by the proof suite:
+
+1. **Read the editable surface** — `engine/lib/sitemap.js`
+   (`buildEditMap`/`renderEditMap`) for content fields and safe tokens;
+   `GET /api/blueprints` (`scaffold.loadBlueprints()`) for the structural menu.
+2. **Produce a content patch** — one of the shapes in *Applying a patch* above,
+   addressed by the stable ids the edit map prints.
+3. **Produce a structural request** — `{ blueprint, variant, values }`, validated
+   by the same `validateInputs` every Add… submission goes through.
+4. **Apply it** — `owner.applyEdit` / `owner.applyScaffold`, the exact functions
+   `engine/serve.js` calls; same guards, same candidate build, same pending →
+   Approve/Discard cycle.
+5. **Approve** — left to the owner (model drafts, human confirms) or, for a fully
+   autonomous mode, `owner.approve()` itself, still gated by the same publish step.
+
+No model-specific code belongs in the active runtime; none of the above requires
+it. The archived v3.1 modules in `attic/` (`repair.js`, `patch-schema.js`,
+`triage.js`, `AGENT_INSTRUCTIONS.md`) document the previous in-runtime approach and
+remain available as a reference for any future integration.
 
 ---
 
@@ -251,7 +319,8 @@ approach and remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs seven end-to-end proofs against the example clients:
+Runs twelve end-to-end proofs against the example clients and the full contribution
+pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
    the edit map reports, and none it does not (checked across all three clients)
@@ -262,8 +331,25 @@ Runs seven end-to-end proofs against the example clients:
 6. invalid `set-token` patches (bad token, bad value, plain-`set` bypass, contrast
    collision) are all rejected
 7. the resolver rejects valueless writes (both plain set and match form), nothing written
+8. the owner-editor handlers (*Click-to-edit owner editor*, above): edit → candidate
+   → annotated rebuild → change card, Approve writes live with no annotations, one
+   pending change at a time, uploads stay candidate-side until Approve and vanish
+   on Discard
+9. the blueprint scaffolder: every shipped blueprint validates, invalid inputs are
+   rejected with nothing written, ids stay unique site-wide under repeated
+   instantiation, and every blueprint × variant builds clean
+10. blueprint scaffolding through the owner handlers: the new page lands annotated
+    in the candidate only, the pending interlock covers edits and scaffolds both
+    ways, and Approve puts the page + nav entry live with no annotations or ids
+11. the blueprint authoring kit: every shipped blueprint clears
+    `validate-blueprint.js`, the committed demo gallery matches deterministic
+    regeneration, and a known-bad blueprint fails with named reasons
+12. the theme validator: every shipped theme passes `validate-theme.js` (token
+    completeness, value safety, no JS/external resources, tiered contrast pairs,
+    demo-client coverage build), the demo corpus covers the whole block registry,
+    and a known-bad theme fails with named reasons
 
-All seven must pass on a clean tree (`exit 0`).
+All twelve must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -271,16 +357,29 @@ All seven must pass on a clean tree (`exit 0`).
 
 ```
 engine/
-  build.js              Entry point — run this to build
+  build.js              Entry point — run this to build (--annotate for preview)
   apply-patch.js        Patch CLI (content + token patches)
+  serve.js              Owner-editor server — click-to-edit UI (localhost)
   sitemap.js            Prints the edit map for a client to stdout
   new-client.js         Scaffolds a new client folder
-  _run-proofs.js        End-to-end proof suite (7 proofs)
+  validate-blueprint.js Blueprint acceptance CLI
+  validate-theme.js     Theme acceptance CLI
+  blueprints-check.js   Whole-registry blueprint check + gallery regeneration
+  _run-proofs.js        End-to-end proof suite (12 proofs)
+  ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
+                        (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)
   partials/             head, nav, footer
-  lib/                  render, validate, escape, icons, patch (allowlist + token guards),
-                        sitemap (edit map), annotate (preview-build data-bk-* stamping)
+  lib/                  render, validate, escape, icons, patch (allowlist + token
+                        guards), sitemap (edit map), annotate (preview-build
+                        data-bk-* stamping), owner (editor request handlers),
+                        scaffold (blueprint instantiation), bpcheck/themecheck
+                        (authoring-kit pipelines)
   schema/               content.schema.json (JSON Schema draft 2020-12)
+
+blueprints/             Developer-authored page layouts owners can instantiate
+                        via the Add… menu (validated on load — see
+                        BLUEPRINT_AUTHORING.md)
 
 themes/
   default/              Full theme: tokens.json + css/styles.css + js/main.js
@@ -290,6 +389,12 @@ clients/
   <name>/
     content.json        The whole site as data
     img/                Client images
+    owner-config.json   Optional owner-editor config (see OPERATOR.md)
+  <name>__candidate/    Working copy used by the owner editor (gitignored;
+                        recreated from live on session start and on Discard)
+  blueprint-gallery/    GENERATED demo client: every blueprint × variant, plus an
+                        "all blocks" showcase page (visual gallery + regression
+                        corpus, regenerated by npm run blueprints:check)
 
 attic/                  Archived v3 model-tier modules (repair, patch-schema, triage,
                         AGENT_INSTRUCTIONS.md, test harness, scorecards)
@@ -297,6 +402,7 @@ attic/                  Archived v3 model-tier modules (repair, patch-schema, tr
 dist/                   Build output — one subfolder per client (gitignored)
   <client>/             Live build (no ids, no annotations — deployable)
   <client>__annotated/  Annotated preview build (--annotate; never deploy)
+  <client>__candidate__annotated/  Owner-editor preview build (never deploy)
 ```
 
 ---
