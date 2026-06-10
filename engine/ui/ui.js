@@ -263,15 +263,70 @@
     ed.appendChild(row);
   }
 
+  // ── Client-side image compression ────────────────────────────
+  // The browser is the image-processing runtime: a multi-megabyte phone
+  // photo is scaled and re-encoded HERE, before it is ever POSTed, so one
+  // gallery upload can't make a page weigh 5 MB. This is a courtesy, not
+  // a control — the server's upload guards (extension allowlist, size cap,
+  // file-signature check) treat the result as untrusted input regardless.
+
+  // MAX_EDGE: longest output edge in px — full-bleed-hero sharp on common displays, ~10x smaller than a phone photo.
+  var MAX_EDGE = 1920;
+  // QUALITY: jpeg/webp encoder quality — visually clean for photos while still compressing hard.
+  var QUALITY = 0.82;
+  // Files already this small are uploaded untouched.
+  var COMPRESS_MIN_BYTES = 300 * 1024;
+  // Output extension by the type the canvas ACTUALLY produced (a browser
+  // may ignore the requested type) — the uploaded filename must agree with
+  // the bytes or the server's signature guard rightly refuses them.
+  var EXT_BY_TYPE = { 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/png': '.png' };
+
+  // Returns a Promise of { blob, name }: the bytes to upload and a filename
+  // whose extension matches them. Skips GIFs (animation) and small files;
+  // ANY failure falls back to the original file — a failed compression must
+  // never block an upload the server would have accepted.
+  function compressImage(file) {
+    var original = { blob: file, name: file.name };
+    if (typeof window.createImageBitmap !== 'function') return Promise.resolve(original);
+    if (file.type === 'image/gif' || file.size < COMPRESS_MIN_BYTES) return Promise.resolve(original);
+    // 'from-image' bakes the EXIF rotation into the pixels, so a portrait
+    // phone photo stays upright; the canvas re-encode below then strips ALL
+    // metadata — including GPS position — a deliberate privacy property.
+    return createImageBitmap(file, { imageOrientation: 'from-image' }).then(function (bmp) {
+      var scale = Math.min(1, MAX_EDGE / Math.max(bmp.width, bmp.height)); // never upscale
+      var w = Math.max(1, Math.round(bmp.width * scale));
+      var h = Math.max(1, Math.round(bmp.height * scale));
+      var canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      // PNG → webp (keeps the alpha channel); everything else → jpeg.
+      var wantType = file.type === 'image/png' ? 'image/webp' : 'image/jpeg';
+      return new Promise(function (resolve) {
+        canvas.toBlob(function (blob) { resolve(blob); }, wantType, QUALITY);
+      });
+    }).then(function (blob) {
+      // Never ship a larger file, and never a type the name can't agree with.
+      if (!blob || blob.size >= file.size || !EXT_BY_TYPE[blob.type]) return original;
+      var name = file.name.replace(/\.[^./\\]+$/, '') + EXT_BY_TYPE[blob.type];
+      return { blob: blob, name: name };
+    }).catch(function () {
+      return original; // decode failure: send the original untouched
+    });
+  }
+
   function readFileAsUpload(file) {
-    return new Promise(function (resolve, reject) {
-      var fr = new FileReader();
-      fr.onload = function () {
-        var dataUrl = String(fr.result);
-        resolve({ name: file.name, dataBase64: dataUrl.slice(dataUrl.indexOf(',') + 1) });
-      };
-      fr.onerror = function () { reject(new Error('could not read the file')); };
-      fr.readAsDataURL(file);
+    return compressImage(file).then(function (prepared) {
+      return new Promise(function (resolve, reject) {
+        var fr = new FileReader();
+        fr.onload = function () {
+          var dataUrl = String(fr.result);
+          resolve({ name: prepared.name, dataBase64: dataUrl.slice(dataUrl.indexOf(',') + 1) });
+        };
+        fr.onerror = function () { reject(new Error('could not read the file')); };
+        fr.readAsDataURL(prepared.blob);
+      });
     });
   }
 

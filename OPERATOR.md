@@ -155,6 +155,33 @@ Only one change is pending at a time — the owner approves or discards before m
 the next edit. Nothing the owner does can write outside `clients/<client-name>/`,
 and a failed candidate build can never become a pending change (§8 of SPEC.md).
 
+**Image uploads are compressed in the browser.** When the owner picks a photo, the
+editor scales it to at most 1920 px on the longest edge and re-encodes it (PNG →
+WebP to keep transparency, everything else → JPEG) before uploading — so a 4 MB
+phone photo lands as a few hundred KB without the owner doing anything. The
+re-encode also strips EXIF metadata, including GPS position, which is a deliberate
+privacy property. GIFs, files already under 300 KB, and anything the browser can't
+decode are sent untouched; the server's upload guards (extension allowlist, size
+cap, file-signature check) apply to the result either way.
+
+**TESTING (manual browser checklist).** Canvas compression runs only in a real
+browser, so it isn't covered by `npm test` — after touching the upload path, verify
+once by hand in the editor (pick each file through any image field and check the
+pending card's assigned `img/` path and the candidate preview):
+
+- [ ] Large landscape JPEG (>1 MB): uploads as `.jpg`, lands well under the original
+      size, looks sharp in the preview.
+- [ ] Portrait phone photo (EXIF-rotated): orientation is upright in the preview,
+      not sideways.
+- [ ] PNG with transparency (>300 KB): uploads as `.webp`, transparency preserved
+      against a colored background.
+- [ ] GIF: uploads byte-identical with its original name (never re-encoded —
+      animation survives).
+- [ ] File under 300 KB: uploads byte-identical with its original name.
+- [ ] iPhone HEIC selection (verify once on real hardware): iOS converts to JPEG at
+      the file input, so it should behave like the JPEG case — confirm the upload is
+      accepted and upright.
+
 **Running it for the owner day to day:** this is a plain Node process — run it with
 whatever process supervisor you're already comfortable with (a terminal left open,
 `pm2`, a `systemd`/launchd unit, Task Scheduler, etc.) on a machine the owner can
