@@ -79,7 +79,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (13 proofs)
+  _run-proofs.js        Proof suite (15 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -268,7 +268,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Thirteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Fifteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -299,8 +299,16 @@ tiered contrast pairs, demo-client coverage build), the demo corpus covers the w
 block registry, and a known-bad theme fails with each reason named, (13) the editor
 server's request guards, probed over real HTTP: a foreign `Host` header and a
 header-less POST are refused, encoded path traversal cannot escape the preview/UI
-roots, and every response carries `nosniff` + `SAMEORIGIN` headers. All thirteen must
-pass on a clean tree.
+roots, and every response carries `nosniff` + `SAMEORIGIN` headers, (14) the
+build-time image weight advisory: a >500 KB file in `img/` is named on stderr with
+its size and a one-sentence fix, a >2 MB folder gets a one-line total, and the
+build still succeeds — advisory warnings never change a build's exit code or
+output, (15) contact-form delivery: endpoint-mode rendering equals the previous
+output plus exactly the honeypot element, netlify mode emits the Netlify form
+attributes with `formAction` optional only under that mode (the `https://` guard
+holds everywhere else), the honeypot never carries an annotation, the documented
+`https://UNCONFIGURED` placeholder warns at build without failing it, and nothing
+under `extras/` is required by engine code. All fifteen must pass on a clean tree.
 
 ---
 

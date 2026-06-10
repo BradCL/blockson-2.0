@@ -303,14 +303,24 @@ hosts listed under `video-embed` below.
 - `cards` Repeats (min 1): `{id, title, cta: {label, href, style}}` + `icon?`,
   `body?`, `items?` array of strings, `note?` string
 
-**`contact-form`** — a form posting to an external form service.
-- `formAction` url (the service endpoint — take it as an input with
-  `"pattern": "^https://"`)
+**`contact-form`** — a contact form with a selectable delivery mode (the per-host
+story is "Contact form delivery" in OPERATOR.md).
+- `formAction` url (the `https://` endpoint — take it as an input with
+  `"pattern": "^https://"`; the documented placeholder `https://UNCONFIGURED`
+  passes the schema and warns at every build until replaced). Required unless
+  the block sets netlify mode (below).
+- `delivery?` object — `{mode: "endpoint"|"netlify"}` plus, for netlify mode,
+  `formName?` (default `"contact"`) and `successPath?` (relative path, no
+  scheme). Under `"mode": "netlify"` the form renders Netlify's native form
+  attributes and `formAction` becomes optional. A blueprint aimed at Netlify
+  hosts may hardcode `"delivery": { "mode": "netlify" }` in its template.
 - `fields` array (min 1) of
   `{name, label, type: "text"|"email"|"tel"|"textarea"|"select"}` +
   `required?` bool, `placeholder?` string, `options?` array of strings, `half?` bool
   — **no ids: structural**, hardcode the field set
 - `tag?`, `heading?`, `subjectLine?`, `submitLabel?` (default "Send Message") strings
+- every rendered form carries a hidden honeypot input automatically — nothing
+  for a blueprint to declare
 
 **`cta`** — centered closing banner.
 - `statement` string, `button` `{label, href, style: "primary"|"secondary"}`

@@ -15,7 +15,7 @@ What to do:
 git clone <your repo>
 cd blockson
 npm install              # ajv + ajv-formats — the only deps, used for full schema validation
-node engine/_run-proofs.js   # or: npm test  → expect "13/13 proofs passed"
+node engine/_run-proofs.js   # or: npm test  → expect "15/15 proofs passed"
 If the proofs are green, every safety guard (patch resolver, candidate isolation, link-scheme guard, upload signatures, server request guards) is verified working.
 
 Step 2 — Scaffold a new client
@@ -49,6 +49,8 @@ Two ways to add a whole page:
 Write blocks by hand in the JSON.
 Instantiate a blueprint — pre-built page templates in blueprints/ (contact-page.json, content-page.json, gallery-page.json). These are the same templates the owner can later use self-serve. See BLUEPRINT_AUTHORING.md.
 Key field rules enforced at build time: every href must be a safe scheme (https, http, mailto, tel, sms, #anchor, or relative — javascript:/data: are rejected); formAction and mapEmbedUrl must be https://.
+
+If the site has a contact form, decide its delivery now — it's per-host and subscription-free (OPERATOR.md §8 "Contact form delivery"): on Netlify set the block's delivery to { "mode": "netlify" } and there's nothing to deploy; on Cloudflare deploy the one-time worker in extras/cloudflare-form-worker/ and point formAction at it; anywhere else, any https:// endpoint you choose. Not ready to decide? Set formAction to the placeholder https://UNCONFIGURED — the site builds and every build reminds you until it's real. Every form ships a hidden honeypot either way.
 
 Step 5 — Build and validate
 Purpose: The build is also the gate. It validates content.json against the JSON Schema first and writes nothing if validation fails — the error names the exact field path that's wrong. A site that builds is a site that's structurally sound.
@@ -109,7 +111,7 @@ What to do: Open http://127.0.0.1:4173/ (or whatever address the developer gave 
 Step 2 — Click an element to edit it
 Purpose: This is the core of the maintenance tier. Highlighted elements are the only things editable — text, an image, a list line, a brand color. The owner can't add or delete blocks, change structure, or break a layout, because those operations simply aren't offered. Hours and prices — the #1 real-world maintenance requests — are single id-addressed edits.
 
-What to do: Click any highlighted element. Change the text, swap an image (the file picker validates it's a real image by its bytes, not just its name), edit a list line, or pick a new brand color.
+What to do: Click any highlighted element. Change the text, swap an image, edit a list line, or pick a new brand color. For photos, the owner just picks the file — a full-size phone photo is scaled and compressed in the browser before upload (orientation kept upright, location metadata stripped), and the server still validates it's a real image by its bytes, not just its name.
 
 What happens under the hood: Every change goes through the patch resolver and is rebuilt into the candidate first. Only if that validated rebuild succeeds does it appear as a pending "old → new" card. A change that would fail validation can never even become a pending card.
 

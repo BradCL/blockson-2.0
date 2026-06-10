@@ -124,6 +124,13 @@ Core: `hero`, `page-header`, `text`, `card-grid`, `gallery`, `testimonials`,
 v2: `pricing-table`, `team-grid`, `faq`, `hours-table`, `before-after`, `stats-bar`,
 `process-steps`, `video-embed`, `booking-cta`
 
+`contact-form` has a selectable, subscription-free delivery mode: the default
+endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
+`extras/cloudflare-form-worker/`, or a relay), while `delivery: { "mode": "netlify" }`
+renders Netlify's native form attributes — nothing to deploy. Every form carries a
+hidden honeypot. The per-host story is "Contact form delivery" in
+[OPERATOR.md](OPERATOR.md).
+
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
 
 Page layouts owners can instantiate themselves are **blueprints** (`blueprints/`) —
@@ -261,7 +268,11 @@ pending-change panel. The candidate build IS the preview; nothing here is mocked
   short text → inline input, long text → textarea, a text-list line → edit/append/
   remove that line, an image field → file picker (saved into the candidate's
   `img/`), brand colors → a picker bound to `SAFE_TOKENS` that runs the format and
-  contrast guards live and explains a rejection in plain language.
+  contrast guards live and explains a rejection in plain language. Picked images
+  are compressed in the browser before upload (scaled to ≤1920 px, re-encoded —
+  PNG → WebP, the rest → JPEG; EXIF, including GPS, is stripped), so a 4 MB phone
+  photo lands as a page-friendly few hundred KB; the server still treats the
+  result as untrusted input and runs every upload guard on it.
 - **Add… menu** lists the validated blueprint registry by name + purpose; choosing
   one shows a form generated from its input schema, and instantiating it enters the
   same pending → preview → Approve/Discard cycle as a content edit.
@@ -320,7 +331,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs thirteen end-to-end proofs against the example clients and the full contribution
+Runs fifteen end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -355,8 +366,18 @@ pipeline:
     header and a header-less POST are refused, encoded path traversal cannot
     escape the preview/UI roots, and every response carries `nosniff` +
     `SAMEORIGIN` headers
+14. the build-time image weight advisory: a >500 KB file in `img/` is named on
+    stderr with its size and a one-sentence fix, a >2 MB folder gets a one-line
+    total, and the build still succeeds — warnings never fail a build
+15. contact-form delivery: endpoint-mode output is the previous output plus
+    exactly the honeypot element (byte-level golden + a real client); netlify
+    mode emits the Netlify form attributes with `formAction` optional only
+    there, the `https://` guard holding everywhere else; the honeypot never
+    carries an annotation; the `https://UNCONFIGURED` placeholder warns at
+    build without failing it; and nothing under `extras/` is required by
+    engine code
 
-All thirteen must pass on a clean tree (`exit 0`).
+All fifteen must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -372,7 +393,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (13 proofs)
+  _run-proofs.js        End-to-end proof suite (15 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (21 total)
@@ -405,6 +426,11 @@ clients/
 
 attic/                  Archived v3 model-tier modules (repair, patch-schema, triage,
                         AGENT_INSTRUCTIONS.md, test harness, scorecards)
+
+extras/                 Deploy-time material the engine never imports:
+  cloudflare-form-worker/  Email-Routing form endpoint (worker.js + wrangler.toml
+                        example + setup README) — see OPERATOR.md "Contact form
+                        delivery"
 
 dist/                   Build output — one subfolder per client (gitignored)
   <client>/             Live build (no ids, no annotations — deployable)

@@ -10,7 +10,9 @@ Conventions used below:
   relative to the client's `img/` folder. `url` = absolute or page-relative link.
   Every `href` is scheme-checked by the content schema (`https`, `http`, `mailto`,
   `tel`, `sms`, `#anchor`, or relative — `javascript:`/`data:` fail the build);
-  `formAction` and `mapEmbedUrl` must be `https://`.
+  `formAction` and `mapEmbedUrl` must be `https://` wherever they appear
+  (`formAction` is required unless the contact-form block selects netlify
+  delivery — see its entry).
 - `?` marks an optional field. Everything else is required.
 - "Repeats" means the field is an array of sub-objects, each with the listed shape.
   Every repeating sub-object carries a stable string `id` — the maintenance tier's
