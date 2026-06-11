@@ -1,0 +1,128 @@
+$ node engine/_run-proofs.js
+
+═══ PROOF 1 — Live build hides ids & annotations; annotated build covers every editable field ═══
+PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every
+       editable field the edit map reports (315 required annotations across
+       3 clients) and stamp nothing the map does not report.
+
+═══ PROOF 2 — Real edit: change contact.phone via the resolver + build ═══
+PASS — contact.phone was set to: 780-555-0142 (restored)
+       Built 5 page(s) → dist/example-contractor/
+
+═══ PROOF 3 — Blocked edit: attempt to set block id field ═══
+PASS — Rejected with error: "field "id" is structural and not editable"
+       Nothing written (content.json unchanged).
+
+═══ PROOF 4 — Id-addressed item edit: update card-renovations.body ═══
+PASS — card-renovations.body was set to:
+       "Full-scope kitchen, bathroom, and basement renovations, start to finish." (restored)
+       Built 5 page(s) → dist/example-contractor/
+
+═══ PROOF 5 — Valid set-token applies, persists in themeOverrides, rebuilds ═══
+PASS — set-token wrote themeOverrides["color-primary"] = "#2D6A4F",
+       the rebuild succeeded, and the value reached the page :root block. (restored)
+       Built 5 page(s) → dist/example-contractor/
+
+═══ PROOF 6 — Invalid set-token patches are rejected, nothing written ═══
+PASS — all four rejected, content untouched:
+       allowlist: "token "--font-heading" is not in the safe-token allowlist"
+       format guard: "value failed the safety guard (unsafe characters or too long)"
+       set bypass: "theme tokens are edited with action "set-token", not "set""
+       contrast guard: ""#14161a" is too close to the theme's --btn-primary-text (#14161a) — the result would be unreadable. Pick a color with more contrast."
+
+═══ PROOF 7 — Resolver value guards: valueless writes are rejected ═══
+PASS — valueless set rejected (plain + match form), nothing written:
+       plain: ""copyright" requires a string "value" (got no value)"   match: ""items" requires a string "value" (got no value)"
+
+═══ PROOF 8 — Owner-editor handlers, exercised directly: edit → keep → publish ═══
+PASS — handlers exercised directly: an edit writes ONLY the candidate and
+       rebuilds its annotated preview; keep stages the change card and frees
+       the next edit; a pending-discard replays the staged list and disturbs
+       nothing kept; publish refuses over a pending change, then ships the
+       whole session to live in one step with clean HTML; guards hold;
+       uploads stay candidate-side, survive the replay once kept, and vanish
+       on discard-all; non-image bytes under an image name are refused.
+
+═══ PROOF 9 — Scaffolder: schema-validated inputs, collision-proof ids, every blueprint builds ═══
+PASS — registry validates all 7 blueprints; 8 classes of bad input rejected with
+       content untouched; 12 same-name instantiations + every page blueprint × variant
+       coexist with unique slugs and block ids, and the full build accepts the result.
+
+═══ PROOF 10 — Scaffold through the owner handlers: candidate page → keep → publish, no annotations ═══
+PASS — a blueprint page lands in the CANDIDATE with full click-to-edit
+       annotations; edits and further scaffolds are held while it is pending;
+       kept, it survives a pending-discard replay with the same slug and ids;
+       publish puts the page, its nav entry, and its sitemap line live with
+       no annotations and no ids in the HTML.
+
+═══ PROOF 11 — Authoring kit: every blueprint validates, the demo gallery is fresh, a bad blueprint fails with reasons ═══
+PASS — every shipped blueprint clears the acceptance pipeline (schema → sample
+       instantiation → full build → invariant checks); the committed demo gallery
+       matches deterministic regeneration and its live build carries no annotations
+       or id attributes; a known-bad blueprint fails the CLI with named reasons,
+       and a javascript: href is stopped at the build gate.
+
+═══ PROOF 12 — Theme validator: every shipped theme passes; a bad theme fails with named reasons ═══
+PASS — all shipped themes clear the pipeline (token completeness, injection +
+       format guards on values, no JS / no external resources, tiered contrast
+       pairs, demo-client coverage build of all 21 block types); a known-bad
+       theme fails the CLI with every reason named.
+
+═══ PROOF 13 — Editor server request guards, exercised over real HTTP ═══
+PASS — the real server, probed over HTTP: local requests succeed and carry
+       nosniff + SAMEORIGIN headers; a foreign Host header and a header-less
+       POST are both refused; encoded path traversal cannot escape the
+       preview or UI roots; remote-open refuses to start without an access
+       token; with one set, no-token and wrong-token requests get the plain-
+       language page, the right token is admitted and issued an HttpOnly
+       cookie that then admits static and API alike (the POST header still
+       required on top); loopback without a configured token is unchanged.
+
+═══ PROOF 14 — Image weight advisory: heavy files are named, the build still succeeds ═══
+PASS — a >500 KB image is named on stderr with its size and a one-sentence
+       fix, a >2 MB img/ folder gets the one-line total, files under the
+       limit are never named, and the build succeeds unchanged either way.
+
+═══ PROOF 15 — contact-form delivery: endpoint unchanged + honeypot, netlify mode, placeholder warning ═══
+PASS — endpoint-mode rendering equals the previous output plus exactly the
+       honeypot line (verified against a byte-level golden and a real client);
+       netlify mode emits name/data-netlify/netlify-honeypot/form-name and the
+       configured success redirect, with formAction optional ONLY there; the
+       honeypot is never annotated; https://UNCONFIGURED warns and never fails;
+       nothing under extras/ is required by engine code.
+
+═══ PROOF 16 — Maintenance ledger: every attempt logged, bytes never, a failed write never blocks ═══
+PASS — every owner-handler attempt appends one well-formed JSONL line (ISO
+       timestamp, request as submitted, outcome, error verbatim on rejection);
+       uploads are logged by name/size with no file bytes; the file rotates to
+       edits.log.1.jsonl past 1 MB; and an unwritable ledger never blocks the
+       edit it would have described.
+
+═══ PROOF 17 — Visibility flag: hidden blocks leave live HTML, stay reachable in the preview ═══
+PASS — the flag is seeded on every example-client and starter block; the edit
+       map reports it as block metadata (never a scalar); a hidden block leaves
+       live HTML entirely but stays rendered, annotated, and data-bk-hidden-
+       marked in the preview; the toggle round-trips through applyPatch with
+       booleans; type preservation rejects strings-on-flag, booleans-on-text,
+       and booleans-into-lists with nothing written; an absent flag means
+       visible; the migration script seeds it once, idempotently.
+
+═══ PROOF 18 — One session, one commit: publish batches the session; restore reverts it whole ═══
+PASS — in a sandbox git repository with a local bare origin: keeping changes
+       never touches git; publishing a two-change session makes exactly ONE
+       pushed commit carrying the [blockson-publish] marker and the session
+       summary; restore refuses while changes are staged and, once clear,
+       reverts the whole session as one unit and republishes.
+
+═══ PROOF 19 — Item blueprints: owners add and remove repeating items through the scaffolder ═══
+PASS — the four shipped item blueprints validate; a valid add lands in the
+       NAMED block with a site-wide-unique item id and the full build accepts
+       it; bad inputs, unknown/wrong-type targets reject with nothing written;
+       remove deletes exactly the addressed item, refuses the last item and
+       every array without a blessed item blueprint; add and remove both ride
+       pending → keep → publish (candidate-only until publish, replay-stable,
+       ledgered as remove-item) and live HTML ships with no annotations and no
+       item ids; a known-bad item blueprint fails the CLI with named reasons.
+
+════════════════════════════════════════════════════════════
+19/19 proofs passed.

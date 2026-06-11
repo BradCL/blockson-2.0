@@ -14,6 +14,7 @@
  *     outDir: 'docs/tutorial/developer/img',     // repo-root-relative
  *     serve:  { root: 'dist/wren-and-willow' },  // optional static server
  *     setup:  async (ctx) => {},                 // optional, once, first
+ *     teardown: async (ctx) => {},               // optional, once, last (always runs)
  *     steps: [{
  *       slug:        'home',                     // filename stem
  *       description: 'Homepage, both viewports', // goes into manifest.json
@@ -111,9 +112,9 @@ async function main() {
   const server = flow.serve ? await startStaticServer(flow.serve.root) : null;
   const browser = await chromium.launch();
   const manifest = { flow: flow.name, generated: new Date().toISOString(), captures: [] };
+  const baseCtx = { browser, baseUrl: server ? server.url : null, root: ROOT };
 
   try {
-    const baseCtx = { browser, baseUrl: server ? server.url : null, root: ROOT };
     if (flow.setup) await flow.setup(baseCtx);
 
     for (let i = 0; i < flow.steps.length; i++) {
@@ -177,6 +178,7 @@ async function main() {
       }
     }
   } finally {
+    if (flow.teardown) await flow.teardown(baseCtx).catch(e => console.error('teardown:', e.message));
     await browser.close();
     if (server) server.close();
   }

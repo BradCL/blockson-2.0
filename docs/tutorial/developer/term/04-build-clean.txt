@@ -1,0 +1,3 @@
+$ node engine/build.js wren-and-willow
+Built 5 page(s) → dist/wren-and-willow/
+  ⚠ The contact form "contact-form" (page "contact") still points at the placeholder endpoint https://UNCONFIGURED — submissions will go nowhere until formAction is set to a real https:// endpoint or the block is switched to another delivery mode (see "Contact form delivery" in OPERATOR.md).

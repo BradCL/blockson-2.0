@@ -1,0 +1,84 @@
+{
+  "flow": "developer-site",
+  "generated": "2026-06-11T05:12:21.215Z",
+  "captures": [
+    {
+      "file": "01-home--desktop.png",
+      "step": "home",
+      "viewport": "desktop",
+      "description": "Homepage: hero, services, stats, before/after, testimonials, booking CTA"
+    },
+    {
+      "file": "01-home--mobile.png",
+      "step": "home",
+      "viewport": "mobile",
+      "description": "Homepage: hero, services, stats, before/after, testimonials, booking CTA"
+    },
+    {
+      "file": "02-services--desktop.png",
+      "step": "services",
+      "viewport": "desktop",
+      "description": "Services & pricing: two pricing tables, process steps, FAQ"
+    },
+    {
+      "file": "02-services--mobile.png",
+      "step": "services",
+      "viewport": "mobile",
+      "description": "Services & pricing: two pricing tables, process steps, FAQ"
+    },
+    {
+      "file": "03-about--desktop.png",
+      "step": "about",
+      "viewport": "desktop",
+      "description": "About: story, promises, team grid, hours table"
+    },
+    {
+      "file": "03-about--mobile.png",
+      "step": "about",
+      "viewport": "mobile",
+      "description": "About: story, promises, team grid, hours table"
+    },
+    {
+      "file": "04-gallery--desktop.png",
+      "step": "gallery",
+      "viewport": "desktop",
+      "description": "Gallery: filterable albums with lightbox"
+    },
+    {
+      "file": "04-gallery--mobile.png",
+      "step": "gallery",
+      "viewport": "mobile",
+      "description": "Gallery: filterable albums with lightbox"
+    },
+    {
+      "file": "05-contact--desktop.png",
+      "step": "contact",
+      "viewport": "desktop",
+      "description": "Contact (instantiated from the contact-page blueprint)"
+    },
+    {
+      "file": "05-contact--mobile.png",
+      "step": "contact",
+      "viewport": "mobile",
+      "description": "Contact (instantiated from the contact-page blueprint)"
+    },
+    {
+      "file": "06-home-scroll--desktop-f00.png … (9 frames; no GIF-capable ffmpeg found)",
+      "step": "home-scroll",
+      "viewport": "desktop",
+      "description": "Scroll-through of the homepage (animation; frames if no GIF ffmpeg)"
+    },
+    {
+      "file": "07-gallery-lightbox--desktop.png",
+      "step": "gallery-lightbox",
+      "viewport": "desktop",
+      "description": "Gallery album opened in the lightbox"
+    },
+    {
+      "file": "08-owner-editor--desktop.png",
+      "step": "owner-editor",
+      "viewport": "desktop",
+      "description": "TEASER for the owner tutorial: serve.js click-to-edit editor (candidate preview + session panel)"
+    }
+  ]
+}

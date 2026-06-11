@@ -1,0 +1,205 @@
+$ node engine/sitemap.js wren-and-willow
+THEME TOKENS  (brand appearance — edit ONLY with action:"set-token")
+  --color-primary  = "#b46a7d"  (color)
+  --color-accent  = "#caa46a"  (color)
+  --btn-primary-bg  = "#b46a7d"  (color)
+  --nav-bg  = "#fbf7f5"  (color)
+  --footer-bg  = "#33272b"  (color)
+  --hero-overlay-opacity  = "0.35"  (number 0–1 or %)
+
+SITE  (use block:"site")
+  field: name  = "Wren & Willow Hair Studio"
+  field: baseUrl  = "https://www.wrenandwillow.ca"
+  field: theme  = "salon"
+  field: logo.white  = "img/logo-white.png"
+  field: logo.black  = "img/logo-black.png"
+  field: logo.favicon  = "img/favicon.png"
+  field: contact.phone  = "780-555-0164"
+  field: contact.email  = "hello@wrenandwillow.ca"
+  field: nav.cta.label  = "Book Now"
+  field: nav.cta.href  = "https://book.wrenandwillow.ca"
+  field: footer.blurb  = "A six-chair hair studio on Edmonton's 124 Street — cuts, colour, and honest advice since 2014."
+  field: copyright  = "© 2026 Wren & Willow Hair Studio. All rights reserved."
+
+PAGE index
+  block "home-hero" (hero)
+    field: tag  = "Edmonton · 124 Street"
+    field: headline  = "Hair that still looks good three weeks from now."
+    field: subhead  = "We're a six-chair studio that books real consultation time, formulates colour to grow out gracefully, and never rushes a haircut to fit a schedule."
+    field: background  = "img/banner.jpg"
+  block "home-welcome" (text)
+    field: tag  = "Welcome"
+    field: heading  = "A studio, not a conveyor belt"
+    text-list field: body  (edit a line by matching its text exactly)
+      - "Wren & Willow opened in 2014 with one belief: the difference between a fine haircut and a great one is the twenty minutes nobody else budgets for. Every appointment here starts in the chair, talking —…"   [truncated — cannot be matched; do not edit this line]
+      - "Six stylists, one standard. Whether you're in for a fringe trim or a full colour correction, you'll leave knowing exactly what we did, why we did it, and how to keep it looking like day one."
+  block "home-services" (card-grid)
+    field: tag  = "What we do"
+    field: heading  = "Three things, done properly"
+    field: columns  = "3"
+    items in "cards":
+      item "card-cuts"  title: "Cuts & Styling"  — fields: icon, title, body, items
+      item "card-colour"  title: "Colour & Balayage"  — fields: icon, title, body, items
+      item "card-treatments"  title: "Treatments & Texture"  — fields: icon, title, body, items
+  block "home-stats" (stats-bar)
+    items in "stats":
+      item "stat-years"  label: "years on 124 Street"  — fields: value, label
+      item "stat-chairs"  label: "stylists, one standard"  — fields: value, label
+      item "stat-rating"  label: "average of 600+ reviews"  — fields: value, label
+      item "stat-rebook"  label: "of clients rebook"  — fields: value, label
+  block "home-before-after" (before-after)
+    field: tag  = "The proof"
+    field: heading  = "Recent transformations"
+    items in "pairs":
+      item "ba-balayage"  title: "Balayage refresh"  — fields: title, before, after, caption
+      item "ba-silver"  title: "Silver transition"  — fields: title, before, after, caption
+  block "home-testimonials" (testimonials)
+    field: tag  = "Word of mouth"
+    field: heading  = "What clients say"
+    items in "quotes":
+      item "quote-dana"  attribution: "Dana R., client since 2023"  — fields: stars, quote, attribution
+      item "quote-michelle"  attribution: "Michelle T."  — fields: stars, quote, attribution
+      item "quote-aaron"  attribution: "Aaron K."  — fields: stars, quote, attribution
+  block "home-booking" (booking-cta)
+    field: tag  = "Ready when you are"
+    field: statement  = "Your next appointment is two clicks away."
+    field: subtext  = "Browse real-time availability for every stylist, pick your time, and get a reminder the day before."
+    field: provider  = "Fresha"
+    field: button.label  = "Book Online"
+    field: button.href  = "https://book.wrenandwillow.ca"
+    field: note  = "New colour clients: please book a free 15-minute consultation first so we can plan your session length honestly."
+
+PAGE services
+  block "services-header" (page-header)
+    field: tag  = "Services"
+    field: heading  = "The service menu"
+    field: subhead  = "Every price below is a starting point we confirm together at consultation — never a surprise at the till."
+  block "services-cuts" (pricing-table)
+    field: tag  = "Cuts & styling"
+    field: heading  = "Cutting services"
+    field: note  = "Longer or denser hair may add time; we'll always tell you before we start, not after."
+    items in "plans":
+      item "plan-signature-cut"  name: "Signature Cut"  — fields: name, price, description, features, featured
+      item "plan-fringe"  name: "Fringe & Neck Trim"  — fields: name, price, period, description
+      item "plan-blowout"  name: "Blowout & Style"  — fields: name, price, description
+      item "plan-event"  name: "Event & Updo Styling"  — fields: name, price, description
+  block "services-colour" (pricing-table)
+    field: tag  = "Colour"
+    field: heading  = "Colour services"
+    field: note  = "All colour services include a gloss and a bond-protecting additive. Colour corrections are quoted individually after a free consultation."
+    items in "plans":
+      item "plan-balayage"  name: "Full Balayage"  — fields: name, price, description, features, featured
+      item "plan-roots"  name: "Root Touch-Up"  — fields: name, price, period, description
+      item "plan-vivids"  name: "Vivid Colour"  — fields: name, price, description
+      item "plan-gloss"  name: "Gloss & Tone"  — fields: name, price, description
+  block "services-process" (process-steps)
+    field: tag  = "Your first visit"
+    field: heading  = "How an appointment works"
+    items in "steps":
+      item "step-consult"  title: "We talk first"  — fields: icon, title, body
+      item "step-plan"  title: "We agree the plan"  — fields: icon, title, body
+      item "step-craft"  title: "The work itself"  — fields: icon, title, body
+      item "step-homecare"  title: "You leave with a plan"  — fields: icon, title, body
+  block "services-faq" (faq)
+    field: tag  = "Questions"
+    field: heading  = "Asked all the time"
+    items in "items":
+      item "faq-walkins"  question: "Do you take walk-ins?"  — fields: question, answer
+      item "faq-consult"  question: "Why do new colour clients need a consultation first?"  — fields: question, answer
+      item "faq-duration"  question: "How long does balayage take?"  — fields: question, answer
+      item "faq-kids"  question: "Do you cut children's hair?"  — fields: question, answer
+      item "faq-cancel"  question: "What's your cancellation policy?"  — fields: question, answer
+  block "services-cta" (cta)
+    field: tag  = "Still deciding?"
+    field: statement  = "Not sure what to book? Ask us first."
+    field: subtext  = "Send us a photo of your hair and what you're hoping for — we'll tell you what to book and how long it'll take."
+    field: button.label  = "Send Us a Message"
+    field: button.href  = "contact.html"
+    field: button.style  = "primary"
+
+PAGE about
+  block "about-header" (page-header)
+    field: tag  = "About"
+    field: heading  = "The studio on 124 Street"
+    field: subhead  = "Twelve years, six chairs, and a stubborn belief that listening is half the haircut."
+    field: variant  = "light"
+  block "about-story" (text)
+    field: tag  = "Our story"
+    field: heading  = "Started small on purpose, staying that way on purpose"
+    text-list field: body  (edit a line by matching its text exactly)
+      - "Maren Holt opened Wren & Willow in 2014 after a decade in high-volume salons, where appointment slots got shorter every year and consultations disappeared entirely. The plan was simple and a little co…"   [truncated — cannot be matched; do not edit this line]
+      - "Twelve years later the studio is still six chairs — by choice. Growth, for us, has meant deeper skills rather than more square footage: advanced colour certifications, curly-cutting training, and a co…"   [truncated — cannot be matched; do not edit this line]
+      - "You'll find us between the florist and the bookshop on 124 Street, in a bright corner space with plants we mostly manage to keep alive. Coffee's on; parking is free off the alley."
+  block "about-values" (list-panel)
+    field: tag  = "Our promises"
+    field: heading  = "What we'll always do"
+    text-list field: items  (edit a line by matching its text exactly)
+      - "Quote the real price before the cape goes on"
+      - "Tell you when the cheaper service is the right one"
+      - "Keep your colour formula on file, so results repeat"
+      - "Start every appointment with a conversation, not a wash"
+      - "Say "that won't suit your hair" when it's true"
+      - "Never sell you product you don't need"
+  block "about-team" (team-grid)
+    field: tag  = "The team"
+    field: heading  = "Six chairs, six specialists"
+    items in "members":
+      item "member-maren"  name: "Maren Holt"  — fields: photo, name, role, bio
+      item "member-sofia"  name: "Sofia Reyes"  — fields: photo, name, role, bio
+      item "member-jules"  name: "Jules Tran"  — fields: photo, name, role, bio
+      item "member-priya"  name: "Priya Anand"  — fields: photo, name, role, bio
+  block "about-hours" (hours-table)
+    field: tag  = "Hours"
+    field: heading  = "When to find us"
+    field: note  = "Evening appointments past 7pm are available Thursdays by request — ask when you book."
+    items in "rows":
+      item "hours-mon"  day: "Monday"  — fields: day, hours
+      item "hours-tue"  day: "Tuesday"  — fields: day, hours
+      item "hours-wed"  day: "Wednesday"  — fields: day, hours
+      item "hours-thu"  day: "Thursday"  — fields: day, hours
+      item "hours-fri"  day: "Friday"  — fields: day, hours
+      item "hours-sat"  day: "Saturday"  — fields: day, hours
+      item "hours-sun"  day: "Sunday"  — fields: day, hours
+  block "about-cta" (cta)
+    field: tag  = "Come say hi"
+    field: statement  = "The best way to meet us is from the chair."
+    field: subtext  = "First visit? Book a Signature Cut and we'll take it from there."
+    field: button.label  = "Book a First Visit"
+    field: button.href  = "https://book.wrenandwillow.ca"
+    field: button.style  = "primary"
+
+PAGE gallery
+  block "gallery-header" (page-header)
+    field: tag  = "Gallery"
+    field: heading  = "Recent work from the chairs"
+    field: subhead  = "Every photo here is a real client, posted with permission — no stock, no filters that lie about colour."
+  block "gallery-main" (gallery)
+    items in "albums":
+      item "album-balayage"  title: "Lived-in balayage"  — fields: category, title, meta, images
+      item "album-vivids"  title: "Vivids & fashion colour"  — fields: category, title, meta, images
+      item "album-cuts"  title: "Precision cuts"  — fields: category, title, meta, images
+      item "album-bridal"  title: "Bridal & events"  — fields: category, title, meta, images
+  block "gallery-cta" (cta)
+    field: tag  = "Inspired?"
+    field: statement  = "Bring us the photo. We'll tell you honestly if your hair can do it."
+    field: subtext  = "Screenshots welcome — they're how half our best work starts."
+    field: button.label  = "Book a Consultation"
+    field: button.href  = "https://book.wrenandwillow.ca"
+    field: button.style  = "primary"
+
+PAGE contact
+  block "contact-header" (page-header)
+    field: tag  = "Contact"
+    field: heading  = "Get in touch"
+    field: subhead  = "Call, email, or send us a message — we reply within one business day, usually faster."
+  block "contact-info" (contact-info)
+    items in "items":
+      item "info-phone"  label: "Call"  — fields: icon, label, value, href
+      item "info-email"  label: "Email"  — fields: icon, label, value, href
+      item "info-address"  label: "Visit"  — fields: icon, label, value
+  block "contact-form" (contact-form)
+    field: tag  = "Send a message"
+    field: heading  = "How can we help?"
+    field: formAction  = "https://UNCONFIGURED"
+    field: subjectLine  = "Website enquiry — Wren & Willow Hair Studio"
+    field: submitLabel  = "Send"
