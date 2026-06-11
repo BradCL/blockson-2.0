@@ -1,7 +1,7 @@
 {
   "site": {
-    "name": "Wren And Willow",
-    "baseUrl": "https://wren-and-willow.example.com",
+    "name": "Wren & Willow Hair Studio",
+    "baseUrl": "https://www.wrenandwillow.ca",
     "theme": "salon",
     "logo": {
       "white": "img/logo-white.png",
@@ -9,23 +9,39 @@
       "favicon": "img/favicon.png"
     },
     "contact": {
-      "phone": "000-000-0000",
-      "email": "hello@wren-and-willow.example.com"
+      "phone": "780-555-0164",
+      "email": "hello@wrenandwillow.ca"
     },
     "nav": {
       "links": [
         {
           "label": "Home",
           "href": "index.html"
+        },
+        {
+          "label": "Services",
+          "href": "services.html"
+        },
+        {
+          "label": "About",
+          "href": "about.html"
+        },
+        {
+          "label": "Gallery",
+          "href": "gallery.html"
+        },
+        {
+          "label": "Contact",
+          "href": "contact.html"
         }
       ],
       "cta": {
-        "label": "Contact",
-        "href": "contact.html"
+        "label": "Book Now",
+        "href": "https://book.wrenandwillow.ca"
       }
     },
     "footer": {
-      "blurb": "Wren And Willow — replace this with a one-line description of the business.",
+      "blurb": "A six-chair hair studio on Edmonton's 124 Street — cuts, colour, and honest advice since 2014.",
       "columns": [
         {
           "heading": "Pages",
@@ -35,8 +51,35 @@
               "href": "index.html"
             },
             {
+              "label": "Services & Pricing",
+              "href": "services.html"
+            },
+            {
+              "label": "About the Studio",
+              "href": "about.html"
+            },
+            {
+              "label": "Gallery",
+              "href": "gallery.html"
+            },
+            {
               "label": "Contact",
               "href": "contact.html"
+            }
+          ]
+        },
+        {
+          "heading": "Visit",
+          "items": [
+            {
+              "label": "10318 124 Street NW, Edmonton"
+            },
+            {
+              "label": "Tuesday–Saturday, 9am–7pm"
+            },
+            {
+              "label": "Book online",
+              "href": "https://book.wrenandwillow.ca"
             }
           ]
         },
@@ -44,53 +87,647 @@
           "heading": "Contact",
           "items": [
             {
-              "label": "000-000-0000",
-              "href": "tel:0000000000"
+              "label": "780-555-0164",
+              "href": "tel:7805550164"
             },
             {
-              "label": "Email Us",
-              "href": "mailto:hello@wren-and-willow.example.com"
+              "label": "hello@wrenandwillow.ca",
+              "href": "mailto:hello@wrenandwillow.ca"
             }
           ]
         }
       ]
     },
-    "copyright": "© 2026 Wren And Willow. All rights reserved."
+    "copyright": "© 2026 Wren & Willow Hair Studio. All rights reserved."
   },
   "pages": [
     {
       "slug": "index",
       "meta": {
-        "title": "Wren And Willow",
-        "description": "Replace with a 150-character description of Wren And Willow."
+        "title": "Wren & Willow Hair Studio — Cuts, Colour & Balayage in Edmonton",
+        "description": "A six-chair hair studio on 124 Street. Precision cuts, lived-in colour, and stylists who listen first. Book online or drop us a line."
       },
       "blocks": [
         {
           "id": "home-hero",
           "type": "hero",
           "fields": {
-            "tag": "Your town, your trade",
-            "headline": "Replace this headline.",
-            "subhead": "One sentence on what the business does and for whom.",
+            "tag": "Edmonton · 124 Street",
+            "headline": "Hair that still looks good three weeks from now.",
+            "subhead": "We're a six-chair studio that books real consultation time, formulates colour to grow out gracefully, and never rushes a haircut to fit a schedule.",
             "background": "img/banner.jpg",
             "actions": [
               {
-                "label": "Get in Touch",
-                "href": "contact.html",
+                "label": "Book an Appointment",
+                "href": "https://book.wrenandwillow.ca",
                 "style": "primary"
+              },
+              {
+                "label": "See Our Work",
+                "href": "gallery.html",
+                "style": "secondary"
               }
             ],
             "hidden": false
           }
         },
         {
-          "id": "home-cta",
+          "id": "home-welcome",
+          "type": "text",
+          "fields": {
+            "tag": "Welcome",
+            "heading": "A studio, not a conveyor belt",
+            "body": [
+              "Wren & Willow opened in 2014 with one belief: the difference between a fine haircut and a great one is the twenty minutes nobody else budgets for. Every appointment here starts in the chair, talking — about your hair's history, how much time you actually spend on it in the morning, and what \"low maintenance\" really means to you.",
+              "Six stylists, one standard. Whether you're in for a fringe trim or a full colour correction, you'll leave knowing exactly what we did, why we did it, and how to keep it looking like day one."
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-services",
+          "type": "card-grid",
+          "fields": {
+            "tag": "What we do",
+            "heading": "Three things, done properly",
+            "columns": 3,
+            "cards": [
+              {
+                "id": "card-cuts",
+                "icon": "scissors",
+                "title": "Cuts & Styling",
+                "body": "Precision cuts built around your hair's natural fall — so it works on the days you don't style it, too.",
+                "items": [
+                  "Signature consultations with every cut",
+                  "Blowouts and event styling",
+                  "Curly and textured hair specialists"
+                ]
+              },
+              {
+                "id": "card-colour",
+                "icon": "paint",
+                "title": "Colour & Balayage",
+                "body": "Lived-in colour formulated to grow out softly. No hard lines, no panic at week five.",
+                "items": [
+                  "Balayage and foilyage",
+                  "Vivids and creative colour",
+                  "Corrections and silver transitions"
+                ]
+              },
+              {
+                "id": "card-treatments",
+                "icon": "heart",
+                "title": "Treatments & Texture",
+                "body": "Bond repair, deep conditioning, and texture services that treat the hair you have, not the hair on the box.",
+                "items": [
+                  "Bond-building treatments",
+                  "Keratin smoothing",
+                  "Scalp care and gloss services"
+                ]
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-stats",
+          "type": "stats-bar",
+          "fields": {
+            "stats": [
+              {
+                "id": "stat-years",
+                "value": "12",
+                "label": "years on 124 Street"
+              },
+              {
+                "id": "stat-chairs",
+                "value": "6",
+                "label": "stylists, one standard"
+              },
+              {
+                "id": "stat-rating",
+                "value": "4.9",
+                "label": "average of 600+ reviews"
+              },
+              {
+                "id": "stat-rebook",
+                "value": "92%",
+                "label": "of clients rebook"
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-before-after",
+          "type": "before-after",
+          "fields": {
+            "tag": "The proof",
+            "heading": "Recent transformations",
+            "pairs": [
+              {
+                "id": "ba-balayage",
+                "title": "Balayage refresh",
+                "before": "img/ba-balayage-before.jpg",
+                "after": "img/ba-balayage-after.jpg",
+                "caption": "Grown-out box colour lifted into a soft, dimensional balayage — one session with Sofia."
+              },
+              {
+                "id": "ba-silver",
+                "title": "Silver transition",
+                "before": "img/ba-silver-before.jpg",
+                "after": "img/ba-silver-after.jpg",
+                "caption": "Eighteen months of dyed ends blended into natural silver, instead of one harsh chop."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-testimonials",
+          "type": "testimonials",
+          "fields": {
+            "tag": "Word of mouth",
+            "heading": "What clients say",
+            "quotes": [
+              {
+                "id": "quote-dana",
+                "stars": 5,
+                "quote": "Maren is the first stylist who asked what my hair does on a Tuesday morning, not just what I wanted for the photo. Three years later I've never once dreaded a grow-out.",
+                "attribution": "Dana R., client since 2023"
+              },
+              {
+                "id": "quote-michelle",
+                "stars": 5,
+                "quote": "I came in with a colour-correction disaster from a box kit and left feeling like myself again. Sofia talked me out of the expensive option because it wasn't what my hair needed. That's why I trust them.",
+                "attribution": "Michelle T."
+              },
+              {
+                "id": "quote-aaron",
+                "stars": 5,
+                "quote": "As someone with thick, wavy hair that every barber just thins into submission, finding Jules was a revelation. Best men's cut in the city, full stop.",
+                "attribution": "Aaron K."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-booking",
+          "type": "booking-cta",
+          "fields": {
+            "tag": "Ready when you are",
+            "statement": "Your next appointment is two clicks away.",
+            "subtext": "Browse real-time availability for every stylist, pick your time, and get a reminder the day before.",
+            "provider": "Fresha",
+            "button": {
+              "label": "Book Online",
+              "href": "https://book.wrenandwillow.ca"
+            },
+            "note": "New colour clients: please book a free 15-minute consultation first so we can plan your session length honestly.",
+            "hidden": false
+          }
+        }
+      ]
+    },
+    {
+      "slug": "services",
+      "meta": {
+        "title": "Services & Pricing | Wren & Willow Hair Studio",
+        "description": "Transparent pricing for cuts, balayage, vivids, and treatments. Every price is a starting point we confirm at consultation — no surprises at the till."
+      },
+      "blocks": [
+        {
+          "id": "services-header",
+          "type": "page-header",
+          "fields": {
+            "tag": "Services",
+            "heading": "The service menu",
+            "subhead": "Every price below is a starting point we confirm together at consultation — never a surprise at the till.",
+            "hidden": false
+          }
+        },
+        {
+          "id": "services-cuts",
+          "type": "pricing-table",
+          "fields": {
+            "tag": "Cuts & styling",
+            "heading": "Cutting services",
+            "note": "Longer or denser hair may add time; we'll always tell you before we start, not after.",
+            "plans": [
+              {
+                "id": "plan-signature-cut",
+                "name": "Signature Cut",
+                "price": "$75",
+                "description": "Our standard appointment — never under an hour.",
+                "features": [
+                  "In-chair consultation",
+                  "Relaxing wash and scalp massage",
+                  "Precision cut and full style",
+                  "Home styling walkthrough"
+                ],
+                "featured": true
+              },
+              {
+                "id": "plan-fringe",
+                "name": "Fringe & Neck Trim",
+                "price": "$20",
+                "period": "between cuts",
+                "description": "Fifteen minutes to keep your shape sharp. Free if we cut your hair in the last six weeks."
+              },
+              {
+                "id": "plan-blowout",
+                "name": "Blowout & Style",
+                "price": "$55",
+                "description": "Wash, blowout, and finish — for the days that matter."
+              },
+              {
+                "id": "plan-event",
+                "name": "Event & Updo Styling",
+                "price": "from $95",
+                "description": "Weddings, galas, graduations. Book a trial run two weeks ahead — we insist, and you'll be glad."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "services-colour",
+          "type": "pricing-table",
+          "fields": {
+            "tag": "Colour",
+            "heading": "Colour services",
+            "note": "All colour services include a gloss and a bond-protecting additive. Colour corrections are quoted individually after a free consultation.",
+            "plans": [
+              {
+                "id": "plan-balayage",
+                "name": "Full Balayage",
+                "price": "from $210",
+                "description": "Hand-painted, lived-in colour designed to grow out for months, not weeks.",
+                "features": [
+                  "Custom formulation",
+                  "Toner and gloss included",
+                  "Style and finish"
+                ],
+                "featured": true
+              },
+              {
+                "id": "plan-roots",
+                "name": "Root Touch-Up",
+                "price": "$95",
+                "period": "per visit",
+                "description": "Colour to the line, matched to your existing shade."
+              },
+              {
+                "id": "plan-vivids",
+                "name": "Vivid Colour",
+                "price": "from $180",
+                "description": "Coppers, roses, blues — pigment-heavy work priced by session length."
+              },
+              {
+                "id": "plan-gloss",
+                "name": "Gloss & Tone",
+                "price": "$70",
+                "description": "Twenty minutes to revive tone and shine between colour appointments."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "services-process",
+          "type": "process-steps",
+          "fields": {
+            "tag": "Your first visit",
+            "heading": "How an appointment works",
+            "steps": [
+              {
+                "id": "step-consult",
+                "icon": "people",
+                "title": "We talk first",
+                "body": "Every appointment starts in the chair with dry hair — how it behaves, what's been done to it, and how much morning effort you're honestly willing to spend."
+              },
+              {
+                "id": "step-plan",
+                "icon": "calendar",
+                "title": "We agree the plan",
+                "body": "You'll hear exactly what we recommend, what it costs, and — for big colour changes — whether it needs more than one session. Then you decide."
+              },
+              {
+                "id": "step-craft",
+                "icon": "scissors",
+                "title": "The work itself",
+                "body": "Unhurried, explained as we go. Colour clients get a card on file recording the exact formula, so a great result is repeatable."
+              },
+              {
+                "id": "step-homecare",
+                "icon": "check",
+                "title": "You leave with a plan",
+                "body": "A two-minute walkthrough of how to style it yourself, what to use, and when we should see you next. No pressure to buy a shelf of product."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "services-faq",
+          "type": "faq",
+          "fields": {
+            "tag": "Questions",
+            "heading": "Asked all the time",
+            "items": [
+              {
+                "id": "faq-walkins",
+                "question": "Do you take walk-ins?",
+                "answer": "When a chair is free, gladly — but most days are fully booked, so calling ahead is the safe bet. Fringe trims are the easiest to slot in."
+              },
+              {
+                "id": "faq-consult",
+                "question": "Why do new colour clients need a consultation first?",
+                "answer": "Because colour quoted sight-unseen is a guess, and we don't book guesses. Fifteen free minutes lets us assess your hair's history and book the right session length — which protects your time and your budget."
+              },
+              {
+                "id": "faq-duration",
+                "question": "How long does balayage take?",
+                "answer": "Plan for three to four hours for a full balayage, including toning and styling. Big transformations and corrections can run longer — we'll tell you at consultation, not on the day."
+              },
+              {
+                "id": "faq-kids",
+                "question": "Do you cut children's hair?",
+                "answer": "Yes — ages eight and up, weekday afternoons. Little kids do best with our quieter time slots, so mention their age when you book."
+              },
+              {
+                "id": "faq-cancel",
+                "question": "What's your cancellation policy?",
+                "answer": "Life happens — give us 24 hours' notice and there's no charge, ever. Same-day cancellations and no-shows are charged 50% of the booked service, because that chair time can't be resold."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "services-cta",
           "type": "cta",
           "fields": {
-            "statement": "Ready to get started?",
+            "tag": "Still deciding?",
+            "statement": "Not sure what to book? Ask us first.",
+            "subtext": "Send us a photo of your hair and what you're hoping for — we'll tell you what to book and how long it'll take.",
             "button": {
-              "label": "Contact Us",
+              "label": "Send Us a Message",
               "href": "contact.html",
+              "style": "primary"
+            },
+            "hidden": false
+          }
+        }
+      ]
+    },
+    {
+      "slug": "about",
+      "meta": {
+        "title": "About the Studio | Wren & Willow Hair Studio",
+        "description": "Meet the six stylists behind Wren & Willow, the promises we keep, and our hours. A 124 Street studio built on consultation-first hairdressing since 2014."
+      },
+      "blocks": [
+        {
+          "id": "about-header",
+          "type": "page-header",
+          "fields": {
+            "tag": "About",
+            "heading": "The studio on 124 Street",
+            "subhead": "Twelve years, six chairs, and a stubborn belief that listening is half the haircut.",
+            "variant": "light",
+            "hidden": false
+          }
+        },
+        {
+          "id": "about-story",
+          "type": "text",
+          "fields": {
+            "tag": "Our story",
+            "heading": "Started small on purpose, staying that way on purpose",
+            "body": [
+              "Maren Holt opened Wren & Willow in 2014 after a decade in high-volume salons, where appointment slots got shorter every year and consultations disappeared entirely. The plan was simple and a little contrarian: fewer chairs, longer appointments, and prices honest enough to say out loud before the work starts.",
+              "Twelve years later the studio is still six chairs — by choice. Growth, for us, has meant deeper skills rather than more square footage: advanced colour certifications, curly-cutting training, and a colour-formula card for every regular so your best result is never a one-off.",
+              "You'll find us between the florist and the bookshop on 124 Street, in a bright corner space with plants we mostly manage to keep alive. Coffee's on; parking is free off the alley."
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "about-values",
+          "type": "list-panel",
+          "fields": {
+            "tag": "Our promises",
+            "heading": "What we'll always do",
+            "items": [
+              "Quote the real price before the cape goes on",
+              "Tell you when the cheaper service is the right one",
+              "Keep your colour formula on file, so results repeat",
+              "Start every appointment with a conversation, not a wash",
+              "Say \"that won't suit your hair\" when it's true",
+              "Never sell you product you don't need"
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "about-team",
+          "type": "team-grid",
+          "fields": {
+            "tag": "The team",
+            "heading": "Six chairs, six specialists",
+            "members": [
+              {
+                "id": "member-maren",
+                "photo": "img/team-maren.jpg",
+                "name": "Maren Holt",
+                "role": "Owner · Master Stylist",
+                "bio": "Twenty-two years behind the chair. Maren cuts with the grow-out in mind and is the studio's last word on colour corrections."
+              },
+              {
+                "id": "member-sofia",
+                "photo": "img/team-sofia.jpg",
+                "name": "Sofia Reyes",
+                "role": "Colour Specialist",
+                "bio": "Balayage and dimensional colour are Sofia's whole world. If your colour grew out gracefully, odds are she formulated it that way on purpose."
+              },
+              {
+                "id": "member-jules",
+                "photo": "img/team-jules.jpg",
+                "name": "Jules Tran",
+                "role": "Stylist · Texture Specialist",
+                "bio": "Curly, coily, and thick wavy hair — cut dry, shaped by hand. Jules trained in three curl methods so your hair doesn't have to fit one."
+              },
+              {
+                "id": "member-priya",
+                "photo": "img/team-priya.jpg",
+                "name": "Priya Anand",
+                "role": "Stylist · Extensions & Events",
+                "bio": "Bridal parties, galas, and hand-tied extensions. Priya is the reason we insist on updo trial runs — hers always survive the dance floor."
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "about-hours",
+          "type": "hours-table",
+          "fields": {
+            "tag": "Hours",
+            "heading": "When to find us",
+            "note": "Evening appointments past 7pm are available Thursdays by request — ask when you book.",
+            "rows": [
+              {
+                "id": "hours-mon",
+                "day": "Monday",
+                "hours": "Closed"
+              },
+              {
+                "id": "hours-tue",
+                "day": "Tuesday",
+                "hours": "9am – 7pm"
+              },
+              {
+                "id": "hours-wed",
+                "day": "Wednesday",
+                "hours": "9am – 7pm"
+              },
+              {
+                "id": "hours-thu",
+                "day": "Thursday",
+                "hours": "9am – 7pm"
+              },
+              {
+                "id": "hours-fri",
+                "day": "Friday",
+                "hours": "9am – 7pm"
+              },
+              {
+                "id": "hours-sat",
+                "day": "Saturday",
+                "hours": "9am – 5pm"
+              },
+              {
+                "id": "hours-sun",
+                "day": "Sunday",
+                "hours": "Closed"
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "about-cta",
+          "type": "cta",
+          "fields": {
+            "tag": "Come say hi",
+            "statement": "The best way to meet us is from the chair.",
+            "subtext": "First visit? Book a Signature Cut and we'll take it from there.",
+            "button": {
+              "label": "Book a First Visit",
+              "href": "https://book.wrenandwillow.ca",
+              "style": "primary"
+            },
+            "hidden": false
+          }
+        }
+      ]
+    },
+    {
+      "slug": "gallery",
+      "meta": {
+        "title": "Gallery | Wren & Willow Hair Studio",
+        "description": "Recent cuts, balayage, vivids, and bridal styling from the Wren & Willow chairs — real client work, updated by the stylists themselves."
+      },
+      "blocks": [
+        {
+          "id": "gallery-header",
+          "type": "page-header",
+          "fields": {
+            "tag": "Gallery",
+            "heading": "Recent work from the chairs",
+            "subhead": "Every photo here is a real client, posted with permission — no stock, no filters that lie about colour.",
+            "hidden": false
+          }
+        },
+        {
+          "id": "gallery-main",
+          "type": "gallery",
+          "fields": {
+            "filters": [
+              {
+                "label": "All",
+                "value": "all"
+              },
+              {
+                "label": "Colour",
+                "value": "colour"
+              },
+              {
+                "label": "Cuts",
+                "value": "cuts"
+              },
+              {
+                "label": "Bridal",
+                "value": "bridal"
+              }
+            ],
+            "albums": [
+              {
+                "id": "album-balayage",
+                "category": "colour",
+                "title": "Lived-in balayage",
+                "meta": "by Sofia",
+                "images": [
+                  "img/gal-balayage-1.jpg",
+                  "img/gal-balayage-2.jpg"
+                ]
+              },
+              {
+                "id": "album-vivids",
+                "category": "colour",
+                "title": "Vivids & fashion colour",
+                "meta": "by Sofia & Maren",
+                "images": [
+                  "img/gal-vivids-1.jpg",
+                  "img/gal-vivids-2.jpg"
+                ]
+              },
+              {
+                "id": "album-cuts",
+                "category": "cuts",
+                "title": "Precision cuts",
+                "meta": "by Jules",
+                "images": [
+                  "img/gal-cuts-1.jpg",
+                  "img/gal-cuts-2.jpg"
+                ]
+              },
+              {
+                "id": "album-bridal",
+                "category": "bridal",
+                "title": "Bridal & events",
+                "meta": "by Priya",
+                "images": [
+                  "img/gal-bridal-1.jpg",
+                  "img/gal-bridal-2.jpg"
+                ]
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "gallery-cta",
+          "type": "cta",
+          "fields": {
+            "tag": "Inspired?",
+            "statement": "Bring us the photo. We'll tell you honestly if your hair can do it.",
+            "subtext": "Screenshots welcome — they're how half our best work starts.",
+            "button": {
+              "label": "Book a Consultation",
+              "href": "https://book.wrenandwillow.ca",
               "style": "primary"
             },
             "hidden": false
@@ -101,8 +738,8 @@
     {
       "slug": "contact",
       "meta": {
-        "title": "Contact | Wren And Willow",
-        "description": "Get in touch."
+        "title": "Get in touch | Wren & Willow Hair Studio",
+        "description": "Call, email, or send us a message — we reply within one business day, usually faster."
       },
       "blocks": [
         {
@@ -110,7 +747,8 @@
           "type": "page-header",
           "fields": {
             "tag": "Contact",
-            "heading": "Let's talk",
+            "heading": "Get in touch",
+            "subhead": "Call, email, or send us a message — we reply within one business day, usually faster.",
             "hidden": false
           }
         },
@@ -123,17 +761,57 @@
                 "id": "info-phone",
                 "icon": "phone",
                 "label": "Call",
-                "value": "000-000-0000",
-                "href": "tel:0000000000"
+                "value": "780-555-0164",
+                "href": "tel:780-555-0164"
               },
               {
                 "id": "info-email",
                 "icon": "mail",
                 "label": "Email",
-                "value": "Email Us",
-                "href": "mailto:hello@wren-and-willow.example.com"
+                "value": "hello@wrenandwillow.ca",
+                "href": "mailto:hello@wrenandwillow.ca"
+              },
+              {
+                "id": "info-address",
+                "icon": "pin",
+                "label": "Visit",
+                "value": "10318 124 Street NW, Edmonton"
               }
             ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "contact-form",
+          "type": "contact-form",
+          "fields": {
+            "tag": "Send a message",
+            "heading": "How can we help?",
+            "formAction": "https://UNCONFIGURED",
+            "subjectLine": "Website enquiry — Wren & Willow Hair Studio",
+            "fields": [
+              {
+                "name": "name",
+                "label": "Full Name",
+                "type": "text",
+                "required": true,
+                "half": true
+              },
+              {
+                "name": "email",
+                "label": "Email",
+                "type": "email",
+                "required": true,
+                "half": true
+              },
+              {
+                "name": "message",
+                "label": "Your message",
+                "type": "textarea",
+                "required": true
+              }
+            ],
+            "submitLabel": "Send",
             "hidden": false
           }
         }
