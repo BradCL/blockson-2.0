@@ -121,3 +121,61 @@ same property from plain `textContent` plus discipline, while staying
 fully readable to anyone who knows the DOM. Every value on screen took
 the same path: server JSON → `textContent`. When you can say that in one
 sentence, you can audit it in one afternoon.
+
+---
+
+## Try it
+
+*(Editor running: `node engine/serve.js learning-lab`, browser at
+`http://127.0.0.1:4173/`.)*
+
+**Exercise 1 (predict, then verify).** *Question:* in the preview, what
+happens when you click (a) the hero headline, and (b) a navigation menu
+link? Same thing or different - and why would they differ? **Predict,
+then click both.**
+
+<details><summary>What you should see</summary>
+
+The headline opens an editor pane (it carries `data-bk-*` attributes, so
+the overlay's capture-phase handler intercepts). The nav link *navigates*
+inside the preview - nav links are developer-managed, carry no
+annotations, and the overlay's first line (`if (!el) return`) lets them
+through on purpose.</details>
+
+**Exercise 2 (predict, then verify).** Open your browser's developer
+tools on the editor page, pick any annotated element inside the preview
+iframe, and read its attributes. *Question:* which three (or four)
+`data-bk-*` attributes can appear, and what does each one address?
+Verify against the table in `engine/lib/annotate.js`'s header comment.
+
+<details><summary>Answer sketch</summary>
+
+`data-bk-block` (block id), `data-bk-item` (repeating-item id, when the
+element belongs to one), `data-bk-field` (field name), `data-bk-index`
+(line number, only on text-list lines).</details>
+
+## Self-check
+
+1. Why does the overlay's click listener pass `true` as the third
+   argument to `addEventListener`?
+   <details><summary>Answer</summary>That registers it for the *capture*
+   phase, which runs before the page's own bubbling handlers - so
+   editing beats lightboxes, accordions, and link navigation.</details>
+2. How do the iframe and the editor app communicate, and what check
+   guards each direction?
+   <details><summary>Answer</summary>`window.parent.postMessage` from
+   the overlay, a `message` listener in `ui.js` - the overlay pins the
+   target origin, and the listener verifies `e.origin` before trusting
+   anything.</details>
+3. Why is `textContent` (never `innerHTML`) a security boundary?
+   <details><summary>Answer</summary>`textContent` treats the value as
+   inert text; `innerHTML` parses it as markup, so a value containing
+   `<script>` (or an `onerror` attribute) would execute - that's
+   XSS.</details>
+4. Transfer: you want double-click on a gallery image to open the image
+   editor directly. Which file changes, and what's the riskiest mistake
+   available?
+   <details><summary>Answer</summary>`engine/ui/overlay.js` (a `dblclick`
+   capture listener posting the same `bk-edit` shape). The risky mistake:
+   assembling any HTML from the element's content, or posting to `'*'`
+   instead of the pinned origin.</details>

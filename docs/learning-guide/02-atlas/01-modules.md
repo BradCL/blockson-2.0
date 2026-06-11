@@ -104,3 +104,68 @@ const VALID_TYPES = new Set(Object.keys(require('../blocks/_registry')));
 One module is the source of truth for "what block types exist," and both
 the renderer and the validator consume it. When you find yourself writing
 the same list in two files, reach for this move.
+
+---
+
+## Try it
+
+*Set up once for all exercises in this guide:*
+`node engine/new-client.js learning-lab` *then*
+`node engine/build.js learning-lab`. *Everything hands-on happens in
+`clients/learning-lab/` — never in `engine/` or the example clients.*
+
+**Exercise 1 (predict, then verify).** The registry maps type strings to
+renderer functions. *Question:* if `content.json` names a type that isn't
+in the registry — say `"banner"` — which layer catches it: the registry
+lookup in `render.js`, or something earlier? **Write down your
+prediction.** Then edit `clients/learning-lab/content.json`, change the
+hero block's `"type"` to `"banner"`, and run
+`node engine/build.js learning-lab`.
+
+<details><summary>What you should see</summary>
+
+Validation fails *before* rendering ever starts:
+
+```
+Validation failed:
+  ✗ pages.0.blocks.0.type must be one of: hero, page-header, text, ...
+```
+
+The schema's `enum` of types is checked by ajv, so the `throw` in
+`renderPage` for unknown types is a second line of defense that normally
+never fires. (Change the type back and rebuild before moving on.)
+</details>
+
+**Exercise 2 (modification, safe).** Print the registry without the
+engine's help:
+`node -e "console.log(Object.keys(require('./engine/blocks/_registry')))"`.
+Count them — there should be 21, and the list should match the error
+message from Exercise 1. Two consumers, one source of truth.
+
+## Self-check
+
+1. What does `require('./hero')` actually return, given how `hero.js`
+   ends?
+   <details><summary>Answer</summary>Whatever was assigned to
+   `module.exports` — here a single function `hero(fields, site, bk)`
+   that returns an HTML string.</details>
+2. Why do both `render.js` and `validate.js` read the block list from
+   `_registry.js` instead of keeping their own?
+   <details><summary>Answer</summary>So the set of renderable types and
+   the set of valid types can never drift apart — one module is the
+   single source of truth, and both consumers derive from it.</details>
+3. Transfer: you're adding a `coupon-banner` block type. Which files
+   change?
+   <details><summary>Answer</summary>A new
+   `engine/blocks/coupon-banner.js`, one `require` line in
+   `_registry.js`, the type enum + fields rules in
+   `engine/schema/content.schema.json`, and documentation in
+   BLOCK_CATALOG.md. Nothing in `render.js` — that's the registry
+   pattern paying off.</details>
+4. Why does `patch.js` export `DANGEROUS_VALUE` when `applyPatch` already
+   uses it internally?
+   <details><summary>Answer</summary>So the theme validator can apply
+   the *same* injection blacklist to preset token values that the
+   resolver applies to owner values — sharing the constant prevents the
+   two rules from diverging. The comment beside the export says
+   so.</details>

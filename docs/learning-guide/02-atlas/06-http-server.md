@@ -115,3 +115,60 @@ is what makes both halves testable in isolation — and it's the seam the
 README points to for any future automation: anything that can call
 `owner.applyEdit` gets exactly the same guards the UI gets, because the
 guards don't live in the HTTP layer.
+
+---
+
+## Try it
+
+*(Start the editor against the scratch client first:
+`node engine/serve.js learning-lab` - leave it running in one terminal
+and use another for the probes. `curl` ships with Windows 10+, macOS,
+and Linux.)*
+
+**Exercise 1 (predict, then verify).** *Question:* what happens to a
+POST that doesn't carry the editor's custom header - 404, 400, or 403?
+**Predict, then probe:**
+
+```
+curl -i -X POST http://127.0.0.1:4173/api/keep
+```
+
+<details><summary>What you should see</summary>
+
+`HTTP/1.1 403 Forbidden` with body
+`{"ok":false,"error":"missing editor header"}`. The route exists and the
+request is local - but the `x-blockson-ui` check runs before any routing
+of POSTs. Add `-H "x-blockson-ui: 1"` and repeat: now you get `400` with
+`There is no pending change to keep.` - past the guard, into the
+handler, refused by application logic instead.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* which response
+headers does *every* answer carry? **Predict, then check** with
+`curl -i http://127.0.0.1:4173/api/state` - look for the two
+`X-…` security headers and the cache header, then find the
+`SECURITY_HEADERS` constant in `engine/serve.js` that put them there.
+
+## Self-check
+
+1. Name the three guards a POST passes before reaching a handler, in
+   order.
+   <details><summary>Answer</summary>`requestAllowed` (loopback socket +
+   local Host header), `authorized` (access token / session cookie, when
+   configured), and the `x-blockson-ui: 1` header check.</details>
+2. Why is there a 12 MB cap in `readBody`?
+   <details><summary>Answer</summary>Without a cap, any client could
+   stream an endless body and exhaust memory; 12 MB fits the largest
+   legitimate payload - an 8 MB image, base64-encoded inside
+   JSON.</details>
+3. What does `serve.js` deliberately *not* contain, and why?
+   <details><summary>Answer</summary>Editing logic - it routes to
+   `owner.js` handlers and maps their `{ ok }` results onto status
+   codes. The split lets proof 8 test the handlers without a socket and
+   proof 13 test the HTTP guards over a real one.</details>
+4. Transfer: you're adding `GET /api/ledger` to return the maintenance
+   log. Where does the code go, and what could it return?
+   <details><summary>Answer</summary>A route branch in `handle()` beside
+   `/api/state`, calling a new reader function in `owner.js` (the logic
+   layer) that parses `edits.log.jsonl` - and it inherits the locality,
+   token, nosniff, and no-store behaviour for free because it flows
+   through the same plumbing.</details>

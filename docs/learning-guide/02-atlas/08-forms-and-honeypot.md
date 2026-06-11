@@ -99,3 +99,67 @@ once, or the host's native handling — and the honeypot is what makes
 "unattended for years" survivable. Notice the division of labor: the
 *block* renders the same honeypot everywhere, the *endpoint* decides what
 to do about it. Each layer does the part only it can do.
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** The scratch client has no contact
+form, so use the read-only canonical example. *Question:* in the built
+contact page of example-contractor, how many times does the honeypot
+field name `_gotcha` appear, and does it ever carry a `data-bk-*`
+annotation in the annotated build? **Predict, then check:**
+
+```
+node engine/build.js example-contractor
+node engine/build.js example-contractor --annotate
+```
+
+then search `dist/example-contractor/contact.html` and
+`dist/example-contractor__annotated/contact.html` for `_gotcha`.
+
+<details><summary>What you should see</summary>
+
+One `<input type="text" name="_gotcha" tabindex="-1" autocomplete="off">`
+inside a `class="form-hp" aria-hidden="true"` wrapper - in both builds,
+never annotated. The honeypot is rendered markup, not content: owners
+can't see it, click it, or break it. (Proof 15 asserts exactly
+this.)</details>
+
+**Exercise 2 (modification, safe).** Give learning-lab a contact form:
+add to the contact page's `blocks` array a
+`{ "id": "contact-form", "type": "contact-form", "fields": { ... } }`
+block, copying `fields` from example-contractor's contact page and
+keeping `"formAction": "https://UNCONFIGURED"`. Build. *Predict first:*
+does the placeholder fail the build, or warn?
+
+<details><summary>What you should see</summary>
+
+The build succeeds and prints the long warning naming your block id and
+explaining that submissions will go nowhere until `formAction` is real -
+`warnOnPlaceholderForms` in `engine/build.js`. Advisory, not
+gate.</details>
+
+## Self-check
+
+1. Why is the honeypot named `_gotcha` specifically?
+   <details><summary>Answer</summary>It's Formspree's reserved honeypot
+   field name, so endpoint-mode relays that recognise it drop bot
+   submissions with no configuration; the same name is wired into the
+   netlify-honeypot attribute and the shipped Cloudflare
+   Worker.</details>
+2. Which three attributes hide the honeypot from humans without hiding
+   it from bots?
+   <details><summary>Answer</summary>The offscreen `.form-hp` CSS class,
+   `aria-hidden="true"` (assistive tech), and `tabindex="-1"`
+   (keyboard). Bots parsing HTML still see a named text input.</details>
+3. In netlify mode, what happens to `formAction`?
+   <details><summary>Answer</summary>It isn't rendered - the form gets
+   Netlify's attributes instead, and the schema makes `formAction`
+   optional only in that mode.</details>
+4. Transfer: a client reports "we get spam anyway." The honeypot is
+   rendering. Where does the fix belong?
+   <details><summary>Answer</summary>At the receiving endpoint - the
+   block can only mark submissions; the endpoint (Worker, relay,
+   Netlify) is what must drop those where `_gotcha` is filled, so check
+   its configuration first.</details>

@@ -114,3 +114,65 @@ already there, the static hosts deploy from it, and the developer already
 trusts it. The design lesson: before adding infrastructure, check whether
 a tool already in the stack can be *driven by code* to do the job. Often
 the boring answer is the robust one.
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** *Question:* what does `spawnSync`
+give you back when the program exists and fails, versus when the program
+doesn't exist at all? **Predict the difference, then run:**
+
+```
+node -e "const r=require('child_process').spawnSync('git',['log','-1','--format=%H'],{encoding:'utf8'});console.log({status:r.status, err:r.error && r.error.code, out:r.stdout.trim()})"
+node -e "const r=require('child_process').spawnSync('no-such-tool',['--version'],{encoding:'utf8'});console.log({status:r.status, err:r.error && r.error.code})"
+```
+
+<details><summary>What you should see</summary>
+
+First: `status: 0` and a commit hash - success is an exit code, not an
+exception. Second: `status: null` and `err: 'ENOENT'` - a *missing
+program* surfaces as `r.error`, not a thrown exception and not an exit
+code. That's exactly why `restore()` and `runPublish` check
+`log.error && log.error.code === 'ENOENT'` separately from
+`status !== 0`.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* why does `restore()`
+pass `--fixed-strings` to `git log --grep`? Predict what could go wrong
+without it, then test the difference yourself on this very repo:
+
+```
+git log --oneline -3 --grep "Phase 2a"
+```
+
+works - but a marker like `[blockson-publish client]` contains `[` and
+`]`, which grep-by-default treats as a regex character class. Try
+`git log --oneline --grep "[blockson-publish x]"` and note how many
+commits match (far too many - it matches any commit whose message
+contains *any one* of those letters).
+
+## Self-check
+
+1. Why arguments-as-array (`git(['commit','-m', message])`) instead of
+   one command string?
+   <details><summary>Answer</summary>Array arguments bypass the shell:
+   `message` arrives as a single argv entry no matter what quotes,
+   semicolons, or `$(...)` it contains - command injection has no parser
+   to exploit.</details>
+2. The custom-publish path *does* use a shell. What compensates?
+   <details><summary>Answer</summary>`shellSafeMessage` - the
+   interpolated text is first reduced to a conservative character set,
+   because free-form owner text would otherwise reach a shell
+   parser.</details>
+3. How does one click of "Undo last publish" know what to revert?
+   <details><summary>Answer</summary>Every publish commit embeds
+   `[blockson-publish <client>]` in its message; `restore()` finds the
+   newest such commit with `git log --grep --fixed-strings` and reverts
+   that single commit - which is the whole session, because publish
+   makes exactly one commit.</details>
+4. Transfer: your tool runs `npm install` for users. List two checks
+   this chapter says you owe them.
+   <details><summary>Answer</summary>Probe availability first and
+   translate ENOENT into "npm is not installed / not on PATH"; and check
+   `status !== 0` after the run, reporting stderr - never assume the
+   call worked because it didn't throw.</details>

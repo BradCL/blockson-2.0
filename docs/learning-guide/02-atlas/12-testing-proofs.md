@@ -90,3 +90,58 @@ HTTP, and real git, in well under a minute.
 The transferable rule: **write your tests at the level of the sentence
 you'd say to the person relying on you.** If the sentence is "you cannot
 break the site from the editor," a mock-free test must be able to try.
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** *Question:* do the proofs depend
+on your scratch client? If `clients/learning-lab/` contains experiments
+(even broken ones), does `npm test` still pass? **Predict, then run**
+`npm test` with your learning-lab in whatever state the previous
+chapters left it.
+
+<details><summary>What you should see</summary>
+
+`19/19 proofs passed.` The suite exercises the example clients, the
+shipped blueprints/themes, and throwaway sandboxes it creates itself -
+your scratch client isn't part of the contract, so it can't break the
+contract. (This is also why the guide had you experiment there.)</details>
+
+**Exercise 2 (predict, then verify).** Pick proof 1's claim - "live HTML
+carries no `data-bk-*`" - and *replicate it by hand* against your own
+client: build learning-lab both ways and search both outputs for
+`data-bk-`. Predict the two counts before you look.
+
+<details><summary>What you should see</summary>
+
+Zero matches in `dist/learning-lab/`, several in
+`dist/learning-lab__annotated/`. You just ran a one-client version of
+`presentAnnotations` - the suite does the same scan across three clients
+and also asserts the *reverse* direction (every edit-map field has an
+annotation).</details>
+
+## Self-check
+
+1. Why does the suite run `build.js` as a subprocess instead of
+   requiring it as a module?
+   <details><summary>Answer</summary>The promise under test includes
+   the CLI contract itself - exit codes, stderr, argument handling -
+   and the only way to test what a user types is to run what a user
+   types.</details>
+2. What's a "known-bad fixture" and which proofs use one?
+   <details><summary>Answer</summary>A deliberately invalid input whose
+   *rejection with named reasons* is the expected behaviour - proofs 11
+   (bad blueprint), 12 (bad theme), and 19 (bad item blueprint) all
+   assert failure modes, not just successes.</details>
+3. Why must the suite pass "on a clean tree"?
+   <details><summary>Answer</summary>Proofs that mutate example clients
+   restore them afterwards; requiring a clean tree before *and* after
+   makes test pollution itself a detectable failure.</details>
+4. Transfer: you added a guard that strips EXIF from uploads
+   server-side. Write the one-sentence proof you'd add.
+   <details><summary>Answer</summary>Something like: "an uploaded JPEG
+   containing GPS EXIF lands in the candidate's img/ with no EXIF
+   segment, and the edit still succeeds" - phrased as the user-facing
+   promise, exercised through `owner.applyEdit` with real
+   bytes.</details>

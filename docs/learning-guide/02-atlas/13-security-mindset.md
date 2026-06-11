@@ -138,3 +138,85 @@ check, eight magic bytes); what's expensive is the *discipline* of asking,
 at every input: who could put what here, and what's the worst that value
 could do where it lands? Carry that question into every codebase you
 touch. It is the entire chapter.
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** *Question:* can a theme-token
+value smuggle CSS out of its declaration? The value lands inside
+`:root { --color-primary: VALUE; }` - so what does the guard do with a
+value like `red;}body{display:none`? **Predict which guard fires
+(format allowlist, injection blacklist, or contrast), then run:**
+
+```
+node engine/apply-patch.js learning-lab '{"action":"set-token","token":"--color-primary","value":"red;}body{display:none"}'
+```
+
+<details><summary>What you should see</summary>
+
+`Error: value failed the safety guard (unsafe characters or too long)` -
+that's `DANGEROUS_VALUE` (the `;` and `{` and `}`) firing inside
+`validateTokenValue`, before the color-format check even matters.
+Nothing written.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* what stops
+white-on-white? The default theme's `--color-bg` is `#0f1115`. **Predict
+what happens if you set `--color-primary` to exactly that, then run:**
+
+```
+node engine/apply-patch.js learning-lab '{"action":"set-token","token":"--color-primary","value":"#0f1115"}'
+```
+
+<details><summary>What you should see</summary>
+
+`Error: "#0f1115" is too close to the theme's --color-bg (#0f1115) - the
+result would be unreadable. Pick a color with more contrast.` The
+contrast guard (`contrastRatio` against `TOKEN_PAIRS`) - rejecting a
+perfectly *valid* color because of where it would land. Validity is
+contextual.</details>
+
+**Exercise 3 (predict, then verify).** With
+`node engine/serve.js learning-lab` running, probe path confinement:
+
+```
+curl -i --path-as-is "http://127.0.0.1:4173/preview/..%2f..%2f..%2fpackage.json"
+```
+
+Predict the status code first.
+
+<details><summary>What you should see</summary>
+
+`403` with `forbidden path` (or `404` - either way, no file contents).
+`sendStatic` resolved the decoded path and found it outside the preview
+root. Proof 13 runs this same probe in CI.</details>
+
+## Self-check
+
+1. Which file validates uploads, which validates link schemes, and which
+   confines static paths?
+   <details><summary>Answer</summary>`engine/lib/owner.js`
+   (`prepareUpload` / `IMAGE_SIGNATURES`);
+   `engine/lib/validate.js` + the schema (`SAFE_HREF_RE` /
+   `$defs/safeHref`); `engine/serve.js` (`sendStatic`).</details>
+2. Why is the href rule an allowlist rather than a blocklist of
+   dangerous schemes?
+   <details><summary>Answer</summary>A blocklist silently admits
+   anything not yet on it (new or obscure schemes); an allowlist fails
+   safe - the unknown is refused by default.</details>
+3. Why does `safeEqual` hash both values before
+   `crypto.timingSafeEqual`?
+   <details><summary>Answer</summary>`timingSafeEqual` requires
+   equal-length buffers; hashing both sides to fixed-length digests
+   guarantees that without an early length-based return - which would
+   itself leak information through timing.</details>
+4. Transfer: where would you ADD a new guard if blocks gained a
+   `customCss` field (free-form CSS per block), and what proof would you
+   write?
+   <details><summary>Answer</summary>Trick question the codebase
+   answers: such a field shouldn't exist - it's unguardable free-form
+   code from the maintenance tier. The Blockson-shaped alternative is
+   more SAFE_TOKENS-style allowlisted values. If forced, the guard
+   belongs in `validateTokenValue`-like per-type checks in `patch.js`
+   plus the schema, and the proof: a value containing `}`, `url(`, or
+   `expression` never reaches a built page.</details>

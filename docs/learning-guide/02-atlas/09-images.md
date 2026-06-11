@@ -104,3 +104,67 @@ sanitize the name, assign the path server-side, stage in the candidate,
 publish atomically with the content that references them. Each layer
 catches what the previous one can't. That's **defense in depth** — the
 through-line of [atlas 13](13-security-mindset.md).
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** *Question:* does an oversized
+image fail the build or warn? **Predict, then test:** create a ~600 KB
+junk file inside the scratch client's image folder -
+
+```
+node -e "require('fs').writeFileSync('clients/learning-lab/img/big.jpg', Buffer.alloc(600*1024, 65))"
+node engine/build.js learning-lab
+```
+
+- and read stderr and the exit code.
+
+<details><summary>What you should see</summary>
+
+`⚠ img/big.jpg is 600 KB - every visitor downloads it at full size...`
+on stderr, but `Built 2 page(s)` and exit `0`. Weight is advice
+(`warnOnHeavyImages`), not correctness. Delete `big.jpg`
+afterwards.</details>
+
+**Exercise 2 (predict, then verify).** That `big.jpg` from Exercise 1 is
+600 KB of the letter "A" - not a real JPEG. *Question:* if you tried to
+upload such a file through the owner editor, which guard names the
+problem? **Predict**, then (with `node engine/serve.js learning-lab`
+running) click the hero background in the preview and pick a fake .jpg
+(make one on your desktop the same way).
+
+<details><summary>What you should see</summary>
+
+The editor pane shows: *"...does not look like a real JPG image - the
+file's contents don't match its name."* That's `IMAGE_SIGNATURES['.jpg']`
+in `prepareUpload` checking for the `FF D8 FF` magic bytes and finding
+`41 41 41`.</details>
+
+## Self-check
+
+1. Which file validates uploads, and with which function?
+   <details><summary>Answer</summary>`engine/lib/owner.js`,
+   `prepareUpload` - extension allowlist, 8 MB cap, base64 decode,
+   magic-byte check, name sanitization, collision-safe
+   naming.</details>
+2. Why does the browser compress images at all if the server re-checks
+   everything?
+   <details><summary>Answer</summary>Page weight: a 4 MB phone photo
+   becomes a few hundred KB before upload. It's a courtesy for the
+   site's visitors - the server still treats the result as untrusted
+   input.</details>
+3. What personal data does the canvas re-encode strip, and why does it
+   matter here?
+   <details><summary>Answer</summary>All EXIF metadata, including GPS
+   coordinates - owners photograph their own premises, so uploads could
+   otherwise publish exactly where the photo was taken.</details>
+4. Transfer: you're adding `.svg` to the allowed upload types. What
+   makes SVG different from every format currently allowed, and what
+   would you check before shipping?
+   <details><summary>Answer</summary>SVG is XML that can contain
+   scripts and event handlers - it's *code*, not pixels, so a signature
+   check isn't enough; you'd need sanitization, and you'd write a proof
+   that a script-bearing SVG can't reach live. (Notice the current
+   allowlist contains only raster formats - probably not an
+   accident.)</details>

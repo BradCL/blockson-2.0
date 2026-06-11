@@ -113,3 +113,73 @@ language what didn't happen and why. Same engine, two failure cultures,
 each matched to who's standing in front of the error. When you design
 error handling, start there: *who sees this, and what can they do about
 it?*
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** The work-order question: *what
+happens if an href becomes `javascript:alert(1)`?* The resolver's job is
+the write allowlist; the schema's job is value safety. **Predict which
+layer stops it and what state the client ends in.** Then:
+
+```
+node engine/apply-patch.js learning-lab '{"action":"set","block":"home-hero","field":"actions.0.href","value":"javascript:alert(1)"}'
+```
+
+<details><summary>What you should see</summary>
+
+```
+Build failed after patch; content.json restored.
+Validation failed:
+  ✗ pages.0.blocks.0.fields.actions.0.href must match pattern "^(?:(?:https?://|mailto:|tel:|sms:|#).*|[^:]*)$"
+```
+
+The *resolver allowed it* - it's a string value into an existing string
+field, inside the allowlist. The *schema gate at rebuild* caught it, and
+the rollback restored `content.json`. Check the file: the href is
+unchanged. Two independent layers; the second one held. Exit code 1 -
+this was an error, unlike a refusal.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* same command shape,
+but with no `value` key at all - which layer rejects it, and is anything
+rebuilt? **Predict, then run:**
+
+```
+node engine/apply-patch.js learning-lab '{"action":"set","block":"home-hero","field":"headline"}'
+```
+
+<details><summary>What you should see</summary>
+
+`Error: "headline" requires a string "value" (got no value)` - straight
+from `applyPatch`'s value-type guard, *before* any write or rebuild.
+Different layer than Exercise 1: the resolver catches malformed patches;
+the schema catches well-formed patches with unsafe results.</details>
+
+## Self-check
+
+1. Name the four error strategies this chapter identified, with one
+   Blockson example each.
+   <details><summary>Answer</summary>Loud (build.js validation -> exit 1,
+   nothing written); rollback (apply-patch.js restoring `originalText`);
+   degradation (validate.js falling back without ajv, with a warning);
+   deliberate swallowing (ledgerWrite's empty catch, documented and
+   tested).</details>
+2. When is an empty `catch` block acceptable?
+   <details><summary>Answer</summary>When the failure must not affect
+   the operation it accompanies, the choice is documented at the site,
+   and a test pins the behaviour - the ledger is a courtesy, not a
+   control.</details>
+3. Why does `publish()` handle a live-rebuild failure it calls
+   "impossible"?
+   <details><summary>Answer</summary>The environment can fail even when
+   the logic can't (full disk, killed process) - and the cost of the
+   unhandled case is a broken live site, which is the one outcome the
+   system exists to prevent.</details>
+4. Transfer: your deploy script uploads files then updates a pointer.
+   Upload succeeds, pointer update fails. Which Blockson pattern
+   applies, and what should the script do?
+   <details><summary>Answer</summary>The rollback pattern: keep enough
+   state to restore the pre-deploy world (the old pointer), restore it,
+   and report loudly how far things got - never leave the half-deployed
+   state standing silently.</details>

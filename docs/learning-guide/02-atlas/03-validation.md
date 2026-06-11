@@ -105,3 +105,65 @@ every owner edit triggers a candidate rebuild, and the rebuild starts with
 `validate()`. The build is the final acceptance gate for every change in
 the system — patches, blueprints, uploads — because it's the one check
 that can't be bypassed without also not producing a site.
+
+---
+
+## Try it
+
+*(Uses the `learning-lab` scratch client - see atlas 01 for setup.)*
+
+**Exercise 1 (predict, then verify).** *Question:* if you delete a
+required field AND add a misspelled one in the same file, does the build
+report one error or both? **Predict.** Then in
+`clients/learning-lab/content.json` delete the home page's
+`meta.description` and rename the hero's `"headline"` key to
+`"headlne"`, and build.
+
+<details><summary>What you should see</summary>
+
+```
+Validation failed:
+  ✗ pages.0.meta.description is required
+  ✗ pages.0.blocks.0.fields has unknown property "headlne"
+```
+
+Both at once - that is `allErrors: true` in `validate()`. And the typo
+was *caught* rather than ignored - that is `additionalProperties: false`
+in the schema. (Restore both and rebuild.)</details>
+
+**Exercise 2 (modification, safe).** Optional fields are additive: add
+`"facebook": "https://facebook.com/learninglab"` to `site.contact` in
+learning-lab and rebuild - it passes, because the schema lists
+`facebook` as an allowed (but not required) property of `contact`. Now
+try `"tiktok"` instead. Predict, then build.
+
+<details><summary>What you should see</summary>
+
+`site.contact has unknown property "tiktok"` - allowed keys are
+enumerated; everything else is refused.</details>
+
+## Self-check
+
+1. Which file is the *only* place the content contract is defined, and
+   which function loads it?
+   <details><summary>Answer</summary>`engine/schema/content.schema.json`,
+   loaded (and cached) by `loadSchema()` in
+   `engine/lib/validate.js`.</details>
+2. What happens to the build if `ajv` was never installed?
+   <details><summary>Answer</summary>`validate()` falls back to
+   `fallbackValidate` - structural checks plus the link-scheme scan -
+   and attaches a loud warning telling you to run `npm install`. The
+   build still runs; the degradation is announced, never
+   silent.</details>
+3. Why does block-id uniqueness live in `build.js` instead of the
+   schema?
+   <details><summary>Answer</summary>JSON Schema cannot express "this
+   string must be unique across every block on every page" -
+   cross-document rules need code
+   (`checkBlockIdUniqueness`).</details>
+4. Transfer: your API accepts a JSON `profile` object. A user sends
+   `{"name":"...","nmae":"..."}`. What design choice from this chapter
+   decides whether they ever find out?
+   <details><summary>Answer</summary>`additionalProperties: false` -
+   rejecting unknown keys turns the silent typo into a named
+   error.</details>

@@ -235,3 +235,82 @@ cheap; broken-live-sites are not.
 [the security mindset](../02-atlas/13-security-mindset.md) — and the
 owner's-eye view of this same flow, with screenshots, in
 [docs/tutorial/owner/](../../tutorial/owner/README.md).
+
+---
+
+## Try it
+
+*(All of these run against the scratch client:
+`node engine/serve.js learning-lab`, browser at
+`http://127.0.0.1:4173/`.)*
+
+**Exercise 1 (predict, then verify).** Walk the happy path yourself:
+click the hero headline, change it, Save. *Predict before saving:* what
+appears in the panel, and is `clients/learning-lab/content.json`
+(the live file) different afterwards? Check both - then look for the
+same edit in `clients/learning-lab__candidate/content.json`.
+
+<details><summary>What you should see</summary>
+
+A pending card with Now/After values; the *live* content.json unchanged;
+the *candidate* copy carrying your new headline. Stops 4-6 wrote only to
+the candidate. (Discard the change, or Keep it for Exercise 3.)</details>
+
+**Exercise 2 (predict, then verify).** The interlock: with a change
+pending (don't Keep or Discard), click another element and try to edit.
+*Predict the exact behaviour, then try it.* Then check
+`clients/learning-lab/edits.log.jsonl` - is there a ledger line for the
+blocked attempt?
+
+<details><summary>What you should see</summary>
+
+The UI itself stops you ("You already have a pending change...") -
+`openEditor` checks `state.pending` before even asking the server. The
+ledger shows lines for your edit and keep/discard events; the UI-level
+block never reached a handler, so it isn't ledgered. Guards exist at
+both layers, but only the server's are load-bearing.</details>
+
+**Exercise 3 (predict, then verify) - only if your repo state is
+disposable.** If you're comfortable making a real commit in your local
+clone (this guide's scratch client is committed nowhere, but *publish
+commits to your repo*): set `"publish": "none"` in a new
+`clients/learning-lab/owner-config.json` first, restart the server, then
+Keep a change and Publish. *Predict:* what does the publish-status line
+say, and did live content.json change now?
+
+<details><summary>What you should see</summary>
+
+Live `content.json` carries the change (publish always writes live), and
+the status reads "Saved and rebuilt locally. Publishing is turned off
+for this client (publish: \"none\")." - `runPublish`'s `none` mode. With
+`publish: "git"` it would instead have made exactly one commit carrying
+`[blockson-publish learning-lab]`.</details>
+
+## Self-check
+
+1. List the gates between "owner clicks Save" and "pending card shows,"
+   in order.
+   <details><summary>Answer</summary>UI pending-interlock →
+   requestAllowed (locality) → authorized (token, if set) →
+   `x-blockson-ui` header → applyEdit's own pending check →
+   applyPatch's allowlist guards → the full annotated candidate build →
+   only then session.pending and the card.</details>
+2. Why does Discard *rebuild* the candidate instead of undoing the
+   pending patch?
+   <details><summary>Answer</summary>Inverting a patch is error-prone;
+   `replayStaged` resets the candidate from live and re-applies the
+   kept changes through the same gates they already passed -
+   deterministic reconstruction instead of inverse logic.</details>
+3. What is the only handler that writes inside `clients/<client>/`, and
+   what one other handler is the exception?
+   <details><summary>Answer</summary>`publish()` - with `restore()` as
+   the only other path (it reverts the publish commit and
+   rebuilds).</details>
+4. Transfer: an owner says "I kept three changes, then my laptop died
+   before publishing." What survived, and why?
+   <details><summary>Answer</summary>Nothing reached live (publish never
+   ran), and the staged list lives in server memory, so the session is
+   gone; the candidate folder may still hold the edits but a new
+   session resets it from live. The design treats unpublished sessions
+   as disposable previews - live is the only durable state, by
+   intent.</details>

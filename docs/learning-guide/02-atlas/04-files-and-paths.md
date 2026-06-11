@@ -108,3 +108,52 @@ restored. Candidate edit: candidate rolled back, preview rebuilt from the
 last good state (`applyEdit` in `owner.js` does both). Every write in the
 codebase has a matching answer to "and if the next step fails?" — that's
 the habit to take with you.
+
+---
+
+## Try it
+
+*(Uses the `learning-lab` scratch client - see atlas 01 for setup.)*
+
+**Exercise 1 (predict, then verify).** The claim: a failed build leaves
+the old `dist/` untouched. **Predict what you'll find, then test:**
+build learning-lab successfully and note the timestamp of
+`dist/learning-lab/index.html`. Break the content (delete
+`meta.description`), build again - it fails - and re-check the
+timestamp.
+
+<details><summary>What you should see</summary>
+
+The file is unchanged - same bytes, same timestamp. Validation exits
+before the wipe-and-rewrite phase ever runs. Fix the content and
+rebuild: now the directory is wiped and every file is fresh.</details>
+
+**Exercise 2 (modification, safe).** Drop any small image into
+`clients/learning-lab/img/`, rebuild, and confirm it appears under
+`dist/learning-lab/img/`. Then find the `copyDir(imgSrc, ...)` call in
+`engine/build.js` and read `copyDir` itself - ten lines of recursion
+over `readdirSync(..., { withFileTypes: true })`, no library.
+
+## Self-check
+
+1. Why `path.resolve(__dirname, '..')` instead of `process.cwd()`?
+   <details><summary>Answer</summary>`__dirname` is where the *script
+   file* lives; `process.cwd()` is wherever the user happened to run
+   `node` from. Anchoring to `__dirname` makes the engine work from any
+   directory.</details>
+2. In what order does `build.js` render pages and wipe `dist/`, and why
+   does the order matter?
+   <details><summary>Answer</summary>All pages render into memory
+   first; only then is `dist/<client>` wiped and rewritten. A rendering
+   crash therefore leaves the previous build intact - no partial
+   output.</details>
+3. How does `apply-patch.js` implement rollback without a backup file?
+   <details><summary>Answer</summary>It keeps the original file
+   contents as a string (`originalText`) and writes that string back if
+   the rebuild fails.</details>
+4. Transfer: your script generates `report.html` from `data.csv` and
+   can crash halfway through writing. Apply this chapter.
+   <details><summary>Answer</summary>Build the whole report in memory
+   (or write to a temp path), and only replace `report.html` once
+   generation fully succeeded - never stream into the live
+   artifact.</details>

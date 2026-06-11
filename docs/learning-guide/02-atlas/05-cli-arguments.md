@@ -104,3 +104,61 @@ failure. The proof suite itself drives these CLIs as subprocesses
 (`spawnSync(process.execPath, [path.join(__dirname, 'build.js'), ...])` in
 `engine/_run-proofs.js`), so a stable argument contract isn't politeness —
 the tests depend on it.
+
+---
+
+## Try it
+
+*(Uses the `learning-lab` scratch client - see atlas 01 for setup.)*
+
+**Exercise 1 (predict, then verify).** *Question:* does flag order
+matter - will `node engine/build.js --annotate learning-lab` and
+`node engine/build.js learning-lab --annotate` do the same thing?
+**Predict, then run both** and compare the output lines.
+
+<details><summary>What you should see</summary>
+
+Identical output:
+`Built 2 page(s) → dist/learning-lab__annotated/  (annotated preview)`.
+`args.find(a => !a.startsWith('--'))` takes the first non-flag wherever
+it sits, and `args.includes('--annotate')` doesn't care about
+position.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* what exit code does a
+usage error produce? **Predict, then run** `node engine/build.js` with
+no arguments, followed by `echo $LASTEXITCODE` (PowerShell) or
+`echo $?` (bash). Compare with the code after a successful build.
+
+<details><summary>What you should see</summary>
+
+Usage line on stderr, exit `1`; success exits `0`. The exit code is the
+only part of the program a script or CI system can branch on.</details>
+
+**Exercise 3 (modification, safe).** Run
+`node engine/apply-patch.js learning-lab '{"action":"refuse","reason":"testing"}'`
+and check the exit code. It prints `Refused: testing` - and exits `0`.
+Refusal is the system *working*, not failing
+([atlas 10](10-error-handling.md)).
+
+## Self-check
+
+1. What is in `process.argv[0]` and `process.argv[1]`?
+   <details><summary>Answer</summary>The path to the `node` executable
+   and the path to the script being run - which is why every parser
+   starts with `.slice(2)`.</details>
+2. How does `flagValue('--port')` in `serve.js` find the port number?
+   <details><summary>Answer</summary>`indexOf('--port')`, then the
+   *next* array element is the value - converted with `Number(...)`
+   because argv entries are always strings.</details>
+3. Why does `new-client.js` regex-check the client name
+   (`/^[a-z0-9][a-z0-9-]*$/`)?
+   <details><summary>Answer</summary>The name becomes a directory path.
+   Unvalidated, something like `../evil` would write outside
+   `clients/` - CLI arguments are untrusted input.</details>
+4. Transfer: where would you add a `--dry-run` flag to `build.js`, and
+   what should it skip?
+   <details><summary>Answer</summary>Parse it next to `--annotate`
+   (`args.includes('--dry-run')`) and skip Step 3 - the wipe and all
+   writes - while still validating and rendering. The proof you'd
+   write: a dry run against an existing `dist/` leaves it
+   byte-identical.</details>

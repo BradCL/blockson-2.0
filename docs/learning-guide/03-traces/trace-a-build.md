@@ -220,3 +220,63 @@ stepped through, in reading order —
 [CLI arguments](../02-atlas/05-cli-arguments.md) ·
 [error handling](../02-atlas/10-error-handling.md) — then the
 [system map](../01-system-map.md) for the whole picture.
+
+---
+
+## Try it
+
+**Exercise 1 (predict, then verify).** Re-run the trace with your own
+hands and a stopwatch on the failure gate. In
+`clients/learning-lab/content.json`, set the hero's `"background"` value
+to `123` (a number where a string belongs). *Predict:* which stop in
+this trace catches it, what does the message say, and does `dist/`
+change? Then build.
+
+<details><summary>What you should see</summary>
+
+Stop 2 - `pages.0.blocks.0.fields.background must be string`, exit 1,
+`dist/learning-lab/` untouched. The render loop (Stop 4) never ran.
+Restore the value and rebuild.</details>
+
+**Exercise 2 (predict, then verify).** *Question:* how do the live and
+annotated outputs of the *same content* differ, and by how much? Build
+both (`node engine/build.js learning-lab` and again with `--annotate`)
+and compare `index.html` from each (with your editor's diff, or count
+`data-bk-` occurrences). Predict the count in each before looking.
+
+<details><summary>What you should see</summary>
+
+The only differences are `data-bk-*` attributes spliced into opening
+tags (zero in live; one per editable element in the annotated build) -
+the `bk.f(...)` calls at Stop 5 returning `''` versus attribute
+strings.</details>
+
+**Exercise 3 (modification, safe).** Add a `text` block to the home
+page: `{ "id": "home-note", "type": "text", "fields": { "heading": "From the trace", "body": ["One paragraph."], "hidden": false } }`.
+Build, view, then set `"hidden": true` and build again. Confirm the
+section vanishes from `dist/learning-lab/index.html` but still appears
+(dimmed-ready, with `data-bk-hidden`) in the annotated build - the
+`hidden && !annotator` line at Stop 4 in action.
+
+## Self-check
+
+1. Put these in execution order: wipe `dist/`, parse JSON, render
+   pages, validate schema, copy `img/`.
+   <details><summary>Answer</summary>Parse → validate → render (into
+   memory) → wipe → write pages → copy img/. The wipe is as late as
+   possible on purpose.</details>
+2. Which two uniqueness checks run after the schema passes, and why
+   can't the schema do them?
+   <details><summary>Answer</summary>`checkBlockIdUniqueness` and
+   `checkItemIdUniqueness` in `build.js` - JSON Schema can't express
+   cross-document uniqueness constraints.</details>
+3. Where do the values inside the page's `:root { … }` style block come
+   from?
+   <details><summary>Answer</summary>`themes/<theme>/tokens.json` merged
+   with `site.themeOverrides` (overrides win), injected by
+   `buildRootBlock` in `engine/partials/head.js`.</details>
+4. Transfer: a teammate proposes writing each page to disk as soon as
+   it renders "to save memory." What invariant breaks?
+   <details><summary>Answer</summary>All-or-nothing output: a crash on
+   page 7 would leave dist/ half-new, half-wiped. The current design
+   guarantees the old build survives any failure.</details>

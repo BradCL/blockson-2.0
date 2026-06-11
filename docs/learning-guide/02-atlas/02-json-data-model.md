@@ -121,3 +121,60 @@ document," undo is "revert the commit."
 When you design your own data model, steal the id rule: **anything a user
 or a program will refer to later needs a stable identifier that survives
 reordering and renaming.**
+
+---
+
+## Try it
+
+*(Uses the `learning-lab` scratch client - see atlas 01 for setup.)*
+
+**Exercise 1 (predict, then verify).** Ids are the addressing scheme, and
+`build.js` enforces their uniqueness. *Question:* what exactly happens if
+two blocks on *different pages* share an id - schema error, build error,
+or silent acceptance? **Predict first.** Then edit
+`clients/learning-lab/content.json`, change the contact page's
+`"contact-header"` block id to `"home-hero"`, and run
+`node engine/build.js learning-lab`.
+
+<details><summary>What you should see</summary>
+
+```
+Content has duplicate block ids:
+  ✗ block id "home-hero" on page "contact" duplicates the one on page "index"
+```
+
+The schema *passed* - JSON Schema can't express cross-document
+uniqueness - and the hand-written `checkBlockIdUniqueness` caught it
+after. Nothing was written to `dist/`. (Restore the id and
+rebuild.)</details>
+
+**Exercise 2 (modification, safe).** Developer-tier structural edit: add
+a third item to the contact page's `contact-info` block -
+`{ "id": "info-hours", "icon": "clock", "label": "Hours", "value": "Mon-Fri 9-5", "href": "tel:0000000000" }`
+- then rebuild and open `dist/learning-lab/contact.html`. Then run
+`node engine/sitemap.js learning-lab` and find your new item in the edit
+map: because it carries an `id`, it is now maintenance-addressable.
+
+## Self-check
+
+1. In a patch, what does `"block": "site"` mean?
+   <details><summary>Answer</summary>The target host is the top-level
+   `site` object rather than a page block - `indexHosts` seeds the map
+   with `'site'` pointing at `content.site`.</details>
+2. Why are text-list lines edited by `match` (their exact current text)
+   instead of by index?
+   <details><summary>Answer</summary>Indexes go stale the moment the
+   list changes; an exact-text match either hits the intended line or
+   fails loudly (`no list item equal to match ...`) - it can never
+   quietly edit the wrong line.</details>
+3. Why does `JSON.stringify(content, null, 2) + '\n'` matter, versus
+   plain `JSON.stringify(content)`?
+   <details><summary>Answer</summary>Pretty-printing plus a trailing
+   newline keeps the file diff-friendly: a one-field change shows as a
+   one-line git diff, which humans can review and `git revert` can
+   cleanly undo.</details>
+4. Transfer: you're designing a todo app where users will rename and
+   reorder lists. What does this chapter say each list needs?
+   <details><summary>Answer</summary>A stable `id` that survives renames
+   and reorders - anything users or code will refer to later must not be
+   addressed by position or display name.</details>
