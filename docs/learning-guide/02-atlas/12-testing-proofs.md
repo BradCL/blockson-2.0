@@ -9,8 +9,10 @@ percentages as the measure of done.
 ## In Blockson it lives at…
 
 `engine/_run-proofs.js` — one file, nineteen "proofs," run by `npm test`.
-No test framework: plain Node, a `results` list, and `process.exit(1)` if
-anything failed. The file's 80-line header comment is a table of contents
+No test framework: plain Node, a `passed` counter with per-proof
+`failures` arrays, and a final
+`process.exit(passed === TOTAL ? 0 : 1)`. The file's 80-line header
+comment is a table of contents
 worth reading in full — each proof is described as a *property of the
 system*, not a function under test.
 
