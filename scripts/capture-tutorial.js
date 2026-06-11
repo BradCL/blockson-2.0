@@ -20,6 +20,9 @@
  *       description: 'Homepage, both viewports', // goes into manifest.json
  *       viewports:   ['desktop', 'mobile'],      // default: both
  *       capture:     'fullpage',                 // 'fullpage' | 'viewport' | 'animation' | 'none'
+ *       idle:        false,                      // skip the networkidle wait (for steps that
+ *                    // re-navigate an iframe — page-level networkidle never
+ *                    // re-fires after that — and already await their end state)
  *       action:      async ({ page, baseUrl }) => { await page.goto(baseUrl + '/'); },
  *       animate:     async ({ page, frame }) => {},  // animation steps only:
  *                    // drive the page, calling `await frame()` at each
@@ -157,7 +160,7 @@ async function main() {
           } else {
             if (step.action) await step.action(ctx);
             if (step.capture !== 'none') {
-              await page.waitForLoadState('networkidle');
+              if (step.idle !== false) await page.waitForLoadState('networkidle');
               if (step.settle !== false) {
                 // The theme reveals .fade-in sections on intersection; a
                 // static capture must not show them mid-hide. Force them

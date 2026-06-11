@@ -406,10 +406,10 @@ a photo to replace it (resized and EXIF-stripped in the browser
 automatically), and publishes a sitting's worth of edits as one unit.
 That whole journey — the pending → Keep → Publish cycle, blueprint pages,
 item add/remove, hide/show, and what every refusal message means — is the
-**owner workflow tutorial**, still to be written. The capture harness
-that produced this document takes a flow-spec module precisely so that
-tutorial is one new file in [`scripts/flows/`](../../../scripts/flows/)
-away.
+**[owner workflow tutorial](../owner/README.md)**. As promised, it cost
+exactly one new flow-spec file
+([`scripts/flows/owner-editor.js`](../../../scripts/flows/owner-editor.js))
+on the same capture harness that produced this document.
 
 ---
 

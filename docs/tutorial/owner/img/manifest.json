@@ -1,0 +1,72 @@
+{
+  "flow": "owner-editor",
+  "generated": "2026-06-11T05:54:52.705Z",
+  "captures": [
+    {
+      "file": "01-editor-home--desktop.png",
+      "step": "editor-home",
+      "viewport": "desktop",
+      "description": "The editor as it opens: live preview beside the panel, headline hovered (click-to-edit affordance)"
+    },
+    {
+      "file": "02-click-to-edit--desktop.png",
+      "step": "click-to-edit",
+      "viewport": "desktop",
+      "description": "Headline clicked in the preview: the matching editor opens in the panel"
+    },
+    {
+      "file": "03-pending-card--desktop.png",
+      "step": "pending-card",
+      "viewport": "desktop",
+      "description": "Headline edit saved: the pending card shows the change as Now → After, preview already updated"
+    },
+    {
+      "file": "04-keep--desktop.png",
+      "step": "keep",
+      "viewport": "desktop",
+      "description": "Keep pressed: the change moves to the \"Kept this session\" list; nothing is live yet"
+    },
+    {
+      "file": "05-discard--desktop.png",
+      "step": "discard",
+      "viewport": "desktop",
+      "description": "A second edit (the hero tag) discarded: the experiment is gone, the kept change survives"
+    },
+    {
+      "file": "06-add-page-menu--desktop.png",
+      "step": "add-page-menu",
+      "viewport": "desktop",
+      "description": "The \"Add a page…\" menu: the developer-blessed page blueprints"
+    },
+    {
+      "file": "07-add-page-form--desktop.png",
+      "step": "add-page-form",
+      "viewport": "desktop",
+      "description": "The Content page blueprint form, filled in (a \"Care Guide\" page) but not yet submitted"
+    },
+    {
+      "file": "08-add-page-pending--desktop.png",
+      "step": "add-page-pending",
+      "viewport": "desktop",
+      "description": "Create preview pressed: the whole new page is pending, shown in the preview like any other change"
+    },
+    {
+      "file": "09-keep-page--desktop.png",
+      "step": "keep-page",
+      "viewport": "desktop",
+      "description": "The new page kept: two changes staged, the new \"Care Guide\" entry visible in the preview menu"
+    },
+    {
+      "file": "10-publish--desktop.png",
+      "step": "publish",
+      "viewport": "desktop",
+      "description": "Publish pressed: the whole session goes live as one unit (one real git commit, pushed)"
+    },
+    {
+      "file": "11-restore--desktop.png",
+      "step": "restore",
+      "viewport": "desktop",
+      "description": "Undo last publish: the whole published session reverted in one click, preview back to the original"
+    }
+  ]
+}
