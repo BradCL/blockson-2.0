@@ -1,0 +1,35 @@
+{
+  "name": "Team member",
+  "purpose": "One more person in a team grid.",
+  "kind": "item",
+  "target": { "blockType": "team-grid", "field": "members" },
+  "variants": [
+    { "key": "withPhoto", "label": "With a photo" },
+    { "key": "plain", "label": "No photo (a neutral placeholder is shown)" }
+  ],
+  "inputs": [
+    { "key": "name", "label": "Name", "type": "text", "required": true, "maxLength": 60,
+      "example": "Sam Okafor" },
+    { "key": "role", "label": "Role or title", "type": "text", "required": true, "maxLength": 60,
+      "example": "Site supervisor" },
+    { "key": "bio", "label": "A one-line bio", "type": "textarea", "required": true, "maxLength": 300,
+      "example": "Twelve years running crews on residential builds — Sam keeps every job on schedule." },
+    { "key": "photo", "label": "Their photo", "type": "image", "required": true,
+      "variants": ["withPhoto"], "example": "img/sample.jpg" }
+  ],
+  "template": {
+    "withPhoto": {
+      "id": "member",
+      "photo": "{{photo}}",
+      "name": "{{name}}",
+      "role": "{{role}}",
+      "bio": "{{bio}}"
+    },
+    "plain": {
+      "id": "member",
+      "name": "{{name}}",
+      "role": "{{role}}",
+      "bio": "{{bio}}"
+    }
+  }
+}

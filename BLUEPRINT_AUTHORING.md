@@ -18,10 +18,11 @@ npm run blueprints:check                              # whole registry + demo ga
 ## 1. What a blueprint is
 
 Blockson sites are one `content.json` per client, rendered by a fixed engine. Owners
-edit values through a guarded patch system; they add **structure** (new pages or
-blocks) only by instantiating developer-authored **blueprints** — JSON files in
-`blueprints/` that describe a page or block layout, a small input form, and how the
-inputs flow into content.
+edit values through a guarded patch system; they add **structure** (new pages, new
+blocks, or new repeating items inside a block) only by instantiating
+developer-authored **blueprints** — JSON files in `blueprints/` that describe a
+page, block, or item layout, a small input form, and how the inputs flow into
+content.
 
 A blueprint may **only recombine existing block types** (the 21 in §4). That is the
 Tier A boundary: blueprints and themes are community lanes gated by validators; new
@@ -48,7 +49,8 @@ rejected by name (a typo like `"requried"` would otherwise silently change behav
 {
   "name":    "Contact page",          // shown in the Add… menu
   "purpose": "One line on what this page is for.",
-  "kind":    "page",                  // "page" | "block"
+  "kind":    "page",                  // "page" | "block" | "item"
+  "target":  { "blockType": "card-grid", "field": "cards" },  // item kind ONLY — §2.5
   "variants": [ ... ],                // §2.1 — at least one layout option
   "inputs":   [ ... ],                // §2.2 — the form the owner fills in
   "template": { ... }                 // §2.3 — one content fragment per variant
@@ -59,7 +61,8 @@ rejected by name (a typo like `"requried"` would otherwise silently change behav
 |-----|-------|
 | `name` | non-empty string |
 | `purpose` | non-empty string; owners pick blueprints by name + purpose |
-| `kind` | `"page"` (adds a page + nav entry) or `"block"` (appends one block to an existing page) |
+| `kind` | `"page"` (adds a page + nav entry), `"block"` (appends one block to an existing page), or `"item"` (appends one repeating item to an existing block — §2.5) |
+| `target` | **item kind only, required there, forbidden elsewhere**: `{ "blockType": "<existing block type>", "field": "<the block's repeating-item array>" }` |
 | `variants` | non-empty array — see §2.1 |
 | `inputs` | array (may be empty) — see §2.2 |
 | `template` | object keyed by variant — see §2.3 |
@@ -137,6 +140,18 @@ For `kind: "page"`, a fragment is:
 For `kind: "block"`, a fragment is a single `{ "id", "type", "fields" }` object; at
 instantiation the owner picks the target page and the block is appended to it.
 
+For `kind: "item"`, a fragment is **one repeating-item object** — an `id` slug hint
+plus the item's own fields, exactly as one element of the target array would appear
+in `content.json` (no `type`/`fields` wrapper):
+
+```json
+{ "id": "faq", "question": "{{question}}", "answer": "{{answer}}" }
+```
+
+The item's field shape is gated by the full build of the instantiated result against
+the content schema, exactly as a block fragment's `fields` object is — a wrong shape
+fails the validator with the exact failing path.
+
 Rules for each template block:
 
 - `id` — a lowercase slug **hint**: `^[a-z][a-z0-9-]*$`, unique within the fragment.
@@ -165,6 +180,37 @@ Builtins exist so blueprints reuse the site's single source of truth instead of
 asking the owner to retype their own phone number. Builtins cannot take a filter;
 `|paragraphs` is the only filter.
 
+### 2.5 Item blueprints (`kind: "item"`)
+
+An item blueprint makes ONE class of repeating item owner-addable — and, by its
+existence, owner-removable (see below). It declares, via `target`, which block
+**type** and which **array field** it extends:
+
+- `target.blockType` — must be an existing block type (§4). Unknown types are
+  rejected, same as template block types.
+- `target.field` — the block's repeating-item array (`card-grid` → `cards`,
+  `faq` → `items`, `testimonials` → `quotes`, `team-grid` → `members`, …). The
+  field must hold **id-bearing object items** in the target block at instantiation
+  time, or the request is refused.
+
+At instantiation the owner picks (by clicking into it) a **named existing block**
+of the matching type; the instantiated item is appended to that block's target
+array with a generated id (§3). Everything else is identical to page/block
+blueprints: same input form, same placeholder rules, same hard ceilings, same
+candidate → keep → publish cycle, same full-build acceptance gate.
+
+**Removal rides on the same blessing.** The editor offers "Remove this <thing>"
+on an item only where an item blueprint targets that block type + field — owners
+may only remove what they could also add back, so removal is never a one-way
+door. Removal is additionally refused on the **last** item of an array (whether
+a block may be empty is the developer's decision). Blocks with no item blueprint
+keep today's behavior exactly: item add/remove is developer work.
+
+Shipped item blueprints: `card-grid-card` (card-grid cards), `faq-pair` (faq
+items), `testimonial-quote` (testimonials quotes), `team-member` (team-grid
+members). Adding one for another block type is dropping a JSON file in
+`blueprints/` — no engine changes.
+
 ---
 
 ## 3. Id rules
@@ -180,20 +226,25 @@ site-wide uniqueness deterministically:
   instantiation of the same blueprint can never collide — this is proved under
   12× repetition in the proof suite.
 - **Item ids** (the `id` keys on repeating objects *inside* `fields` — cards, albums,
-  faq items, rows…): taken **verbatim** from your template. They must be unique
-  within their block (the build rejects duplicates). They are the owner's editing
-  handles, so give every repeating object a stable, readable id (`"faq-pricing"`,
-  `"album-1"`).
+  faq items, rows…): in page/block templates they are taken **verbatim** from your
+  template and must be unique within their block (the build rejects duplicates).
+  They are the owner's editing handles, so give every repeating object a stable,
+  readable id (`"faq-pricing"`, `"album-1"`). In an **item** blueprint the
+  fragment's `id` is a hint like any other: the final id is generated
+  (numeric-suffixed against every id already in the site, so repeated
+  instantiation can never collide).
 - Ids never appear in rendered live HTML — the proof suite and the blueprint
   validator both enforce this on your instantiated output.
 
 **Design for owner editability.** After instantiation, the owner can click-to-edit:
 every scalar string field, every field of an id-carrying item, and every line of a
-plain string list (which also supports add/remove line). Arrays of objects **without**
-ids (`hero.actions`, `contact-form.fields`, `gallery.filters`, footer columns) are
-structural — frozen after instantiation until a developer touches them. So: anything
-the owner should maintain later must be a scalar, an id-carrying item, or a string
-list; anything in a no-id object array is effectively hardcoded by your blueprint.
+plain string list (which also supports add/remove line). Id-carrying items are also
+owner-addable/removable **where an item blueprint targets that block type + field**
+(§2.5). Arrays of objects **without** ids (`hero.actions`, `contact-form.fields`,
+`gallery.filters`, footer columns) are structural — frozen after instantiation until
+a developer touches them. So: anything the owner should maintain later must be a
+scalar, an id-carrying item, or a string list; anything in a no-id object array is
+effectively hardcoded by your blueprint.
 
 ---
 
@@ -435,10 +486,11 @@ passes `node engine/validate-blueprint.js`:
 ```
 
 Things to notice: the `faq` item carries a hand-written `id` (`"faq-1"`) so the owner
-can edit its question and answer later (appending *more* pairs stays developer work —
-object items are structural); the CTA reuses `{{site.contact.phone}}` instead of
-asking the owner to retype the phone number; the two variant-scoped inputs declare
-`"variants": ["withCta"]`; every input has an `example`.
+can edit its question and answer later (and, because the shipped `faq-pair` item
+blueprint targets `faq.items`, add more pairs or remove all but the last one); the
+CTA reuses `{{site.contact.phone}}` instead of asking the owner to retype the phone
+number; the two variant-scoped inputs declare `"variants": ["withCta"]`; every input
+has an `example`.
 
 ---
 
@@ -464,10 +516,14 @@ A blueprint **cannot**:
   select 100 characters) no matter what `maxLength` it declares.
 - **Reference images outside the client's `img/` folder**, by absolute path, by URL,
   or with a non-image extension.
-- **Make repeating items owner-extensible.** Owners can edit object items and
-  add/remove *string-list* lines and gallery images, but adding/removing object
-  items (cards, plans, FAQ pairs) post-instantiation is developer work. Ship the
-  starter set your layout needs.
+- **Make repeating items owner-extensible from a page/block template.** Owners can
+  always edit object items and add/remove *string-list* lines and gallery images.
+  Adding/removing the object items themselves (cards, quotes, FAQ pairs, members)
+  is owner work **only where a blessed item blueprint targets that block type +
+  field** (§2.5) — that blueprint, not your page template, is what grants it.
+  Everything else (plans, rows, steps, pairs, stats, and any array without an item
+  blueprint) remains developer work post-instantiation. Ship the starter set your
+  layout needs either way.
 
 If the layout in front of you needs any of these, it is not a blueprint — it is a
 theme, a Tier B block-type proposal, or per-client developer work.
@@ -486,7 +542,10 @@ npm run blueprints:check
 ```
 
 `blueprints:check` rewrites `clients/blueprint-gallery/content.json` — every
-blueprint × every variant instantiated from its example inputs. That client is both
+blueprint × every variant instantiated from its example inputs (item blueprints
+instantiate into the matching showcase block on the gallery's "All blocks" page;
+the standalone validator instantiates them into a sample block of their target
+type). That client is both
 the **visual gallery** (build it, browse it under any theme) and the **regression
 corpus**: the proof suite (`npm test`) fails if the committed gallery drifts from
 regeneration, so after adding or changing a blueprint, rerun `blueprints:check` and

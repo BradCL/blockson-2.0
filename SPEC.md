@@ -79,7 +79,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (18 proofs)
+  _run-proofs.js        Proof suite (19 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -328,7 +328,7 @@ over real git, in a throwaway sandbox repository with a local bare origin:
 keeping changes never touches git, publishing a multi-change session makes
 exactly one pushed commit carrying the `[blockson-publish <client>]` marker,
 and restore refuses while changes are staged then reverts the whole session
-as one unit. All eighteen must pass on a clean tree.
+as one unit. All nineteen must pass on a clean tree.
 
 ---
 

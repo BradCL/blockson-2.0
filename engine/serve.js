@@ -23,7 +23,9 @@
      GET  /api/field?...         describe one editable field (current value, editor kind)
      GET  /api/blueprints        the validated blueprint registry (Add… menu)
      POST /api/edit              { patch, upload? }  → pending change
-     POST /api/scaffold          { blueprint, variant, values, uploads? } → pending change
+     POST /api/scaffold          { blueprint, variant, values, uploads?,
+                                   targetPage? | targetBlock? } → pending change
+     POST /api/remove-item       { block, item } → pending change (item removal)
      POST /api/token-check       { token, value }    → live guard run, no write
      POST /api/keep              pending change → the session's staged list
      POST /api/discard           drop the pending change (staged list survives)
@@ -309,6 +311,7 @@ async function handle(req, res) {
     let r;
     if      (pathname === '/api/edit')        r = owner.applyEdit(session, body.patch, body.upload || null);
     else if (pathname === '/api/scaffold')    r = owner.applyScaffold(session, body);
+    else if (pathname === '/api/remove-item') r = owner.applyRemoveItem(session, body);
     else if (pathname === '/api/token-check') r = owner.checkToken(session, body.token, body.value);
     else if (pathname === '/api/keep')        r = owner.keep(session);
     else if (pathname === '/api/publish')     r = owner.publish(session);

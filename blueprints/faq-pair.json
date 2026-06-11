@@ -1,0 +1,22 @@
+{
+  "name": "FAQ pair",
+  "purpose": "One more question and answer in an FAQ section.",
+  "kind": "item",
+  "target": { "blockType": "faq", "field": "items" },
+  "variants": [
+    { "key": "standard", "label": "Question + answer" }
+  ],
+  "inputs": [
+    { "key": "question", "label": "The question, as a visitor would ask it", "type": "text", "required": true, "maxLength": 120,
+      "example": "Do you offer free estimates?" },
+    { "key": "answer", "label": "Its answer", "type": "textarea", "required": true, "maxLength": 600,
+      "example": "Yes — every job starts with a free, no-obligation written estimate." }
+  ],
+  "template": {
+    "standard": {
+      "id": "faq",
+      "question": "{{question}}",
+      "answer": "{{answer}}"
+    }
+  }
+}

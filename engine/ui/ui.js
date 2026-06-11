@@ -194,8 +194,51 @@
       else if (info.kind === 'image-list') renderImageListEditor(ref, info);
       else if (info.kind === 'toggle') editorShell(fieldTitle(ref));
       else { showMessage('error', 'This field cannot be edited here.'); return; }
+      appendItemControls(ref, info);
       appendVisibilityToggle(ref, info);
     });
+  }
+
+  // Repeating items (v4.2 Task 4): when the clicked element is an item of
+  // a block whose type has at least one item blueprint, the editor pane
+  // offers "Add <thing>…" (the same form the Add… menu generates from the
+  // blueprint's input schema) and, on the clicked item itself, "Remove
+  // this <thing>" with an explicit confirm derived from the item's
+  // current content. Both flow into the same pending → keep → publish
+  // cycle as everything else; the server enforces every constraint.
+  function appendItemControls(ref, info) {
+    var ed = $('editor');
+    if (ed.hidden) return;
+    if (info.itemRemove && info.itemRemove.allowed) {
+      ed.appendChild(el('div', 'field-label', 'This ' + info.itemRemove.thing.toLowerCase()));
+      var row = el('div', 'btn-row');
+      row.appendChild(button('Remove this ' + info.itemRemove.thing.toLowerCase(), 'danger', function () {
+        if (!window.confirm('Remove this ' + info.itemRemove.thing.toLowerCase() + '?\n\n'
+            + info.itemRemove.summary + '\n\nIt goes live when you publish this session.')) return;
+        apiPost('/api/remove-item', { block: ref.block, item: ref.item }).then(function (r) {
+          if (!r.ok) { editorError(ed, r.error); return; }
+          clearMessage();
+          closeEditor();
+          refreshState().then(reloadPreview);
+        });
+      }));
+      ed.appendChild(row);
+    }
+    if (info.addable && info.addable.length) {
+      ed.appendChild(el('div', 'field-label', 'This section'));
+      var addRow = el('div', 'btn-row');
+      info.addable.forEach(function (a) {
+        addRow.appendChild(button('Add ' + a.name.toLowerCase() + '…', null, function () {
+          apiGet('/api/blueprints').then(function (r) {
+            if (!r.ok) { showMessage('error', r.error); return; }
+            var bp = null;
+            r.blueprints.forEach(function (b) { if (b.key === a.key) bp = b; });
+            if (bp) openScaffoldForm(bp, ref.block);
+          });
+        }));
+      });
+      ed.appendChild(addRow);
+    }
   }
 
   // Section visibility: every editor opened for a block also offers the
@@ -443,6 +486,10 @@
       if (!r.ok) { editorError(ed, r.error); return; }
       var list = el('div', 'line-list');
       r.blueprints.forEach(function (bp) {
+        // Item blueprints are offered on the block they extend (see
+        // appendItemControls), not here — they need a target section,
+        // which clicking into the section supplies.
+        if (bp.kind === 'item') return;
         var row = el('div', 'bp-row');
         var text = el('div', 'bp-text');
         text.appendChild(el('div', 'bp-name', bp.name));
@@ -463,7 +510,9 @@
     });
   }
 
-  function openScaffoldForm(bp) {
+  // `targetBlock` is set only for item blueprints: the id of the section
+  // the owner clicked, which the new item is appended to.
+  function openScaffoldForm(bp, targetBlock) {
     var ed = editorShell('Add: ' + bp.name);
     ed.appendChild(el('p', 'hint', bp.purpose));
 
@@ -564,6 +613,7 @@
       Promise.all(filePromises).then(function () {
         var body = { blueprint: bp.key, variant: variantKey, values: values, uploads: uploads };
         if (targetSelect) body.targetPage = targetSelect.value;
+        if (targetBlock) body.targetBlock = targetBlock;
         apiPost('/api/scaffold', body).then(function (r) {
           if (!r.ok) { editorError(ed, r.error); return; }
           clearMessage();
@@ -573,7 +623,7 @@
         });
       }, function (e) { editorError(ed, e.message); });
     }));
-    row.appendChild(button('Back', null, openAddMenu));
+    if (bp.kind !== 'item') row.appendChild(button('Back', null, openAddMenu));
     row.appendChild(button('Cancel', null, closeEditor));
     ed.appendChild(row);
   }

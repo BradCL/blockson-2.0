@@ -19,7 +19,11 @@ Conventions used below:
   addressing handle. Ids never appear in rendered HTML.
 - **Maintenance** notes which fields the maintenance tier (local model) can edit through
   the patch resolver. "Most fields" = every scalar string on the block and its items.
-  Adding/removing/reordering items is ALWAYS developer-only.
+  Adding/removing items is owner work ONLY where a blessed **item blueprint** targets
+  that block type + field (shipped: card-grid cards, faq items, testimonials quotes,
+  team-grid members — see BLUEPRINT_AUTHORING.md §2.5); removal is additionally
+  refused on the last item. Every other array, and reordering anywhere, is
+  developer-only.
 
 A block module receives its `fields` object plus the global `site` object, and returns an
 HTML string. Modules must HTML-escape all string/richtext values.
@@ -84,7 +88,9 @@ A grid of repeating cards. The single most reusable block: services, features, v
   - `body?` string
   - `items?` Repeats: plain strings — renders as the dashed sub-list
 CSS: `.services`, `.services-grid`, `.service-card`, `.card-icon`, `.service-card-list`.
-**Maintenance:** card titles/bodies/list lines editable by item id. Adding cards: developer.
+**Maintenance:** card titles/bodies/list lines editable by item id. Owners add cards
+through the shipped `card-grid-card` item blueprint and remove any but the last;
+reordering: developer.
 
 ### `gallery`
 Filterable album grid with lightbox. Each album is a project/collection with one or more
@@ -108,7 +114,8 @@ Two-column quote cards with a star row.
 - `tag?` string, `heading?` string
 - `quotes` Repeats: `{id, stars? 1–5 (default 5), quote, attribution}`
 CSS: `.testimonials`, `.testimonials-grid`, `.testimonial-card`, `.stars`, `.attribution`.
-**Maintenance:** quote text/attribution/stars editable by item id.
+**Maintenance:** quote text/attribution/stars editable by item id. Owners add quotes
+through the shipped `testimonial-quote` item blueprint and remove any but the last.
 
 ### `list-panel`
 A bordered panel containing a two-column dashed list. Hours, values, coverage,
@@ -210,8 +217,10 @@ Staff profiles with photo, name, role, bio. Vet clinics, salons, studios, realty
 - `members` Repeats: `{id, photo? image, name, role, bio?}`
 CSS: `.team`, `.team-grid`, `.team-card`, `.team-photo`, `.team-role`, `.team-bio`.
 A missing photo renders an initial placeholder, never a broken image.
-**Maintenance:** names, roles, bios editable by item id ("Sam is now our senior stylist").
-Photos and member add/remove: developer.
+**Maintenance:** names, roles, bios editable by item id ("Sam is now our senior
+stylist"); photos replaceable through the click-to-edit image editor. Owners add
+members through the shipped `team-member` item blueprint (with or without a photo)
+and remove any but the last; reordering: developer.
 
 ### `faq`
 Expandable Q&A pairs rendered as native `<details>`/`<summary>` — a real accordion with
@@ -219,7 +228,8 @@ zero JavaScript. list-panel cannot express question→answer pairing.
 - `tag?`, `heading?`
 - `items` Repeats: `{id, question, answer}`
 CSS: `.faq`, `.faq-list`, `.faq-item`.
-**Maintenance:** questions and answers editable by item id. Adding pairs: developer.
+**Maintenance:** questions and answers editable by item id. Owners add pairs through
+the shipped `faq-pair` item blueprint and remove any but the last.
 
 ### `hours-table`
 A structured day/hours grid. Better than list-panel for businesses with per-day hours:

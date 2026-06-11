@@ -15,7 +15,8 @@
    KEPT changes accumulate on the session's STAGED list until one
    Publish ships them all:
 
-     edit / scaffold → constructed deterministically (the UI never
+     edit / scaffold / remove-item
+           → constructed deterministically (the UI never
              invents values for paths; image paths are assigned here)
            → applied to the CANDIDATE (all guards run); a failing
              build rolls the candidate back — a bad change can never
@@ -48,8 +49,8 @@
    adds nothing to the writable surface and never bypasses a guard.
 
    MAINTENANCE LEDGER — every attempt that flows through these handlers
-   (edit | scaffold | keep | discard | discard-all | publish | restore)
-   appends one JSON line
+   (edit | scaffold | remove-item | keep | discard | discard-all |
+   publish | restore) appends one JSON line
    to clients/<client>/edits.log.jsonl (gitignored; rotated at 1 MB to
    edits.log.1.jsonl): ISO timestamp, the request as submitted (uploads
    by name/size only — never file bytes), the outcome (ok | rejected |
@@ -264,6 +265,7 @@ function describeScaffoldRequest(req) {
   if (!req || typeof req !== 'object') return null;
   const out = { blueprint: req.blueprint, variant: req.variant };
   if (req.targetPage != null) out.targetPage = req.targetPage;
+  if (req.targetBlock != null) out.targetBlock = req.targetBlock;
   if (req.values && typeof req.values === 'object') out.values = req.values;
   if (req.uploads && typeof req.uploads === 'object') {
     out.uploads = {};
@@ -280,6 +282,7 @@ function describePendingRequest(session) {
   const out = { summary: p.summary };
   if (p.patch) out.patch = p.patch;
   if (p.scaffold) out.scaffold = p.scaffold;
+  if (p.removeItem) out.removeItem = p.removeItem;
   return out;
 }
 
@@ -387,14 +390,53 @@ function getState(session) {
    element: { block, item?, field, index? }. The current value is read
    from the CANDIDATE content — the same content a staged patch will be
    resolved against. */
+// What an item-removal confirm shows: the item's own current scalar
+// values (truncated) — never any other description of the item.
+function describeItemContent(item) {
+  const parts = [];
+  for (const k of Object.keys(item)) {
+    const v = item[k];
+    if (k === 'id' || (typeof v !== 'string' && typeof v !== 'number')) continue;
+    const s = String(v);
+    parts.push(`${k}: "${s.length > 80 ? s.slice(0, 77) + '…' : s}"`);
+  }
+  return parts.join(' · ');
+}
+
 function describeField(session, ref) {
   const res = describeFieldValue(session, ref);
   // Block-level visibility state rides along on every successful field
   // description, so the editor pane can offer the section's hide/show
   // toggle next to whichever field was clicked. Absent flag → no toggle.
+  // The Task-4 affordances ride along the same way: which item
+  // blueprints can add to this block ("Add <thing>…"), and — when the
+  // click landed on an item — whether that item is removable.
   if (res.ok && ref && ref.block !== 'site') {
-    const fields = indexHosts(readCandidate(session)).get(ref.block);
+    const content = readCandidate(session);
+    const fields = indexHosts(content).get(ref.block);
     if (fields && typeof fields.hidden === 'boolean') res.blockHidden = fields.hidden;
+
+    let block = null;
+    for (const p of content.pages || []) {
+      for (const b of p.blocks || []) if (b && b.id === ref.block) block = b;
+    }
+    if (block) {
+      const registry = scaffold.loadBlueprints();
+      const addable = scaffold.itemBlueprintsFor(block.type, null, registry)
+        .map(({ key, blueprint }) => ({ key, name: blueprint.name, purpose: blueprint.purpose }));
+      if (addable.length) res.addable = addable;
+      if (ref.item != null && ref.item !== '') {
+        const probe = scaffold.removeItem(JSON.parse(JSON.stringify(content)),
+          { block: ref.block, item: ref.item }, registry);
+        if (probe.ok) {
+          const bp = scaffold.itemBlueprintsFor(block.type, probe.removed.field, registry)[0];
+          res.itemRemove = { allowed: true, thing: bp ? bp.blueprint.name : 'item',
+            summary: describeItemContent(probe.removed.item) };
+        } else {
+          res.itemRemove = { allowed: false, reason: probe.errors.join('\n') };
+        }
+      }
+    }
   }
   return res;
 }
@@ -595,6 +637,7 @@ function listBlueprints() {
       name: blueprint.name,
       purpose: blueprint.purpose,
       kind: blueprint.kind,
+      target: blueprint.target || null,
       variants: blueprint.variants,
       inputs: blueprint.inputs,
     })),
@@ -640,7 +683,8 @@ function applyScaffold(session, req) {
 
   const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
   const content = JSON.parse(beforeText);
-  const inst = scaffold.instantiate(content, bp, req.variant, values, { targetSlug: req.targetPage });
+  const inst = scaffold.instantiate(content, bp, req.variant, values,
+    { targetSlug: req.targetPage, targetBlock: req.targetBlock });
   if (!inst.ok) return { ok: false, error: inst.errors.join('\n') };
 
   const written = [];
@@ -666,17 +710,61 @@ function applyScaffold(session, req) {
     scaffold: { blueprint: entry.key, variant: req.variant },
     // The full request as resolved here (image paths already assigned), so
     // the staged-list replay can re-instantiate it deterministically.
-    replayScaffold: { blueprint: entry.key, variant: req.variant, values, targetPage: req.targetPage },
+    replayScaffold: { blueprint: entry.key, variant: req.variant, values,
+      targetPage: req.targetPage, targetBlock: req.targetBlock },
     old: null,
     new: c.kind === 'page'
       ? `New page "${c.navLabel}" (${c.file}) with ${c.blockIds.length} section(s), added to the menu`
-      : `New section on ${c.file}`,
-    summary: c.kind === 'page' ? `add page "${c.navLabel}" (${c.file})` : `add a section to ${c.slug}`,
+      : c.kind === 'item'
+        ? `New ${bp.name.toLowerCase()} in the ${c.blockId} section (${c.file})`
+        : `New section on ${c.file}`,
+    summary: c.kind === 'page' ? `add page "${c.navLabel}" (${c.file})`
+           : c.kind === 'item' ? `add a ${bp.name.toLowerCase()} to ${c.blockId}`
+           : `add a section to ${c.slug}`,
     uploads: staged.map(s => s.name),
     uploadFiles: staged.map(s => ({ name: s.name, bytes: s.bytes })),
     at: new Date().toISOString(),
   };
   return { ok: true, pending: publicPending(session), created: c };
+}
+
+/* The structural counterpart of applyScaffold in the other direction:
+   remove ONE repeating item from the CANDIDATE copy through
+   scaffold.removeItem (its guards: only id-bearing item arrays, never
+   the last item, only where a blessed item blueprint exists) → candidate
+   rebuild as the acceptance gate → pending change card. Same
+   one-pending-change rule, same rollback-on-failure, same
+   keep/discard/publish flow afterwards. Never applyPatch. */
+function applyRemoveItem(session, ref) {
+  if (session.pending) {
+    return { ok: false, error: 'There is already a pending change — keep or discard it first.' };
+  }
+  if (!ref || typeof ref !== 'object') return { ok: false, error: 'bad remove request' };
+
+  const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
+  const content = JSON.parse(beforeText);
+  const rm = scaffold.removeItem(content, { block: ref.block, item: ref.item });
+  if (!rm.ok) return { ok: false, error: rm.errors.join('\n') };
+
+  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
+  const b = buildCandidate(session);
+  if (!b.ok) {
+    fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
+    buildCandidate(session); // restore the preview to the last good state
+    return { ok: false, buildFailed: true, error: `That removal did not pass the site's checks, so it was not kept:\n${b.out}` };
+  }
+
+  session.pending = {
+    patch: null,
+    removeItem: { block: ref.block, item: ref.item },
+    old: describeItemContent(rm.removed.item),
+    new: null,
+    summary: `remove an item from ${ref.block}`,
+    uploads: [],
+    uploadFiles: [],
+    at: new Date().toISOString(),
+  };
+  return { ok: true, pending: publicPending(session), removed: rm.removed };
 }
 
 /* Keep: the pending change joins the session's staged list and the next
@@ -696,7 +784,9 @@ function keep(session) {
     scaffold: p.scaffold || null,
     replay: p.patch
       ? { kind: 'patch', patch: p.patch }
-      : { kind: 'scaffold', ...p.replayScaffold },
+      : p.removeItem
+        ? { kind: 'remove-item', ...p.removeItem }
+        : { kind: 'scaffold', ...p.replayScaffold },
     uploads: p.uploads,
     uploadFiles: p.uploadFiles,
     keptAt: new Date().toISOString(),
@@ -721,12 +811,17 @@ function replayStaged(session) {
       if (!r.ok) {
         return { ok: false, error: `replaying a kept change failed unexpectedly: ${r.error || r.reason}` };
       }
+    } else if (entry.replay.kind === 'remove-item') {
+      const rm = scaffold.removeItem(content, { block: entry.replay.block, item: entry.replay.item });
+      if (!rm.ok) {
+        return { ok: false, error: `replaying a kept removal failed unexpectedly:\n${rm.errors.join('\n')}` };
+      }
     } else {
       const loaded = scaffold.loadBlueprints();
       const e = loaded.blueprints.find(b => b.key === entry.replay.blueprint);
       if (!e) return { ok: false, error: `replaying a kept addition failed: unknown blueprint "${entry.replay.blueprint}"` };
       const inst = scaffold.instantiate(content, e.blueprint, entry.replay.variant,
-        entry.replay.values, { targetSlug: entry.replay.targetPage });
+        entry.replay.values, { targetSlug: entry.replay.targetPage, targetBlock: entry.replay.targetBlock });
       if (!inst.ok) {
         return { ok: false, error: `replaying a kept addition failed unexpectedly:\n${inst.errors.join('\n')}` };
       }
@@ -916,6 +1011,8 @@ module.exports = {
     (session, patch, upload) => (upload != null ? { patch, upload: describeUpload(upload) } : { patch })),
   applyScaffold: logged('scaffold', applyScaffold,
     (session, req) => describeScaffoldRequest(req)),
+  applyRemoveItem: logged('remove-item', applyRemoveItem,
+    (session, ref) => (ref && typeof ref === 'object' ? { block: ref.block, item: ref.item } : null)),
   listBlueprints,
   keep: logged('keep', keep, describePendingRequest),
   discard: logged('discard', discard, describePendingRequest),

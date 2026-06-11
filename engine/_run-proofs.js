@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all eighteen end-to-end proofs in sequence and prints results.
+// Runs all nineteen end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -70,6 +70,14 @@
 //             [blockson-publish <client>] marker; restore refuses while
 //             changes are staged and, once clear, reverts the whole
 //             session as one unit.
+// Proof 19:   item blueprints + removeItem (v4.2 Task 4): the four shipped
+//             item blueprints validate; a valid add lands in the named
+//             block with a site-wide-unique item id and builds clean;
+//             invalid inputs/targets rejected with nothing written; remove
+//             deletes exactly the addressed item, refuses the last item
+//             and any un-blessed array; both ride pending → keep → publish
+//             with annotation-free, id-free live HTML; a known-bad item
+//             blueprint fails the CLI with named reasons.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -163,7 +171,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 18;
+const TOTAL = 19;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -559,10 +567,11 @@ console.log('\n═══ PROOF 9 — Scaffolder: schema-validated inputs, collis
   const failures = [];
 
   try {
-    // (a) Registry: the three shipped blueprints load and validate; nothing invalid.
+    // (a) Registry: every shipped blueprint loads and validates; nothing invalid.
     const reg = scaffold.loadBlueprints();
     const keys = reg.blueprints.map(b => b.key);
-    for (const want of ['contact-page', 'content-page', 'gallery-page']) {
+    for (const want of ['contact-page', 'content-page', 'gallery-page',
+                        'card-grid-card', 'faq-pair', 'testimonial-quote', 'team-member']) {
       if (!keys.includes(want)) failures.push(`registry is missing blueprint "${want}"`);
     }
     if (reg.invalid.length) failures.push(`registry reports invalid blueprints: ${JSON.stringify(reg.invalid)}`);
@@ -633,8 +642,8 @@ console.log('\n═══ PROOF 9 — Scaffolder: schema-validated inputs, collis
   }
 
   if (failures.length === 0) {
-    console.log('PASS — registry validates all 3 blueprints; 8 classes of bad input rejected with');
-    console.log('       content untouched; 12 same-name instantiations + every blueprint × variant');
+    console.log('PASS — registry validates all 7 blueprints; 8 classes of bad input rejected with');
+    console.log('       content untouched; 12 same-name instantiations + every page blueprint × variant');
     console.log('       coexist with unique slugs and block ids, and the full build accepts the result.');
     passed++;
   } else {
@@ -1488,7 +1497,7 @@ console.log('\n═══ PROOF 16 — Maintenance ledger: every attempt logged, 
     //     timestamp, known event and outcome.
     for (const l of readLines()) {
       if (Number.isNaN(Date.parse(l.at || ''))) failures.push(`line without ISO timestamp: ${JSON.stringify(l)}`);
-      if (!['edit', 'scaffold', 'keep', 'discard', 'discard-all', 'publish', 'restore'].includes(l.event)) failures.push(`unknown event: ${l.event}`);
+      if (!['edit', 'scaffold', 'remove-item', 'keep', 'discard', 'discard-all', 'publish', 'restore'].includes(l.event)) failures.push(`unknown event: ${l.event}`);
       if (!['ok', 'rejected', 'build-failed'].includes(l.outcome)) failures.push(`unknown outcome: ${l.outcome}`);
     }
 
@@ -1806,6 +1815,239 @@ console.log('\n═══ PROOF 18 — One session, one commit: publish batches t
     console.log('       pushed commit carrying the [blockson-publish] marker and the session');
     console.log('       summary; restore refuses while changes are staged and, once clear,');
     console.log('       reverts the whole session as one unit and republishes.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 19 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove repeating items through the scaffolder ═══');
+{
+  const scaffold = require('./lib/scaffold');
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-items';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const candIndexPath = path.join(ROOT, 'dist', CLIENT + '__candidate__annotated', 'index.html');
+  const ledgerFile = path.join(liveDir, 'edits.log.jsonl');
+  const badFile = path.join(ROOT, 'dist', '__proof-bad-item-blueprint.json');
+  const failures = [];
+
+  try {
+    // (a) Registry: the four shipped item blueprints load and validate.
+    const reg = scaffold.loadBlueprints();
+    const bp = key => (reg.blueprints.find(b => b.key === key) || {}).blueprint;
+    for (const want of ['card-grid-card', 'faq-pair', 'testimonial-quote', 'team-member']) {
+      if (!bp(want)) failures.push(`registry is missing item blueprint "${want}"`);
+      else if (bp(want).kind !== 'item') failures.push(`"${want}" is not kind "item"`);
+    }
+
+    // (b) A valid add lands in the NAMED block with a unique item id;
+    //     nothing else in the content moves.
+    const content = readContent('example-restaurant');
+    const faqItems = content.pages[1].blocks.find(b => b.id === 'menu-faq').fields.items;
+    const faqBefore = faqItems.length;
+    const r1 = scaffold.instantiate(content, bp('faq-pair'), 'standard',
+      { question: 'Do you take large groups?', answer: 'Yes — parties up to twenty with a day\'s notice.' },
+      { targetBlock: 'menu-faq' });
+    if (!r1.ok) failures.push(`valid item add failed: ${r1.errors.join('; ')}`);
+    else {
+      if (r1.created.kind !== 'item' || r1.created.blockId !== 'menu-faq' || r1.created.file !== 'menu.html') {
+        failures.push(`created record wrong: ${JSON.stringify(r1.created)}`);
+      }
+      const added = faqItems[faqItems.length - 1];
+      if (faqItems.length !== faqBefore + 1 || added.id !== r1.created.itemId
+          || added.question !== 'Do you take large groups?') {
+        failures.push('the item did not land in the addressed block with the generated id');
+      }
+    }
+
+    //     Id uniqueness under repeated instantiation, site-wide.
+    for (let i = 0; i < 8; i++) {
+      const r = scaffold.instantiate(content, bp('faq-pair'), 'standard',
+        { question: `Repeat ${i}?`, answer: 'An answer.' }, { targetBlock: 'menu-faq' });
+      if (!r.ok) { failures.push(`repeat add ${i} failed: ${r.errors.join('; ')}`); break; }
+    }
+    const allIds = [];
+    for (const p of content.pages) for (const b of p.blocks) {
+      allIds.push(b.id);
+      (function walk(n) {
+        if (Array.isArray(n)) n.forEach(walk);
+        else if (n && typeof n === 'object') { if (typeof n.id === 'string') allIds.push(n.id); Object.keys(n).forEach(k => walk(n[k])); }
+      })(b.fields);
+    }
+    if (new Set(allIds).size !== allIds.length) failures.push('item ids collided under repeated instantiation');
+
+    //     …and the full build accepts the result.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`full build rejected the added items:\n${b1.out}`);
+    fs.rmSync(liveDir, { recursive: true, force: true });
+
+    // (c) Invalid inputs and targets: rejected by name, nothing written.
+    const c2 = readContent('example-restaurant');
+    const orig2 = JSON.stringify(c2);
+    const goodVals = { question: 'A question?', answer: 'An answer.' };
+    const rejects = [
+      ['missing required input', scaffold.instantiate(c2, bp('faq-pair'), 'standard', { question: 'Q?' }, { targetBlock: 'menu-faq' })],
+      ['over-length input', scaffold.instantiate(c2, bp('faq-pair'), 'standard', { ...goodVals, question: 'x'.repeat(150) }, { targetBlock: 'menu-faq' })],
+      ['undeclared value key', scaffold.instantiate(c2, bp('faq-pair'), 'standard', { ...goodVals, hack: 'x' }, { targetBlock: 'menu-faq' })],
+      ['unknown target block', scaffold.instantiate(c2, bp('faq-pair'), 'standard', goodVals, { targetBlock: 'no-such-block' })],
+      ['wrong target block type', scaffold.instantiate(c2, bp('faq-pair'), 'standard', goodVals, { targetBlock: 'home-team' })],
+      ['unknown variant', scaffold.instantiate(c2, bp('faq-pair'), 'fancy', goodVals, { targetBlock: 'menu-faq' })],
+    ];
+    for (const [label, r] of rejects) {
+      if (r.ok) failures.push(`accepted what should be rejected: ${label}`);
+    }
+    if (JSON.stringify(c2) !== orig2) failures.push('a rejected item add modified the content');
+
+    // (d) removeItem deletes exactly the addressed item; the last item and
+    //     un-blessed arrays are refused with nothing written.
+    const c3 = readContent('example-restaurant');
+    const rm = scaffold.removeItem(c3, { block: 'home-team', item: 'member-sous' });
+    const members = c3.pages[0].blocks.find(b => b.id === 'home-team').fields.members;
+    if (!rm.ok) failures.push(`remove failed: ${rm.errors.join('; ')}`);
+    else {
+      if (rm.removed.item.id !== 'member-sous' || rm.removed.field !== 'members') {
+        failures.push(`removed record wrong: ${JSON.stringify(rm.removed)}`);
+      }
+      if (members.length !== 2 || members.some(m => m.id === 'member-sous')) {
+        failures.push('remove did not delete exactly the addressed item');
+      }
+    }
+    const rmA = scaffold.removeItem(c3, { block: 'home-testimonials', item: 'testi-brunch' });
+    const rmB = scaffold.removeItem(c3, { block: 'home-testimonials', item: 'testi-dinner' });
+    const quotes = c3.pages[0].blocks.find(b => b.id === 'home-testimonials').fields.quotes;
+    if (!rmA.ok) failures.push(`removing one of two quotes failed: ${rmA.errors.join('; ')}`);
+    if (rmB.ok || quotes.length !== 1) failures.push('the LAST item in an array was removed — it must be refused');
+    const c4 = readContent('example-restaurant');
+    const orig4 = JSON.stringify(c4);
+    const rmPlan = scaffold.removeItem(c4, { block: 'menu-starters', item: 'plan-soup' });
+    const rmInfo = scaffold.removeItem(c4, { block: 'contact-info', item: 'info-email' });
+    if (rmPlan.ok || rmInfo.ok) failures.push('an array with no blessed item blueprint allowed a removal');
+    if (rmPlan.errors && !/developer/.test(rmPlan.errors.join(' '))) {
+      failures.push(`un-blessed removal refusal does not say it is developer work: ${rmPlan.errors}`);
+    }
+    if (JSON.stringify(c4) !== orig4) failures.push('a refused removal modified the content');
+
+    // (e) Both operations ride the session flow: candidate-only until
+    //     publish, kept entries survive a pending-discard replay, live
+    //     HTML ships annotation- and id-free, the ledger records both.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+    const session = owner.createSession(CLIENT);
+    const sousName = readContent(CLIENT).pages[0].blocks
+      .find(b => b.id === 'home-team').fields.members.find(m => m.id === 'member-sous').name;
+
+    const add = owner.applyScaffold(session, {
+      blueprint: 'card-grid-card', variant: 'standard', targetBlock: 'home-offerings',
+      values: { title: 'Private dining', body: 'Book the back room for parties of up to twenty.' },
+    });
+    let itemId = null;
+    if (!add.ok) failures.push(`item add through the owner handler failed: ${add.error}`);
+    else {
+      itemId = add.created.itemId;
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      const candCards = cand.pages[0].blocks.find(b => b.id === 'home-offerings').fields.cards;
+      const liveCards = live.pages[0].blocks.find(b => b.id === 'home-offerings').fields.cards;
+      if (!candCards.some(c => c.id === itemId)) failures.push('the added item is missing from the candidate');
+      if (liveCards.some(c => c.id === itemId)) failures.push('LIVE content gained the item before publish');
+      if (!fs.readFileSync(candIndexPath, 'utf8').includes(`data-bk-item="${itemId}"`)) {
+        failures.push('the added item is not click-to-edit annotated in the candidate preview');
+      }
+    }
+    const interlocked = owner.applyRemoveItem(session, { block: 'home-team', item: 'member-sous' });
+    if (interlocked.ok) failures.push('a removal was accepted while a change was pending');
+    owner.keep(session);
+
+    const rem = owner.applyRemoveItem(session, { block: 'home-team', item: 'member-sous' });
+    if (!rem.ok) failures.push(`remove through the owner handler failed: ${rem.error}`);
+    else {
+      if (!rem.pending.old || !rem.pending.old.includes(sousName) || rem.pending.new !== null) {
+        failures.push(`the removal card does not show the item's current content: ${JSON.stringify(rem.pending)}`);
+      }
+      const line = fs.readFileSync(ledgerFile, 'utf8').trim().split('\n').map(l => JSON.parse(l)).pop();
+      if (line.event !== 'remove-item' || line.outcome !== 'ok'
+          || !line.request || line.request.item !== 'member-sous') {
+        failures.push(`remove-item logged wrong: ${JSON.stringify(line)}`);
+      }
+    }
+    owner.keep(session);
+
+    owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'Replay probe' });
+    owner.discard(session);
+    const replayed = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+    const repCards = replayed.pages[0].blocks.find(b => b.id === 'home-offerings').fields.cards;
+    const repMembers = replayed.pages[0].blocks.find(b => b.id === 'home-team').fields.members;
+    if (!repCards.some(c => c.id === itemId)) failures.push('the kept item add did not survive a pending-discard replay');
+    if (repMembers.some(m => m.id === 'member-sous')) failures.push('the kept removal did not survive a pending-discard replay');
+    if (replayed.pages[0].blocks[0].fields.headline === 'Replay probe') failures.push('the discarded edit survived the replay');
+
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const live2 = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      const liveCards2 = live2.pages[0].blocks.find(b => b.id === 'home-offerings').fields.cards;
+      const liveMembers2 = live2.pages[0].blocks.find(b => b.id === 'home-team').fields.members;
+      if (!liveCards2.some(c => c.id === itemId) || liveMembers2.some(m => m.id === 'member-sous')) {
+        failures.push('publish did not write both structural changes to live');
+      }
+      const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!liveHtml.includes('Private dining')) failures.push('live HTML is missing the added item');
+      if (liveHtml.includes(sousName)) failures.push('live HTML still shows the removed member');
+      if (liveHtml.includes('data-bk-')) failures.push('live HTML contains data-bk-* after publish');
+      if (liveHtml.includes(`id="${itemId}"`) || liveHtml.includes(`-item="${itemId}"`)) {
+        failures.push(`live HTML leaks the item id "${itemId}"`);
+      }
+    }
+    const unblessed = owner.applyRemoveItem(session, { block: 'menu-starters', item: 'plan-soup' });
+    if (unblessed.ok || session.pending) failures.push('an un-blessed removal slipped through the owner handler');
+
+    // (f) A known-bad item blueprint fails the CLI with named reasons.
+    fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
+    fs.writeFileSync(badFile, JSON.stringify({
+      name: 'Bad item blueprint', purpose: 'Must fail the validator', kind: 'item',
+      target: { blockType: 'carousel', field: 'cards', extra: true },
+      variants: [{ key: 'only', label: 'Only layout' }],
+      inputs: [{ key: 'title', label: 'Title', type: 'text', required: true }],
+      template: { only: { id: 'x', type: 'cta', fields: { statement: '{{title}}' } } },
+    }, null, 2), 'utf8');
+    const badRun = spawnSync(process.execPath, [path.join(ROOT, 'engine', 'validate-blueprint.js'), badFile],
+      { cwd: ROOT, encoding: 'utf8' });
+    const badOut = (badRun.stdout || '') + (badRun.stderr || '');
+    if (badRun.status === 0) failures.push('validate-blueprint PASSED a known-bad item blueprint');
+    for (const named of ['unknown block type "carousel"', 'unknown key "extra"', '"type"/"fields" wrapper']) {
+      if (!badOut.includes(named)) failures.push(`bad-item-blueprint output does not name the reason: ${named}`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(badFile, { force: true });
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the four shipped item blueprints validate; a valid add lands in the');
+    console.log('       NAMED block with a site-wide-unique item id and the full build accepts');
+    console.log('       it; bad inputs, unknown/wrong-type targets reject with nothing written;');
+    console.log('       remove deletes exactly the addressed item, refuses the last item and');
+    console.log('       every array without a blessed item blueprint; add and remove both ride');
+    console.log('       pending → keep → publish (candidate-only until publish, replay-stable,');
+    console.log('       ledgered as remove-item) and live HTML ships with no annotations and no');
+    console.log('       item ids; a known-bad item blueprint fails the CLI with named reasons.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

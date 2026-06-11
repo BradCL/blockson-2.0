@@ -1,0 +1,23 @@
+{
+  "name": "Quote",
+  "purpose": "One more customer quote in a testimonials section.",
+  "kind": "item",
+  "target": { "blockType": "testimonials", "field": "quotes" },
+  "variants": [
+    { "key": "standard", "label": "Quote + who said it (five stars)" }
+  ],
+  "inputs": [
+    { "key": "quote", "label": "What the customer said", "type": "textarea", "required": true, "maxLength": 400,
+      "example": "They showed up on time, finished early, and left the site spotless. We could not be happier." },
+    { "key": "attribution", "label": "Who said it (name, or name and neighbourhood)", "type": "text", "required": true, "maxLength": 60,
+      "example": "Dana M., Riverbend" }
+  ],
+  "template": {
+    "standard": {
+      "id": "quote",
+      "stars": 5,
+      "quote": "{{quote}}",
+      "attribution": "{{attribution}}"
+    }
+  }
+}

@@ -482,6 +482,11 @@
                 "icon": "home",
                 "title": "Third card",
                 "body": "One sentence of card body."
+              },
+              {
+                "id": "card",
+                "title": "Deck building",
+                "body": "Custom decks designed, built, and sealed — from a simple platform to a full outdoor living space."
               }
             ],
             "hidden": false
@@ -533,6 +538,12 @@
                 "stars": 4,
                 "quote": "A second quote, four stars.",
                 "attribution": "B. Customer"
+              },
+              {
+                "id": "quote",
+                "stars": 5,
+                "quote": "They showed up on time, finished early, and left the site spotless. We could not be happier.",
+                "attribution": "Dana M., Riverbend"
               }
             ],
             "hidden": false
@@ -739,6 +750,19 @@
                 "id": "member-two",
                 "name": "Alex Person",
                 "role": "Manager"
+              },
+              {
+                "id": "member",
+                "photo": "img/sample.jpg",
+                "name": "Sam Okafor",
+                "role": "Site supervisor",
+                "bio": "Twelve years running crews on residential builds — Sam keeps every job on schedule."
+              },
+              {
+                "id": "member-2",
+                "name": "Sam Okafor",
+                "role": "Site supervisor",
+                "bio": "Twelve years running crews on residential builds — Sam keeps every job on schedule."
               }
             ],
             "hidden": false
@@ -760,6 +784,11 @@
                 "id": "faq-two",
                 "question": "A second question?",
                 "answer": "Its answer."
+              },
+              {
+                "id": "faq",
+                "question": "Do you offer free estimates?",
+                "answer": "Yes — every job starts with a free, no-obligation written estimate."
               }
             ],
             "hidden": false

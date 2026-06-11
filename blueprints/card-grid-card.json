@@ -1,0 +1,22 @@
+{
+  "name": "Card",
+  "purpose": "One more card in a card grid — a new service, feature, or value.",
+  "kind": "item",
+  "target": { "blockType": "card-grid", "field": "cards" },
+  "variants": [
+    { "key": "standard", "label": "Title + a short description" }
+  ],
+  "inputs": [
+    { "key": "title", "label": "Card title", "type": "text", "required": true, "maxLength": 60,
+      "example": "Deck building" },
+    { "key": "body", "label": "One or two sentences describing it", "type": "textarea", "required": true, "maxLength": 300,
+      "example": "Custom decks designed, built, and sealed — from a simple platform to a full outdoor living space." }
+  ],
+  "template": {
+    "standard": {
+      "id": "card",
+      "title": "{{title}}",
+      "body": "{{body}}"
+    }
+  }
+}

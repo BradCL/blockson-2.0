@@ -13,7 +13,9 @@
         Sample values come from each input's declared "example", falling
         back to per-type defaults. An input with a "pattern" therefore
         needs an example — no generic value satisfies an arbitrary regex,
-        and the failure names exactly that.
+        and the failure names exactly that. An ITEM blueprint is
+        instantiated into a sample block of its target type (taken from
+        the SHOWCASE_BLOCKS corpus, which covers the whole registry).
      3. the FULL build (live + annotated) as the acceptance gate —
         builds are spawned, never require()d (build.js exits the process)
      4. invariant checks on the built HTML: live pages carry no
@@ -161,13 +163,27 @@ function checkBlueprint(filePath) {
   checks.push(`schema valid — ${bp.kind}, ${bp.variants.length} variant(s), ${bp.inputs.length} input(s)`);
 
   // Instantiate EVERY variant into one content object (also exercises
-  // id uniqueness across variants of the same blueprint).
+  // id uniqueness across variants of the same blueprint). Item
+  // blueprints need an existing block of their target type — a deep
+  // copy of that type's SHOWCASE_BLOCKS sample is appended to the
+  // throwaway index page as the target.
   const content = baseContent(VALIDATE_CLIENT);
+  let targetBlock = null;
+  if (bp.kind === 'item') {
+    const sample = SHOWCASE_BLOCKS.find(b => b.type === bp.target.blockType);
+    if (!sample) {
+      return { ok: false, name, checks, errors: [`no sample block of type "${bp.target.blockType}" in the showcase corpus`] };
+    }
+    const copy = JSON.parse(JSON.stringify(sample));
+    copy.id = 'index-target';
+    content.pages[0].blocks.push(copy);
+    targetBlock = copy.id;
+  }
   const created = [];
   for (const variant of bp.variants) {
     const sv = sampleValues(bp, variant.key);
     if (!sv.ok) { errors.push(...sv.errors); continue; }
-    const r = scaffold.instantiate(content, bp, variant.key, sv.values, { targetSlug: 'index' });
+    const r = scaffold.instantiate(content, bp, variant.key, sv.values, { targetSlug: 'index', targetBlock });
     if (!r.ok) errors.push(...r.errors.map(e => `variant "${variant.key}": ${e}`));
     else created.push({ variant: variant.key, ...r.created });
   }
@@ -193,6 +209,14 @@ function checkBlueprint(filePath) {
       const liveHtml = fs.readFileSync(path.join(ROOT, 'dist', VALIDATE_CLIENT, c.file), 'utf8');
       const annHtml  = fs.readFileSync(path.join(ROOT, 'dist', VALIDATE_CLIENT + '__annotated', c.file), 'utf8');
       if (liveHtml.includes('data-bk-')) errors.push(`${c.variant}: live ${c.file} contains data-bk-* annotations`);
+      if (c.kind === 'item') {
+        if (liveHtml.includes(`id="${c.itemId}"`) || liveHtml.includes(`-item="${c.itemId}"`)) {
+          errors.push(`${c.variant}: live ${c.file} leaks item id "${c.itemId}"`);
+        }
+        if (!annHtml.includes(`data-bk-item="${c.itemId}"`)) {
+          errors.push(`${c.variant}: annotated ${c.file} does not stamp item "${c.itemId}" for click-to-edit`);
+        }
+      }
       for (const id of c.blockIds) {
         // Ids leak as ATTRIBUTE values (id="…", data-bk-*="…"), never as
         // plain text — a substring check would false-positive on CSS class
@@ -387,6 +411,7 @@ function demoContent() {
 
   const created = [];
   for (const { key, blueprint: bp } of reg.blueprints) {
+    if (bp.kind === 'item') continue; // items target the showcase page, built below
     for (const variant of bp.variants) {
       const sv = sampleValues(bp, variant.key);
       if (!sv.ok) return { ok: false, errors: sv.errors.map(e => `${key}: ${e}`) };
@@ -411,16 +436,34 @@ function demoContent() {
   }
 
   // The "All blocks" showcase page — every block type once (see
-  // SHOWCASE_BLOCKS). Last in the nav, after the blueprint pages.
+  // SHOWCASE_BLOCKS, deep-copied: item blueprints instantiate into these
+  // blocks, and the module constant must never be mutated). Last in the
+  // nav, after the blueprint pages.
   content.pages.push({
     slug: 'all-blocks',
     meta: {
       title: 'All blocks | Blueprint Gallery',
       description: 'One sample instance of every block type the engine renders — the theme-coverage corpus.',
     },
-    blocks: SHOWCASE_BLOCKS,
+    blocks: JSON.parse(JSON.stringify(SHOWCASE_BLOCKS)),
   });
   content.site.nav.links.push({ label: 'All blocks', href: 'all-blocks.html' });
+
+  // Item blueprints × variants, instantiated into the showcase block of
+  // their target type — so the gallery corpus regression-covers them too.
+  const showcasePage = content.pages[content.pages.length - 1];
+  for (const { key, blueprint: bp } of reg.blueprints) {
+    if (bp.kind !== 'item') continue;
+    const host = showcasePage.blocks.find(b => b.type === bp.target.blockType);
+    if (!host) return { ok: false, errors: [`${key}: no showcase block of type "${bp.target.blockType}" to instantiate into`] };
+    for (const variant of bp.variants) {
+      const sv = sampleValues(bp, variant.key);
+      if (!sv.ok) return { ok: false, errors: sv.errors.map(e => `${key}: ${e}`) };
+      const r = scaffold.instantiate(content, bp, variant.key, sv.values, { targetBlock: host.id });
+      if (!r.ok) return { ok: false, errors: r.errors.map(e => `${key}/${variant.key}: ${e}`) };
+      created.push({ blueprint: key, variant: variant.key, ...r.created });
+    }
+  }
 
   return { ok: true, content, created };
 }
