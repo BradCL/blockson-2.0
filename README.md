@@ -48,19 +48,25 @@ host, per-client editor configuration, and the publish/rollback story, see
 | Tier | Who | Can do |
 |------|-----|--------|
 | **Setup** | Developer with full tooling | Define clients, write new block types, change the engine, update CSS/JS, author themes and blueprints |
-| **Maintenance** | Owner, via the click-to-edit editor (`engine/serve.js`) or a patch applied directly | Edit _values_ inside `content.json`, adjust a curated allowlist of brand-color theme tokens, and instantiate developer-blessed **blueprints** (new pages from `blueprints/`) |
+| **Maintenance** | Owner, via the click-to-edit editor (`engine/serve.js`) or a patch applied directly | Edit _values_ inside `content.json`, hide/show whole sections, adjust a curated allowlist of brand-color theme tokens, and instantiate developer-blessed **blueprints** from `blueprints/` — new pages, new sections, and (where an item blueprint exists) add/remove repeating items |
 
-Every write, regardless of origin, passes through `applyPatch` (the write-allowlist
-resolver in `engine/lib/patch.js`) and a candidate build before touching the live
-site. The owner always sees a preview and issues an explicit Approve.
+Every content write, regardless of origin, passes through `applyPatch` (the
+write-allowlist resolver in `engine/lib/patch.js`) and a candidate build before
+touching the live site. The owner always sees a preview; changes are **kept** into
+a session and one explicit **Publish** ships the whole session to live.
 
 **Structural-edit policy:** owners may instantiate blessed blueprints — that's the
-entire structural surface available to the maintenance tier. Freeform structural
-editing (new block types, hand-built page layouts, anything not expressible as a
-blueprint) remains developer work. `applyPatch` itself is never extended to cover
-structure; blueprint instantiation is a separate, dedicated path
-(`engine/lib/scaffold.js`, §10 of SPEC.md) with its own validation and its own
-candidate/Approve cycle.
+entire structural surface available to the maintenance tier. Blueprints come in
+three kinds: a **page** (added to the menu), a **block** (a new section on an
+existing page), and an **item** (one more repeating item — a card, an FAQ pair, a
+quote, a team member — appended to a named existing block of the matching type).
+Where an item blueprint exists, the owner can also **remove** any of that block's
+items except the last one; arrays with no item blueprint, and everything not
+expressible as a blueprint (new block types, hand-built layouts, reordering),
+remain developer work. `applyPatch` itself is never extended to cover structure;
+blueprint instantiation and item removal are a separate, dedicated path
+(`engine/lib/scaffold.js`, §10 of SPEC.md) with their own validation and the same
+candidate → keep → Publish cycle.
 
 Safety is layered, in code, never by trusting any external input:
 1. `engine/lib/patch.js` — the write allowlist, the single source of truth: forbidden
@@ -133,9 +139,12 @@ hidden honeypot. The per-host story is "Contact form delivery" in
 
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
 
-Page layouts owners can instantiate themselves are **blueprints** (`blueprints/`) —
-recombinations of these block types behind a validated input form. Owners instantiate
-them through the click-to-edit editor's **Add…** menu (below). The complete
+Structure owners can add themselves comes from **blueprints** (`blueprints/`) —
+recombinations of these block types behind a validated input form: whole pages,
+single sections, and repeating items (one more card / FAQ pair / quote / team
+member, instantiated into a named existing block). Owners reach page and block
+blueprints through the click-to-edit editor's **Add…** menu (below), and item
+blueprints by clicking into the section they extend. The complete
 authoring contract is [BLUEPRINT_AUTHORING.md](BLUEPRINT_AUTHORING.md); validate with
 `node engine/validate-blueprint.js <file>` and `npm run blueprints:check` (which also
 regenerates the `clients/blueprint-gallery/` demo client — the visual gallery and
@@ -259,8 +268,9 @@ node engine/serve.js <client> [--port N] [--host ADDR] [--allow-remote]
 
 A local server (binds `127.0.0.1` by default) serving one page: an iframe showing
 the client's **candidate** copy (`clients/<client>__candidate/`, gitignored — a full
-copy of live, reset on session start and on Discard) built **annotated**, beside a
-pending-change panel. The candidate build IS the preview; nothing here is mocked.
+copy of live, reset on session start and on Discard all) built **annotated**, beside
+the session panel: the staged list of kept changes above the pending-change card.
+The candidate build IS the preview; nothing here is mocked.
 
 - **Overlay** (`engine/ui/overlay.js`, injected at serve time into the candidate
   preview only — never written to disk, never in live builds) highlights every
@@ -273,18 +283,28 @@ pending-change panel. The candidate build IS the preview; nothing here is mocked
   PNG → WebP, the rest → JPEG; EXIF, including GPS, is stripped), so a 4 MB phone
   photo lands as a page-friendly few hundred KB; the server still treats the
   result as untrusted input and runs every upload guard on it.
-- **Add… menu** lists the validated blueprint registry by name + purpose; choosing
-  one shows a form generated from its input schema, and instantiating it enters the
-  same pending → preview → Approve/Discard cycle as a content edit.
-- **One pending change at a time.** Edit or scaffold → `applyPatch`/`scaffold`
-  resolves and validates on the candidate (every guard runs — UI input is untrusted
-  input) → candidate rebuilds annotated (a failing build rolls the candidate back) →
-  the change card shows old → new, read by resolving the patch against the
-  candidate content (never from any other description of the change).
-- **Approve** writes live `content.json` (+ any uploaded image), rebuilds live
-  WITHOUT annotations, and runs the configured publish step. **Discard** resets the
-  candidate from live. **Restore** reverts the last published change, rebuilds, and
-  republishes.
+- **Add… menu** lists the validated page and block blueprints by name + purpose;
+  choosing one shows a form generated from its input schema, and instantiating it
+  enters the same pending → keep → Publish cycle as a content edit. **Item
+  blueprints** are offered in place: clicking into a section whose type one
+  targets adds an "Add \<thing\>…" button to the editor pane, and each of that
+  section's items gains "Remove this \<thing\>" with a confirm showing exactly
+  what would be removed. The same pane carries the section's hide/show toggle.
+- **One pending change at a time.** Edit, scaffold, or item removal →
+  `applyPatch`/`scaffold` resolves and validates on the candidate (every guard
+  runs — UI input is untrusted input) → candidate rebuilds annotated (a failing
+  build rolls the candidate back) → the change card shows old → new, read by
+  resolving the change against the candidate content (never from any other
+  description of it).
+- **Keep** moves the pending change onto the session's staged list and frees the
+  next edit; **Discard** drops only the pending change (the candidate is rebuilt
+  from live plus a replay of the staged list, so kept changes are never
+  disturbed); **Discard all** resets the candidate from live and empties the
+  session. **Publish** — the only operation that writes live — ships the entire
+  staged session in one step: live `content.json` (+ every image the session
+  uploaded), a live rebuild WITHOUT annotations, and the configured publish
+  command run once. **Restore** reverts the last publish (= the whole session,
+  one commit), rebuilds, and republishes.
 - **Security:** non-local requests are rejected (socket + `Host` header) unless
   `--allow-remote` is set; every POST requires a custom header no cross-origin page
   can send without a CORS preflight, which this server never grants; static paths
@@ -310,13 +330,15 @@ exists and is exercised today by the editor above and by the proof suite:
    `GET /api/blueprints` (`scaffold.loadBlueprints()`) for the structural menu.
 2. **Produce a content patch** — one of the shapes in *Applying a patch* above,
    addressed by the stable ids the edit map prints.
-3. **Produce a structural request** — `{ blueprint, variant, values }`, validated
-   by the same `validateInputs` every Add… submission goes through.
-4. **Apply it** — `owner.applyEdit` / `owner.applyScaffold`, the exact functions
-   `engine/serve.js` calls; same guards, same candidate build, same pending →
-   Approve/Discard cycle.
-5. **Approve** — left to the owner (model drafts, human confirms) or, for a fully
-   autonomous mode, `owner.approve()` itself, still gated by the same publish step.
+3. **Produce a structural request** — `{ blueprint, variant, values }` (plus a
+   `targetPage` or `targetBlock`), validated by the same `validateInputs` every
+   Add… submission goes through; or `{ block, item }` for an item removal.
+4. **Apply it** — `owner.applyEdit` / `owner.applyScaffold` /
+   `owner.applyRemoveItem`, the exact functions `engine/serve.js` calls; same
+   guards, same candidate build, same pending → keep → Publish cycle.
+5. **Keep and Publish** — left to the owner (model drafts, human confirms) or,
+   for a fully autonomous mode, `owner.keep()` + `owner.publish()` themselves,
+   still gated by the same publish step.
 
 No model-specific code belongs in the active runtime; none of the above requires
 it. The archived v3.1 modules in `attic/` (`repair.js`, `patch-schema.js`,
@@ -380,7 +402,7 @@ pipeline:
     build without failing it; and nothing under `extras/` is required by
     engine code
 16. the maintenance ledger: every owner-handler attempt (edit, scaffold,
-    keep, publish, discard) appends one JSONL line to
+    item removal, keep, publish, discard) appends one JSONL line to
     `clients/<client>/edits.log.jsonl` carrying an ISO timestamp, the
     request as submitted, the outcome, and the resolver's error verbatim
     on rejection; uploads are logged by name/size only (never file
@@ -399,6 +421,14 @@ pipeline:
     multi-change session makes exactly one pushed commit carrying the
     `[blockson-publish <client>]` marker; restore refuses while changes are
     staged and, once clear, reverts the whole session as one unit
+19. item blueprints and item removal: the four shipped item blueprints
+    validate; a valid add lands in the named block with a site-wide-unique
+    item id and builds clean; bad inputs and unknown/wrong-type targets are
+    rejected with nothing written; remove deletes exactly the addressed
+    item, refusing the last item and every array without a blessed item
+    blueprint; both ride pending → keep → Publish with annotation-free,
+    id-free live HTML; a known-bad item blueprint fails the CLI with named
+    reasons
 
 All nineteen must pass on a clean tree (`exit 0`).
 
@@ -428,9 +458,9 @@ engine/
                         (authoring-kit pipelines)
   schema/               content.schema.json (JSON Schema draft 2020-12)
 
-blueprints/             Developer-authored page layouts owners can instantiate
-                        via the Add… menu (validated on load — see
-                        BLUEPRINT_AUTHORING.md)
+blueprints/             Developer-authored layouts owners can instantiate: pages
+                        and blocks via the Add… menu, repeating items in place
+                        (validated on load — see BLUEPRINT_AUTHORING.md)
 
 themes/
   default/              Full theme: tokens.json + css/styles.css + js/main.js
@@ -441,8 +471,11 @@ clients/
     content.json        The whole site as data
     img/                Client images
     owner-config.json   Optional owner-editor config (see OPERATOR.md)
+    edits.log.jsonl     Maintenance ledger — one JSONL line per owner attempt
+                        (gitignored; rotates to edits.log.1.jsonl at 1 MB;
+                        harvesting story in OPERATOR.md)
   <name>__candidate/    Working copy used by the owner editor (gitignored;
-                        recreated from live on session start and on Discard)
+                        recreated from live on session start and on Discard all)
   blueprint-gallery/    GENERATED demo client: every blueprint × variant, plus an
                         "all blocks" showcase page (visual gallery + regression
                         corpus, regenerated by npm run blueprints:check)

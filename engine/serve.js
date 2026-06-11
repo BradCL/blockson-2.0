@@ -6,7 +6,7 @@
 
    Serves the click-to-edit owner UI for one client on localhost.
    The browser page (engine/ui/) shows the candidate preview in an
-   iframe next to a pending-change panel; the preview is the client's
+   iframe next to the session panel; the preview is the client's
    ANNOTATED candidate build (dist/<client>__candidate__annotated/),
    into which this server injects the overlay script AT SERVE TIME —
    nothing on disk ever contains the overlay, and live builds are

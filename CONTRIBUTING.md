@@ -15,7 +15,7 @@ bar applies to everyone.
 | Lane | What it is | Gate | Review bar |
 |------|------------|------|------------|
 | **1. Themes** | `themes/<name>/tokens.json` (+ optional self-contained CSS). Pure visual design. | `node engine/validate-theme.js themes/<name>` | Validator green + a visual pass of the demo gallery under your theme |
-| **2. Blueprints** | One JSON file in `blueprints/` recombining EXISTING block types into a page/block layout owners can instantiate. No CSS knowledge required. | `node engine/validate-blueprint.js blueprints/<name>.json` and `npm run blueprints:check` | Validator green + a visual pass of the regenerated gallery |
+| **2. Blueprints** | One JSON file in `blueprints/` recombining EXISTING block types into a page, block, or repeating-item layout owners can instantiate. No CSS knowledge required. | `node engine/validate-blueprint.js blueprints/<name>.json` and `npm run blueprints:check` | Validator green + a visual pass of the regenerated gallery |
 | **3. Block types** | Engine changes: a new renderer plus schema, styling, edit-map, and proof coverage. | The full checklist below | Maintainer-gated ("Tier B") |
 
 Lanes 1 and 2 are "Tier A": community-open, and they multiply — every theme restyles

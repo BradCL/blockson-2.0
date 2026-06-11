@@ -109,7 +109,8 @@ default shown.
 | `contact` | `null` | `{ "name": ..., "email": ... }` shown to the owner as "who to call for anything beyond this editor" |
 | `host` | `"127.0.0.1"` | Bind address for `engine/serve.js` |
 | `port` | `4173` | Port for `engine/serve.js` |
-| `allowRemote` | `false` | If `true`, accepts non-loopback requests — only set this on a trusted network; see §7 |
+| `allowRemote` | `false` | If `true`, accepts non-loopback requests — **requires a non-empty `accessToken`** (the server refuses to start remote-open without one); see §6 |
+| `accessToken` | `""` | Editor login token. Required when `allowRemote` is true; optional (but still enforced if set) on plain loopback. See §6 |
 
 Example (`clients/example-contractor/owner-config.json`):
 
@@ -123,7 +124,7 @@ Example (`clients/example-contractor/owner-config.json`):
 
 **Custom publish command.** Set `publish` to a shell command string containing
 `{message}` and/or `{client}`; it runs from the repo root via the system shell after
-every Approve and Restore. Use this to call a deploy hook directly (e.g. a host's
+every Publish and Restore. Use this to call a deploy hook directly (e.g. a host's
 build-hook URL via `curl`) instead of relying on git push. A failing or missing
 command is reported to the owner in plain language — the local site is always saved
 and rebuilt regardless of whether publishing succeeds.
@@ -137,23 +138,35 @@ node engine/serve.js <client-name> [--port N] [--host ADDR] [--allow-remote]
 ```
 
 This starts a local server (default `http://127.0.0.1:4173/`) showing the owner a
-live preview of their site (the **candidate** copy, built annotated) next to a
-pending-change panel. CLI flags override `owner-config.json` for that run.
+live preview of their site (the **candidate** copy, built annotated) next to the
+session panel — the list of changes kept so far, above the pending-change card.
+CLI flags override `owner-config.json` for that run.
 
 - The owner clicks any highlighted element to edit text, swap an image, change a
   list line, or adjust a brand color — every change is validated and rebuilt into
   the candidate before it appears as a pending "old → new" card.
-- The **Add…** menu lets the owner instantiate any of the developer-blessed
-  blueprints (a new contact page, gallery page, or content page) as a new pending
-  change, previewed the same way.
-- **Approve** writes the change to the live `content.json` (+ any uploaded image),
-  rebuilds the live site (no edit annotations), and runs the publish step (§5).
-- **Discard** throws away the pending change and resets the candidate from live.
-- **Restore** undoes the last published change (§7) and republishes.
+- The **Add…** menu lets the owner instantiate any of the developer-blessed page
+  and block blueprints (a new contact page, gallery page, or content page) as a
+  new pending change, previewed the same way. **Repeating items** are offered in
+  place: clicking into a section whose type has an item blueprint (cards, FAQ
+  pairs, testimonial quotes, team members ship covered) shows "Add \<thing\>…" in
+  the editor pane, and each item a "Remove this \<thing\>" button with a confirm
+  showing exactly what would be removed. Removal is refused on a section's last
+  item, and on any list without an item blueprint — those stay developer work.
+- **Keep** moves the pending change onto the session list and frees the next edit.
+  **Discard** throws away only the pending change — everything kept survives.
+  **Discard all** empties the whole session and resets the candidate from live.
+- **Publish** ships the entire session — every kept change, every uploaded image —
+  to the live `content.json` in one step, rebuilds the live site (no edit
+  annotations), and runs the publish step (§5) once. One session = one commit.
+- **Restore** undoes the last publish (§7) — the whole session as one unit — and
+  republishes.
 
-Only one change is pending at a time — the owner approves or discards before making
-the next edit. Nothing the owner does can write outside `clients/<client-name>/`,
-and a failed candidate build can never become a pending change (§8 of SPEC.md).
+Only one change is pending at a time — the owner keeps or discards it before making
+the next edit, and Publish refuses while anything is pending (a pending change is
+never silently included). Nothing the owner does can write outside
+`clients/<client-name>/`, only Publish and Restore write the live copy, and a
+failed candidate build can never become a pending change (§8 of SPEC.md).
 
 **Hiding a section.** Every block carries an owner-togglable visibility flag
 (`"hidden": false` inside the block's fields). In the editor, clicking anything
@@ -195,6 +208,26 @@ pending card's assigned `img/` path and the candidate preview):
       the file input, so it should behave like the JPEG case — confirm the upload is
       accepted and upright.
 
+**Remote access (`--allow-remote` + `accessToken`).** By default the editor answers
+loopback only. If the owner edits from another machine (their laptop on the office
+LAN, say), set `allowRemote: true` — and an access token with it, because
+allow-remote disables the locality check and the token is what replaces it. The
+server **refuses to start** remote-open without one, naming the fix:
+
+```json
+{ "allowRemote": true, "accessToken": "a-long-random-string" }
+```
+
+On start, the server prints the link to give the owner —
+`http://<host>:<port>/?token=…`. Opening it once verifies the token
+(constant-time comparison) and sets an HttpOnly session cookie; from then on that
+browser stays signed in until the editor process restarts. Every request without
+the cookie (or token) gets a plain-language "open your access link" page — never a
+stack trace. On plain loopback the token is optional, but enforced identically if
+set. The session cookie's secret is fresh per server start, so a stolen cookie
+dies with the process; treat the token itself like a password (send it to the
+owner out-of-band, rotate it by editing `owner-config.json` and restarting).
+
 **Running it for the owner day to day:** this is a plain Node process — run it with
 whatever process supervisor you're already comfortable with (a terminal left open,
 `pm2`, a `systemd`/launchd unit, Task Scheduler, etc.) on a machine the owner can
@@ -208,13 +241,15 @@ wants to make a change, and the live site keeps serving from the host regardless
 
 With the default `publish: "git"`:
 
-- **Approve** runs `git add clients/<client-name>/content.json` (and `img/` if
-  present), `git commit -m "<publishMessage>"`, then `git push`. The commit message
-  embeds a marker, `[blockson-publish <client-name>]`.
+- **Publish** runs `git add clients/<client-name>/content.json` (and `img/` if
+  present), `git commit -m "<publishMessage>"`, then `git push` — once per session,
+  however many changes the owner kept; `{summary}` in the message lists them. The
+  commit message embeds a marker, `[blockson-publish <client-name>]`.
 - **Restore** finds the most recent commit carrying that marker, runs
   `git revert --no-edit` on it, rebuilds live + candidate, and pushes the revert.
-  If `git` isn't installed, or no marked commit exists yet, Restore reports that in
-  plain language and does nothing.
+  Because one session is one commit, Restore reverts the whole session as one
+  unit. If `git` isn't installed, or no marked commit exists yet, Restore reports
+  that in plain language and does nothing.
 - Every step that can fail (no git, nothing to commit, push rejected) is reported to
   the owner without leaving `content.json` or the live build in a half-updated
   state — the local save and rebuild always succeed first, and only the push step
@@ -257,16 +292,17 @@ handover) and every build warns loudly until it's replaced.
 ## 9. The maintenance ledger (`edits.log.jsonl`)
 
 Every attempt that flows through the owner editor's handlers — every edit,
-blueprint instantiation, Approve, Discard, and Restore, whether it landed or was
-refused — appends one JSON line to `clients/<client-name>/edits.log.jsonl`:
+blueprint instantiation, item removal, Keep, Discard, Publish, and Restore,
+whether it landed or was refused — appends one JSON line to
+`clients/<client-name>/edits.log.jsonl`:
 
 ```json
 {"at":"2026-06-10T18:04:11.392Z","event":"edit","request":{"patch":{"action":"set","block":"home-hero","field":"headline","value":"New headline."}},"outcome":"ok"}
 ```
 
-- `event` is `edit | scaffold | approve | discard | restore`; `outcome` is
-  `ok | rejected | build-failed`. Rejected lines carry the resolver's or
-  validator's error **verbatim** in `error`.
+- `event` is `edit | scaffold | remove-item | keep | discard | discard-all |
+  publish | restore`; `outcome` is `ok | rejected | build-failed`. Rejected lines
+  carry the resolver's or validator's error **verbatim** in `error`.
 - Image uploads are recorded by name and size only — file bytes never enter
   the ledger.
 - The file is **gitignored by default** and never staged by the publish step:
@@ -300,11 +336,43 @@ when" without a git log.
   then start the editor again.
 - **"This editor only accepts local requests."**: the request didn't come from
   loopback, or the `Host` header wasn't local/the configured `host`. Pass
-  `--allow-remote` only on a trusted network — it disables this check entirely.
-- **git errors during Approve/Restore**: the message names the failing git step
+  `--allow-remote` only on a trusted network — it disables this check entirely
+  and therefore requires an `accessToken` (§6).
+- **"Refusing to start: allow-remote is set but no access token is configured."**:
+  exactly what it says — add `"accessToken": "<a long random string>"` to
+  `owner-config.json` (§6) and start again.
+- **"This editor needs its access link"** (in the owner's browser): an
+  `accessToken` is configured and the request carried neither the token nor the
+  session cookie. Re-send the owner the `?token=…` link the server printed at
+  start; restarting the server invalidates old sessions, so they'll need the link
+  again after a restart.
+- **git errors during Publish/Restore**: the message names the failing git step
   (stage/commit/push/revert) verbatim. The candidate and live `content.json` are
   already saved and rebuilt at that point — only publishing needs retrying (e.g.
   `git push` by hand once the underlying issue, like a rejected push, is resolved).
 - **A scaffolded page or edit doesn't appear**: check `node engine/sitemap.js
   <client-name>` — it prints the full edit map the editor and patch resolver agree
   on, which is useful for confirming a field or block id exists as expected.
+
+---
+
+## 11. What the editor can and cannot do — handover summary
+
+Paste-ready for a client handover email. "You" is the owner; "ask us" means the
+developer.
+
+| You can, yourself | You can't — ask us |
+|---|---|
+| Edit any text on the site: headlines, paragraphs, prices, hours, names, captions | Add a new *kind* of section the site doesn't already have |
+| Replace any photo (phone photos are fine — they're resized automatically) | Reorder sections or menu entries |
+| Add, edit, or remove lines in plain lists (hours, service areas, "what's included") | Change fonts, sizes, spacing, or layout |
+| Add or remove photos in a gallery album | Change text colors (they're matched to backgrounds for readability) |
+| Change the brand colors (the editor blocks unreadable combinations) | Edit the footer columns, navigation order, or form fields |
+| Hide a whole section (and bring it back later) — e.g. the booking section over winter | Hide a whole page or its menu entry |
+| Add whole new pages from the built-in layouts (contact, gallery, content page) | Add a page that doesn't match one of those layouts |
+| Add a new card, FAQ entry, customer quote, or team member — and remove one (the editor always keeps at least one) | Add/remove items in other lists (pricing plans, hours rows, process steps) |
+| Preview every change before it goes anywhere, keep several, publish them together | Publish a change without previewing it first (by design) |
+| Undo the last publish in one click | Recover something from longer ago — we keep the full history |
+
+Every change is checked before it can go live; if the editor refuses something, the
+refusal explains why in plain language — and "ask us" is always the safe next step.

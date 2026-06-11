@@ -34,8 +34,9 @@ editor's "Add…" menu automatically. Invalid files are excluded with named reas
 can never be offered to an owner.
 
 When an owner instantiates a blueprint, the result lands in a **candidate copy** of
-their site, is rebuilt with editing annotations, and waits for an explicit Approve.
-The instantiated candidate *is* the preview. Every block your blueprint creates
+their site, is rebuilt with editing annotations, and rides the editor's session: the
+owner Keeps it, and one explicit Publish ships the whole session to live. The
+instantiated candidate *is* the preview. Every block your blueprint creates
 becomes click-to-editable through the same guarded patch path as the rest of the site.
 
 ---

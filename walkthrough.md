@@ -47,7 +47,7 @@ Open clients/smith-plumbing/content.json.
 Reference BLOCK_CATALOG.md for every block type and its exact fields.
 Two ways to add a whole page:
 Write blocks by hand in the JSON.
-Instantiate a blueprint — pre-built page templates in blueprints/ (contact-page.json, content-page.json, gallery-page.json). These are the same templates the owner can later use self-serve. See BLUEPRINT_AUTHORING.md.
+Instantiate a blueprint — pre-built page templates in blueprints/ (contact-page.json, content-page.json, gallery-page.json). These are the same templates the owner can later use self-serve; the item blueprints alongside them (card-grid-card, faq-pair, testimonial-quote, team-member) are what later let the owner add/remove repeating items in those block types. See BLUEPRINT_AUTHORING.md.
 Key field rules enforced at build time: every href must be a safe scheme (https, http, mailto, tel, sms, #anchor, or relative — javascript:/data: are rejected); formAction and mapEmbedUrl must be https://.
 
 If the site has a contact form, decide its delivery now — it's per-host and subscription-free (OPERATOR.md §8 "Contact form delivery"): on Netlify set the block's delivery to { "mode": "netlify" } and there's nothing to deploy; on Cloudflare deploy the one-time worker in extras/cloudflare-form-worker/ and point formAction at it; anywhere else, any https:// endpoint you choose. Not ready to decide? Set formAction to the placeholder https://UNCONFIGURED — the site builds and every build reminds you until it's real. Every form ships a hidden honeypot either way.
@@ -74,7 +74,7 @@ What to do: Create clients/smith-plumbing/owner-config.json (all keys optional):
 }
 The critical key is publish:
 
-"git" (default) — Approve runs git add/commit/push; the connected host redeploys. The owner's edits go live on their own.
+"git" (default) — Publish runs git add/commit/push, once per editing session; the connected host redeploys. The owner's edits go live on their own.
 "none" — saves and rebuilds locally only; you redeploy on your own schedule.
 a custom shell command (with {message}/{client} placeholders) — e.g. hit a host's build-hook URL with curl.
 Step 7 — Connect to a host
@@ -96,7 +96,7 @@ What to do:
 
 
 node engine/serve.js smith-plumbing [--port N] [--host ADDR] [--allow-remote]
-Defaults to http://127.0.0.1:4173/, loopback-only.
+Defaults to http://127.0.0.1:4173/, loopback-only. If the owner will edit from another machine, --allow-remote requires an accessToken in owner-config.json (the server refuses to start without one and prints the ?token=… link to give the owner — OPERATOR.md §6).
 Run it under whatever supervisor you like (pm2, systemd, Task Scheduler, or just a terminal) on a machine the owner can reach. It only needs to be running when the owner wants to edit — the live site keeps serving from the host regardless.
 Troubleshooting tool: node engine/sitemap.js smith-plumbing prints the exact edit map the editor and patch resolver agree on — useful for confirming a field/block id exists.
 
@@ -104,30 +104,34 @@ ACT TWO — The Owner
 The owner never touches a file, a terminal, or JSON. Their entire world is one web page.
 
 Step 1 — Open the editor
-Purpose: The owner sees a live preview of their own site next to a pending-change panel. The preview is the candidate copy — a sandbox build, separate from what's live — so nothing they do touches the public site until they approve it.
+Purpose: The owner sees a live preview of their own site next to the session panel — the changes they've kept so far, above the current pending change. The preview is the candidate copy — a sandbox build, separate from what's live — so nothing they do touches the public site until they publish.
 
-What to do: Open http://127.0.0.1:4173/ (or whatever address the developer gave them) in a browser.
+What to do: Open http://127.0.0.1:4173/ (or whatever address the developer gave them — if it ends in ?token=…, that first visit signs the browser in) in a browser.
 
 Step 2 — Click an element to edit it
 Purpose: This is the core of the maintenance tier. Highlighted elements are the only things editable — text, an image, a list line, a brand color. The owner can't add or delete blocks, change structure, or break a layout, because those operations simply aren't offered. Hours and prices — the #1 real-world maintenance requests — are single id-addressed edits.
 
-What to do: Click any highlighted element. Change the text, swap an image, edit a list line, or pick a new brand color. For photos, the owner just picks the file — a full-size phone photo is scaled and compressed in the browser before upload (orientation kept upright, location metadata stripped), and the server still validates it's a real image by its bytes, not just its name.
+What to do: Click any highlighted element. Change the text, swap an image, edit a list line, pick a new brand color, or hide the whole section (it stays in the preview, dimmed, so it can always be unhidden). For photos, the owner just picks the file — a full-size phone photo is scaled and compressed in the browser before upload (orientation kept upright, location metadata stripped), and the server still validates it's a real image by its bytes, not just its name.
 
 What happens under the hood: Every change goes through the patch resolver and is rebuilt into the candidate first. Only if that validated rebuild succeeds does it appear as a pending "old → new" card. A change that would fail validation can never even become a pending card.
 
-Step 3 — (Optional) Add a whole new page
-Purpose: The one structural thing the owner is trusted to do — but only along rails the developer pre-blessed. They can stand up a new page from a blueprint (a new contact, gallery, or content page), but only those vetted shapes, never freeform structure.
+Step 3 — (Optional) Add structure: a page, or one more item
+Purpose: The structural things the owner is trusted to do — but only along rails the developer pre-blessed. They can stand up a new page from a blueprint (a new contact, gallery, or content page), and add or remove repeating items where an item blueprint exists (one more service card, FAQ pair, customer quote, or team member) — only those vetted shapes, never freeform structure.
 
-What to do: Use the Add… menu, pick a blueprint, fill in the inputs. It appears as a pending change, previewed exactly like an edit.
+What to do: For a page, use the Add… menu, pick a blueprint, fill in the inputs. For an item, click into the section itself: the editor pane offers "Add <thing>…" with the same kind of form, and every existing item offers "Remove this <thing>" behind a confirm that shows exactly what would go (removal always keeps at least one item — emptying a section is a developer call). Either way it appears as a pending change, previewed exactly like an edit.
 
-Step 4 — Approve, Discard, or Restore
-Purpose: The owner makes the call on each pending change. Only one change is pending at a time — they resolve it before making the next, which keeps the mental model simple and the history clean.
+Step 4 — Keep changes, then Publish the session
+Purpose: The owner makes the call on each pending change, and a whole sitting of edits — new hours, three prices, a photo — goes live as ONE publish, not five. Only one change is pending at a time — they resolve it before making the next, which keeps the mental model simple; everything kept ships together.
 
-What to do — pick one:
+What to do — for each pending change, pick one:
 
-Approve → writes the change to the live content.json (+ any uploaded image), rebuilds the live site (no edit annotations), and runs the publish step. With publish: "git", this commits and pushes; the host redeploys; the change is live in minutes.
-Discard → throws the pending change away and resets the candidate from live. No trace.
-Restore → undoes the last published change. It finds the most recent commit carrying the [blockson-publish <client>] marker, reverts it, rebuilds, and re-pushes.
+Keep → the change joins the session list ("Kept this session") and the next edit can begin. Nothing is live yet.
+Discard → throws just the pending change away; everything already kept survives untouched.
+Then, when the sitting is done:
+
+Publish → writes every kept change (+ any uploaded images) to the live content.json in one step, rebuilds the live site (no edit annotations), and runs the publish step once. With publish: "git", that's a single commit and push; the host redeploys; the whole session is live in minutes. (Publish politely refuses while a change is still pending — keep it or discard it first.)
+Discard all → empties the whole session and resets the preview to the live site. No trace.
+Restore → undoes the last publish — the entire session, as one unit. It finds the most recent commit carrying the [blockson-publish <client>] marker, reverts it, rebuilds, and re-pushes.
 Safety guarantee: the local save and rebuild always succeed first; only the independent push step can fail, and if it does, the owner gets a plain-language message — never a half-updated site.
 
 The shape of it, in one picture
@@ -137,7 +141,8 @@ DEVELOPER (setup tier — full power, one-time)
             → owner-config → connect host → launch serve.js ──┐
                                                                │ hands off
 OWNER (maintenance tier — constrained, ongoing) ◄─────────────┘
-  open editor → click to edit (→ candidate sandbox) → pending card
-            → Approve (→ live + git push → host redeploys)
-                       Discard / Restore as needed
+  open editor → click to edit / add item / add page (→ candidate sandbox)
+            → pending card → Keep (× as many as the sitting needs)
+            → Publish the session (→ live + ONE git push → host redeploys)
+                       Discard / Discard all / Restore as needed
 The line between the two acts is the whole point: the developer's structural power is exercised once and then sealed off, and the owner is handed a tool where the dangerous operations don't exist rather than being merely discouraged. The candidate/live split, the patch resolver, the schema gate, and the loopback-only server are the four walls that make that hand-off safe.
