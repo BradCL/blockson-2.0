@@ -1,0 +1,143 @@
+{
+  "site": {
+    "name": "Wren And Willow",
+    "baseUrl": "https://wren-and-willow.example.com",
+    "theme": "salon",
+    "logo": {
+      "white": "img/logo-white.png",
+      "black": "img/logo-black.png",
+      "favicon": "img/favicon.png"
+    },
+    "contact": {
+      "phone": "000-000-0000",
+      "email": "hello@wren-and-willow.example.com"
+    },
+    "nav": {
+      "links": [
+        {
+          "label": "Home",
+          "href": "index.html"
+        }
+      ],
+      "cta": {
+        "label": "Contact",
+        "href": "contact.html"
+      }
+    },
+    "footer": {
+      "blurb": "Wren And Willow — replace this with a one-line description of the business.",
+      "columns": [
+        {
+          "heading": "Pages",
+          "items": [
+            {
+              "label": "Home",
+              "href": "index.html"
+            },
+            {
+              "label": "Contact",
+              "href": "contact.html"
+            }
+          ]
+        },
+        {
+          "heading": "Contact",
+          "items": [
+            {
+              "label": "000-000-0000",
+              "href": "tel:0000000000"
+            },
+            {
+              "label": "Email Us",
+              "href": "mailto:hello@wren-and-willow.example.com"
+            }
+          ]
+        }
+      ]
+    },
+    "copyright": "© 2026 Wren And Willow. All rights reserved."
+  },
+  "pages": [
+    {
+      "slug": "index",
+      "meta": {
+        "title": "Wren And Willow",
+        "description": "Replace with a 150-character description of Wren And Willow."
+      },
+      "blocks": [
+        {
+          "id": "home-hero",
+          "type": "hero",
+          "fields": {
+            "tag": "Your town, your trade",
+            "headline": "Replace this headline.",
+            "subhead": "One sentence on what the business does and for whom.",
+            "background": "img/banner.jpg",
+            "actions": [
+              {
+                "label": "Get in Touch",
+                "href": "contact.html",
+                "style": "primary"
+              }
+            ],
+            "hidden": false
+          }
+        },
+        {
+          "id": "home-cta",
+          "type": "cta",
+          "fields": {
+            "statement": "Ready to get started?",
+            "button": {
+              "label": "Contact Us",
+              "href": "contact.html",
+              "style": "primary"
+            },
+            "hidden": false
+          }
+        }
+      ]
+    },
+    {
+      "slug": "contact",
+      "meta": {
+        "title": "Contact | Wren And Willow",
+        "description": "Get in touch."
+      },
+      "blocks": [
+        {
+          "id": "contact-header",
+          "type": "page-header",
+          "fields": {
+            "tag": "Contact",
+            "heading": "Let's talk",
+            "hidden": false
+          }
+        },
+        {
+          "id": "contact-info",
+          "type": "contact-info",
+          "fields": {
+            "items": [
+              {
+                "id": "info-phone",
+                "icon": "phone",
+                "label": "Call",
+                "value": "000-000-0000",
+                "href": "tel:0000000000"
+              },
+              {
+                "id": "info-email",
+                "icon": "mail",
+                "label": "Email",
+                "value": "Email Us",
+                "href": "mailto:hello@wren-and-willow.example.com"
+              }
+            ],
+            "hidden": false
+          }
+        }
+      ]
+    }
+  ]
+}
