@@ -13,3 +13,6 @@ themes/__theme-validate/
 clients/*/edits.log*.jsonl
 *.bak
 .DS_Store
+# Local-only developer working notes and scaffolding — never published.
+_work/
+.local/
