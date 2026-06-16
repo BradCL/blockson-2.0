@@ -1,0 +1,18 @@
+Blockson — Provenance Notice
+============================
+
+Blockson was built largely by AI coding agents (large language models)
+operating under human direction, review, and testing. A human maintainer set
+the architecture, the requirements, and the acceptance bar; the bulk of the
+implementation, documentation, and tests were produced by AI agents and then
+reviewed.
+
+This is disclosed in the spirit of transparency. It does not change how the
+project should be judged: correctness and safety are enforced by the machine
+validators (engine/validate-*.js) and the end-to-end proof suite
+(engine/_run-proofs.js, run with `npm test`), and the same bar applies to every
+contribution regardless of how it was authored — by hand or with an LLM. See
+CONTRIBUTING.md.
+
+The project is shared as-is under the MIT License (see LICENSE), on a
+best-effort basis and with no guarantee of support.

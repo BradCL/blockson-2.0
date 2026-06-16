@@ -5,6 +5,12 @@ maintenance fee again. Every contribution is judged against that: does it keep t
 engine dependency-free, the output static and local-first, and every write to an
 owner's site safe by construction?
 
+> **Note:** Blockson is shared as a reference project and maintained on a
+> best-effort basis. The lanes below describe how a contribution _would_ be
+> evaluated if reviewed; there is no guarantee that issues or pull requests
+> receive a response. The project was built largely with AI coding agents —
+> see [NOTICE](NOTICE).
+
 ## The three lanes
 
 Contributions arrive through three lanes with escalating strictness. In every lane,

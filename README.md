@@ -9,8 +9,14 @@ once, hands it over, and the business owner's day-to-day changes flow through a
 deterministic patch system that can only make safe, reversible edits. No CMS, no
 database, no hosting bill beyond static files, no maintenance contract required.
 
-Licensed under the [MIT License](LICENSE). Contributions welcome — see
+Licensed under the [MIT License](LICENSE). Shared as a reference project, as-is:
+issues and pull requests are read on a best-effort basis, with no guarantee of
+support or response. Contribution lanes are described in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Provenance:** Blockson was built largely by AI coding agents working under
+human direction, review, and testing — see [NOTICE](NOTICE). Quality is gated by
+the validators and the proof suite, not by how any part was authored.
 
 ---
 
