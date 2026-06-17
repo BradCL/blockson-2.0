@@ -1,0 +1,20 @@
+# Normalize all text files to LF in the working tree on every platform.
+# The engine writes its generated/committed files with '\n' (e.g. the
+# blueprint gallery in engine/lib/bpcheck.js), and the proof suite compares
+# those files byte-for-byte against a fresh regeneration (proof 11). Without
+# this, a Windows checkout with core.autocrlf=true stores them as CRLF and
+# proof 11 reports a phantom "stale gallery" on every clean clone.
+* text=auto eol=lf
+
+# Binary assets — never normalize or diff as text.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.avif binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
