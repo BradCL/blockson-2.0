@@ -53,8 +53,11 @@ function buildRootBlock(tokens) {
     // blueprint image inputs accept) is injected as a url() so the
     // stylesheet can use it as a background-image — the raw path clears the
     // injection guard, the url() wrapper is added here, never by the token.
+    // The only consumer is <client>/css/styles.css; client images live at
+    // <client>/img/, so the path is emitted stylesheet-relative with a ../
+    // prefix to match the existing url('../img/…') convention in styles.css.
     .map(([k, v]) => (/-image$/.test(k) && IMG_RE.test(v))
-      ? `    --${k}: url("${v}");`
+      ? `    --${k}: url("../${v}");`
       : `    --${k}: ${v};`)
     .join('\n');
   return `  <style>\n    :root {\n${entries}\n    }\n  </style>\n`;
