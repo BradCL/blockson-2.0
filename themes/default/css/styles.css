@@ -117,6 +117,9 @@ section, .page-header { padding: 5rem 0; }
 
 .section-header { margin-bottom: 2.5rem; }
 .section-header h2, .gallery > .container > h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); }
+/* Opt-in: cap heading measure so it wraps to a tidy column (pairs with
+   --heading-wrap). Default 'none' is the current full-width behavior. */
+.section-header h2 { max-width: var(--section-header-width, none); }
 
 /* ── Buttons ──────────────────────────────────────────────── */
 .btn {
@@ -249,7 +252,7 @@ section, .page-header { padding: 5rem 0; }
   background-repeat: repeat;
   opacity: var(--hero-texture-opacity, 0);
 }
-.hero-content { max-width: 680px; color: #fff; }
+.hero-content { max-width: var(--hero-content-width, 680px); color: #fff; }
 .hero-tag {
   display: inline-block;
   font-size: 0.8rem;
