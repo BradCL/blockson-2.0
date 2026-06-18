@@ -1,6 +1,7 @@
 'use strict';
 
 const { esc } = require('../lib/escape');
+const { IMG_RE } = require('../lib/scaffold');
 
 /* LOCAL-FIRST: built pages reference no external network resources —
    no CDN fonts, no remote scripts. Font tokens are self-contained
@@ -48,7 +49,13 @@ function buildRootBlock(tokens) {
   // third-party presets — it must not surface as a custom property.
   const entries = Object.entries(tokens)
     .filter(([k]) => k !== 'googleFontsUrl' && k !== 'cssBase')
-    .map(([k, v]) => `    --${k}: ${v};`)
+    // A *-image token holding a bare in-site image path (the same shape
+    // blueprint image inputs accept) is injected as a url() so the
+    // stylesheet can use it as a background-image — the raw path clears the
+    // injection guard, the url() wrapper is added here, never by the token.
+    .map(([k, v]) => (/-image$/.test(k) && IMG_RE.test(v))
+      ? `    --${k}: url("${v}");`
+      : `    --${k}: ${v};`)
     .join('\n');
   return `  <style>\n    :root {\n${entries}\n    }\n  </style>\n`;
 }

@@ -14,6 +14,64 @@
    so the site still renders sensibly if token injection is skipped.
    ============================================================ */
 
+/* ── Self-hosted fonts (OFL — see fonts/OFL-*.txt) ─────────────
+   tokens.json names 'Outfit' (headings) and 'DM Sans' (body) but
+   nothing loaded them, so default-theme sites rendered the system
+   fallback. These rules load the declared faces locally — no network
+   request, honoring the local-first invariant. The files are the
+   variable woff2 (latin + latin-ext subsets) from Google Fonts;
+   one variable file per family covers every weight via the wght axis.
+   Other themes name different faces (Cormorant/Jost, …) so they are
+   unaffected — their headings/body still fall back until vendored. */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/outfit-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/outfit-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('fonts/dmsans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('fonts/dmsans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('fonts/dmsans-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('fonts/dmsans-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -173,7 +231,23 @@ section, .page-header { padding: 5rem 0; }
   content: '';
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / var(--hero-overlay-opacity, 0.55));
+  /* Opt-in: set --header-overlay (e.g. a linear-gradient) to replace the flat
+     dark wash. Absent → today's solid overlay at --hero-overlay-opacity. */
+  background: var(--header-overlay, rgb(0 0 0 / var(--hero-overlay-opacity, 0.55)));
+}
+/* Opt-in brand-texture layer over hero/header photos. Default none/0 paints
+   nothing and fetches nothing (no drift). Opt in with --hero-texture-image
+   (a *-image token → url()) and --hero-texture-opacity. Sits above the photo
+   and overlay, below the content container (.hero-bg is z-index:-2). */
+.hero-bg::before, .page-header-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: var(--hero-texture-image, none);
+  background-repeat: repeat;
+  opacity: var(--hero-texture-opacity, 0);
 }
 .hero-content { max-width: 680px; color: #fff; }
 .hero-tag {
@@ -207,12 +281,15 @@ section, .page-header { padding: 5rem 0; }
   content: '';
   position: absolute;
   inset: 0;
-  background: rgb(0 0 0 / var(--hero-overlay-opacity, 0.55));
+  background: var(--header-overlay, rgb(0 0 0 / var(--hero-overlay-opacity, 0.55)));
 }
 .page-header-bg.about-page-bg::after {
   background: linear-gradient(rgb(0 0 0 / 0.35), rgb(0 0 0 / var(--hero-overlay-opacity, 0.55)));
 }
-.page-header-content { max-width: 640px; color: #fff; }
+.page-header-content { max-width: var(--page-header-width, 640px); color: #fff; }
+/* Opt-in: set --heading-wrap (e.g. balance) for tidier multi-line headings.
+   Default 'normal' is the current behavior — no drift. */
+.hero h1, .page-header h1, .section-header h2 { text-wrap: var(--heading-wrap, normal); }
 .page-header h1 { font-size: clamp(2rem, 4.5vw, 3rem); margin-bottom: 0.7rem; color: #fff; }
 .page-header-content p { opacity: 0.92; font-size: 1.08rem; }
 

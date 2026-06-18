@@ -94,7 +94,7 @@ const DEFAULT_MAX = { text: 120, textarea: 2000, image: 200, select: 100 };
 
 const KEY_RE   = /^[a-zA-Z][a-zA-Z0-9_]*$/;       // input keys, variant keys
 const HINT_RE  = /^[a-z][a-z0-9-]*$/;             // template id hints
-const IMG_RE   = /^img\/[A-Za-z0-9._-]+\.(png|jpe?g|gif|webp|avif)$/i;
+const IMG_RE   = /^img\/[A-Za-z0-9._-]+\.(png|jpe?g|gif|webp|avif|svg)$/i;
 const PLACEHOLDER_RE = /\{\{\s*([a-zA-Z][a-zA-Z0-9_.]*)\s*(?:\|([a-z-]+))?\s*\}\}/g;
 
 // Builtin placeholders, read from the client's own content. All three
@@ -636,4 +636,7 @@ module.exports = {
   loadBlueprints, validateBlueprint, validateInputs, instantiate,
   removeItem, itemBlueprintsFor,
   activeInputs, slugify, BLUEPRINT_DIR,
+  // Exported so the head partial's -image token helper validates a token's
+  // image path against the SAME shape blueprint image inputs accept.
+  IMG_RE,
 };
