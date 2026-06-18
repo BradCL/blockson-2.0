@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all nineteen end-to-end proofs in sequence and prints results.
+// Runs all twenty end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -78,6 +78,13 @@
 //             and any un-blessed array; both ride pending → keep → publish
 //             with annotation-free, id-free live HTML; a known-bad item
 //             blueprint fails the CLI with named reasons.
+// Proof 20:   page-header background inheritance (engine fix from the first
+//             live site): a page-header that omits its own background inherits
+//             the site hero image — the home page's hero background, derived in
+//             build.js — even when that hero is not named banner.jpg, which the
+//             theme-CSS-only fallback silently broke; an explicit page-header
+//             background still wins; and a site with no hero at all emits no
+//             inline background, leaving the theme CSS as the last-ditch default.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -171,7 +178,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 19;
+const TOTAL = 20;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -2048,6 +2055,91 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
     console.log('       pending → keep → publish (candidate-only until publish, replay-stable,');
     console.log('       ledgered as remove-item) and live HTML ships with no annotations and no');
     console.log('       item ids; a known-bad item blueprint fails the CLI with named reasons.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 20 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 20 — page-header background inherits the site hero image when omitted ═══');
+{
+  const CLIENT  = '__proof-page-header-bg';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // The inline background-image url on a built page's page-header band, or null
+  // when no inline style is present (i.e. it would defer to the theme CSS).
+  const headerBg = (slug) => {
+    const html = fs.readFileSync(path.join(distDir, pageFile(slug)), 'utf8');
+    const m = html.match(/class="page-header-bg[^"]*"[^>]*style="background-image:url\('([^']*)'\)"/);
+    return m ? m[1] : null;
+  };
+  const hasHeader = (slug) =>
+    fs.readFileSync(path.join(distDir, pageFile(slug)), 'utf8').includes('class="page-header-bg');
+
+  try {
+    // Base: example-contractor — its index hero is the only background, and its
+    // four interior pages carry page-headers that OMIT background. Rename the
+    // hero so it is NOT banner.jpg: this is the exact friction that surfaced on
+    // the first live site (a non-.jpg hero left interior headers blank under the
+    // old theme-CSS-only banner.jpg fallback, which BLOCK_CATALOG.md never
+    // promised — it documents "defaults to the site hero image if omitted").
+    const content = readContent('example-contractor');
+    const hero = content.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero');
+    hero.fields.background = 'img/banner.avif';
+
+    // (a) One interior page-header gets an EXPLICIT background; it must win over
+    //     the inherited hero. The other three stay omitted and must inherit it.
+    const about = content.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+    about.fields.background = 'img/about-banner.avif';
+
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    let b = build(CLIENT);
+    if (!b.ok) failures.push(`build failed:\n${b.out}`);
+    else {
+      for (const slug of ['services', 'gallery', 'contact']) {
+        const bg = headerBg(slug);
+        if (bg !== 'img/banner.avif') {
+          failures.push(`${slug} page-header did not inherit the hero image (got ${bg === null ? 'no inline background' : `"${bg}"`})`);
+        }
+      }
+      if (headerBg('about') !== 'img/about-banner.avif') {
+        failures.push(`an explicit page-header background was overwritten by the inherited hero (got ${headerBg('about')})`);
+      }
+    }
+
+    // (b) Last-ditch path: remove the hero entirely so there is NO hero image
+    //     anywhere. An omitted page-header background then emits no inline style
+    //     and defers to the theme CSS — unchanged behavior for a heroless site.
+    const indexPage = content.pages.find(p => p.slug === 'index');
+    indexPage.blocks = indexPage.blocks.filter(bl => bl.type !== 'hero');
+    delete about.fields.background;
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    b = build(CLIENT);
+    if (!b.ok) failures.push(`no-hero build failed:\n${b.out}`);
+    else {
+      if (!hasHeader('services')) failures.push('the no-hero build lost its page-header element entirely');
+      if (headerBg('services') !== null) {
+        failures.push(`with no hero, the page-header still emitted an inline background ("${headerBg('services')}") instead of deferring to CSS`);
+      }
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a page-header with no background of its own inherits the site hero image');
+    console.log('       even when the hero is not named banner.jpg; an explicit page-header');
+    console.log('       background still wins; and a site with no hero at all emits no inline');
+    console.log('       background, leaving the theme CSS as the last-ditch fallback.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

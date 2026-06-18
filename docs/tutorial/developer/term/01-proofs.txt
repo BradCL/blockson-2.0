@@ -124,5 +124,11 @@ PASS — the four shipped item blueprints validate; a valid add lands in the
        ledgered as remove-item) and live HTML ships with no annotations and no
        item ids; a known-bad item blueprint fails the CLI with named reasons.
 
+═══ PROOF 20 — page-header background inherits the site hero image when omitted ═══
+PASS — a page-header with no background of its own inherits the site hero image
+       even when the hero is not named banner.jpg; an explicit page-header
+       background still wins; and a site with no hero at all emits no inline
+       background, leaving the theme CSS as the last-ditch fallback.
+
 ════════════════════════════════════════════════════════════
-19/19 proofs passed.
+20/20 proofs passed.

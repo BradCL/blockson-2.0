@@ -83,7 +83,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (19 proofs)
+  _run-proofs.js        Proof suite (20 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
@@ -346,7 +346,12 @@ targets are rejected with nothing written, remove deletes exactly the
 addressed item while refusing the last item and every array without a blessed
 item blueprint, both ride pending → keep → publish with annotation-free,
 id-free live HTML, and a known-bad item blueprint fails the validator CLI
-with named reasons. All nineteen must pass on a clean tree.
+with named reasons, (20) page-header background inheritance: a page-header
+that omits its own `background` inherits the site hero image (the home page's
+hero background, derived at build time) even when that hero is not named
+`banner.jpg`, an explicit page-header background still wins, and a site with
+no hero at all emits no inline background so the theme CSS stays the
+last-ditch fallback. All twenty must pass on a clean tree.
 
 ---
 

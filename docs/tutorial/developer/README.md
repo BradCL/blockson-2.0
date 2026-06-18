@@ -39,11 +39,11 @@ PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every
        editable field the edit map reports (315 required annotations across
        3 clients) and stamp nothing the map does not report.
    …
-═══ PROOF 19 — Item blueprints: owners add and remove repeating items through the scaffolder ═══
-PASS — the four shipped item blueprints validate; …
+═══ PROOF 20 — page-header background inherits the site hero image when omitted ═══
+PASS — a page-header with no background of its own inherits the site hero image …
 
 ════════════════════════════════════════════════════════════
-19/19 proofs passed.
+20/20 proofs passed.
 ```
 
 *(Full transcript: [term/01-proofs.txt](term/01-proofs.txt).)*

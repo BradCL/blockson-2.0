@@ -101,6 +101,16 @@ const { renderPage } = require('./lib/render');
 const site  = content.site;
 const theme = site.theme || 'default';
 
+// Derive the site hero image (the home page's hero background, else the first
+// hero anywhere) so page-header blocks can default their background to it when
+// one is omitted — the behavior BLOCK_CATALOG.md documents. Without this the
+// only fallback is the theme CSS, which hard-codes img/banner.jpg and so
+// silently drops interior page-header backgrounds for any site whose hero is
+// not literally named banner.jpg. Derived here (after validation, in memory)
+// so every render path — live, annotated preview, and the owner candidate
+// rebuilds that shell out to this same builder — sees it.
+site.heroImage = findSiteHeroImage(content);
+
 // Resolve theme tokens: preset values merged with any client overrides.
 const tokensPath = path.join(ROOT, 'themes', theme, 'tokens.json');
 let resolvedTokens = null;
@@ -208,6 +218,16 @@ warnOnHeavyImages(imgSrc);
 warnOnPlaceholderForms(content);
 
 // ── Helpers ────────────────────────────────────────────────────
+function findSiteHeroImage(content) {
+  const pages = content.pages || [];
+  const heroBg = page => (page.blocks || [])
+    .find(b => b && b.type === 'hero' && b.fields && b.fields.background);
+  // Prefer the home page's hero; otherwise the first hero anywhere.
+  const index = pages.find(p => p.slug === 'index');
+  const hit = (index && heroBg(index)) || pages.map(heroBg).find(Boolean);
+  return hit ? hit.fields.background : null;
+}
+
 function warnOnPlaceholderForms(content) {
   const PLACEHOLDER = 'https://UNCONFIGURED';
   for (const page of content.pages || []) {

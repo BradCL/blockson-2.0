@@ -8,10 +8,10 @@ percentages as the measure of done.
 
 ## In Blockson it lives at…
 
-`engine/_run-proofs.js` — one file, nineteen "proofs," run by `npm test`.
+`engine/_run-proofs.js` — one file, twenty "proofs," run by `npm test`.
 No test framework: plain Node, a `passed` counter with per-proof
 `failures` arrays, and a final
-`process.exit(passed === TOTAL ? 0 : 1)`. The file's 80-line header
+`process.exit(passed === TOTAL ? 0 : 1)`. The file's 90-line header
 comment is a table of contents
 worth reading in full — each proof is described as a *property of the
 system*, not a function under test.
@@ -71,8 +71,11 @@ error path is specified behaviour, so it's tested like one.
   *on a clean tree*, and leave one). Test hygiene is part of the test.
 - **The suite as a regression ratchet.** Each new feature in the repo's
   history (visibility flag → proof 17, ledger → proof 16, item
-  blueprints → proof 19) landed *with* its proof. The suite only grows,
-  and the old guarantees re-verify on every run.
+  blueprints → proof 19) landed *with* its proof — and so does each fix
+  driven by real use: the first live site exposed a page-header whose
+  background silently fell back to a hard-coded `banner.jpg`, and the
+  engine fix landed with proof 20. The suite only grows, and the old
+  guarantees re-verify on every run.
 - **Adversarial cases as first-class citizens.** A classroom suite tests
   the happy path. Half of this suite is things that must *fail*: bypass
   attempts (the plain-`set` route into `themeOverrides`, proof 6),
@@ -86,7 +89,7 @@ unit test on `applyPatch` can't notice that `serve.js` forgot to call it,
 or that a renderer leaks an annotation into live HTML. The system's
 promises are end-to-end ("a bad patch can never leave a site broken"), so
 only end-to-end checks can certify them — and the engine's speed makes
-this affordable: nineteen full-system proofs, including real builds, real
+this affordable: twenty full-system proofs, including real builds, real
 HTTP, and real git, in well under a minute.
 
 The transferable rule: **write your tests at the level of the sentence
@@ -105,7 +108,7 @@ chapters left it.
 
 <details><summary>What you should see</summary>
 
-`19/19 proofs passed.` The suite exercises the example clients, the
+`20/20 proofs passed.` The suite exercises the example clients, the
 shipped blueprints/themes, and throwaway sandboxes it creates itself -
 your scratch client isn't part of the contract, so it can't break the
 contract. (This is also why the guide had you experiment there.)</details>

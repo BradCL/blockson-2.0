@@ -362,7 +362,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs nineteen end-to-end proofs against the example clients and the full contribution
+Runs twenty end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -438,8 +438,14 @@ pipeline:
     blueprint; both ride pending → keep → Publish with annotation-free,
     id-free live HTML; a known-bad item blueprint fails the CLI with named
     reasons
+20. page-header background inheritance: a page-header that omits its own
+    `background` inherits the site hero image (the home page's hero
+    background, derived at build time) even when that hero is not named
+    `banner.jpg`; an explicit page-header background still wins; and a site
+    with no hero at all emits no inline background, leaving the theme CSS as
+    the last-ditch fallback
 
-All nineteen must pass on a clean tree (`exit 0`).
+All twenty must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -455,7 +461,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (19 proofs)
+  _run-proofs.js        End-to-end proof suite (20 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
   blocks/               One module per block type (22 total)

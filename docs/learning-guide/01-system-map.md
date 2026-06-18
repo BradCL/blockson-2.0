@@ -16,7 +16,7 @@ heard of (Jekyll, Hugo, Eleventy) is its second half: a built-in,
 deliberately limited **owner editor** that lets a non-technical business
 owner click on their own site, change words and pictures, preview the
 result, and publish — while making it *mechanically impossible* for them to
-break the layout, inject a script, or wreck the design. The developer sets
+break the layout, inject a script, or otherwise disrupt the intended design. The developer sets
 a site up once; the owner maintains it forever without a CMS, a database,
 or a hosting bill.
 
@@ -113,7 +113,7 @@ engine/                      ENGINE — all the code
   sitemap.js / new-client.js   edit-map printer / client scaffolder
   validate-blueprint.js        \ acceptance CLIs for the two
   validate-theme.js            / authoring kits
-  _run-proofs.js               the 19-proof test suite
+  _run-proofs.js               the 20-proof test suite
   blocks/                      one module per block type (21) + _registry.js
   partials/                    head.js, nav.js, footer.js
   lib/                         the core: validate, render, escape, patch,
