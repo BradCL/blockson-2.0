@@ -289,6 +289,21 @@ CSS: `.booking-cta`, `.booking-provider`, `.booking-note`, `.closing-statement`,
 **Maintenance:** statement/subtext/provider/note/button.label editable. The booking URL:
 developer-only by instruction (never invented by the model).
 
+### `photo-strip`
+A full-bleed band of finished-work photos — no titles, no filter, no lightbox.
+The home-page companion to `gallery`: where `gallery` is a browsable, filterable
+album grid on its own page, `photo-strip` is a flat, edge-to-edge banner of images
+(typically dropped under a services overview). Modeled on the home-page strip of
+the contractor site that inspired Blockson.
+- `tag?`, `heading?` — optional eyebrow + heading rendered above the strip
+- `photos` Repeats: `{id, image}` — each photo's alt text is derived from the site
+  name (the same convention `gallery`/`team-grid`/`before-after` use), so a
+  captionless photo carries exactly one edit target: the picture itself
+CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cell`.
+**Maintenance:** tag/heading editable; each photo replaceable by item id through the
+click-to-edit image picker. Adding/removing photos is developer work (no item
+blueprint ships for it yet).
+
 ### Evaluated and deliberately NOT included
 - `announcement-banner` — a *site-wide* notice conflicts with the per-page block model;
   it would need a new partial-level data path and a dismissal cookie. Per-page notices
@@ -303,7 +318,7 @@ Several blocks accept an optional `icon` name. The named SVG set lives in
 existing `.card-icon` / `.contact-card-icon` / `.contact-info-icon` / `.step-icon`
 wrappers. Current set: `hammer`, `wrench`, `home`, `paint`, `leaf`, `people`, `phone`,
 `mail`, `pin`, `clock`, `star`, `check`, `calendar`, `dollar`, `heart`, `paw`, `car`,
-`scissors`. The maintenance tier may only reference an icon name that already exists in
+`scissors`, `facebook`. The maintenance tier may only reference an icon name that already exists in
 the set; it never adds SVGs.
 
 ---

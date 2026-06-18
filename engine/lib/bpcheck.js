@@ -375,6 +375,14 @@ const SHOWCASE_BLOCKS = [
     tag: 'Book', statement: 'Book a time online.', subtext: 'Takes about a minute.',
     provider: 'Calendly', note: 'Opens in a new tab.',
     button: { label: 'Book now', href: 'https://calendly.com/sample' } } },
+  { id: 'show-photo-strip', type: 'photo-strip', fields: {
+    tag: 'Recent work', heading: 'A photo strip',
+    photos: [
+      { id: 'photo-one', image: 'img/sample-1.jpg' },
+      { id: 'photo-two', image: 'img/sample-2.jpg' },
+      { id: 'photo-three', image: 'img/sample-3.jpg' },
+      { id: 'photo-four', image: 'img/sample-4.jpg' },
+    ] } },
 ];
 
 // Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks

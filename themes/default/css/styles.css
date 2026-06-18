@@ -325,6 +325,15 @@ section, .page-header { padding: 5rem 0; }
 .album-meta { display: block; margin-top: 0.25rem; font-size: 0.85rem; color: var(--color-muted, #9aa1ab); }
 .gallery-empty { text-align: center; color: var(--color-muted, #9aa1ab); padding: 2.5rem 0; }
 
+/* Photo strip — full-bleed banner of finished-work photos (no titles/filter/
+   lightbox). The class selector overrides the mobile `section` padding rule
+   so the strip stays edge-to-edge at every width. */
+.photo-strip { padding: 0; border-top: 1px solid rgba(127, 127, 127, 0.18); }
+.photo-strip-head { padding: 2.6rem 0 1.4rem; }
+.photo-strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+.photo-strip-cell { aspect-ratio: 4 / 3; overflow: hidden; background: rgba(127,127,127,0.12); }
+.photo-strip-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 /* Lightbox (built by js/main.js) */
 .lightbox {
   position: fixed;
@@ -809,7 +818,7 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .services-grid, .album-grid { grid-template-columns: repeat(2, 1fr); }
+  .services-grid, .album-grid, .photo-strip-grid { grid-template-columns: repeat(2, 1fr); }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .service-area-inner { grid-template-columns: 1fr; }
   .testimonials-grid, .contact-path-grid { grid-template-columns: 1fr; }

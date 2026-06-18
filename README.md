@@ -128,13 +128,16 @@ Design intent and full token reference: [themes/README.md](themes/README.md).
 
 ---
 
-## Block types (21)
+## Block types (22)
 
 Core: `hero`, `page-header`, `text`, `card-grid`, `gallery`, `testimonials`,
 `list-panel`, `service-area`, `contact-cards`, `contact-info`, `contact-form`, `cta`
 
 v2: `pricing-table`, `team-grid`, `faq`, `hours-table`, `before-after`, `stats-bar`,
 `process-steps`, `video-embed`, `booking-cta`
+
+Later: `photo-strip` — a full-bleed banner of finished-work photos (the home-page
+strip of the contractor site that inspired Blockson; companion to `gallery`)
 
 `contact-form` has a selectable, subscription-free delivery mode: the default
 endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
@@ -455,7 +458,7 @@ engine/
   _run-proofs.js        End-to-end proof suite (19 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only)
-  blocks/               One module per block type (21 total)
+  blocks/               One module per block type (22 total)
   partials/             head, nav, footer
   lib/                  render, validate, escape, icons, patch (allowlist + token
                         guards), sitemap (edit map), annotate (preview-build

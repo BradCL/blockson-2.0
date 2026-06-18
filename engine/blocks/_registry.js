@@ -24,4 +24,6 @@ module.exports = {
   'process-steps': require('./process-steps'),
   'video-embed':   require('./video-embed'),
   'booking-cta':   require('./booking-cta'),
+  // v4.3 addition
+  'photo-strip':   require('./photo-strip'),
 };

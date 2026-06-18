@@ -136,7 +136,8 @@
                     "list-panel","service-area","contact-cards","contact-info",
                     "contact-form","cta",
                     "pricing-table","team-grid","faq","hours-table","before-after",
-                    "stats-bar","process-steps","video-embed","booking-cta"
+                    "stats-bar","process-steps","video-embed","booking-cta",
+                    "photo-strip"
                   ]
                 },
                 "fields": { "type": "object" }
@@ -225,6 +226,10 @@
                 {
                   "if":   { "properties": { "type": { "const": "booking-cta" } },  "required": ["type"] },
                   "then": { "properties": { "fields": { "$ref": "#/$defs/bookingCtaFields" } } }
+                },
+                {
+                  "if":   { "properties": { "type": { "const": "photo-strip" } },   "required": ["type"] },
+                  "then": { "properties": { "fields": { "$ref": "#/$defs/photoStripFields" } } }
                 }
               ]
             }
@@ -671,6 +676,29 @@
               "before":  { "type": "string" },
               "after":   { "type": "string" },
               "caption": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "photoStripFields": {
+      "type": "object",
+      "required": ["photos"],
+      "additionalProperties": false,
+      "properties": {
+        "hidden":  { "type": "boolean" },
+        "tag":     { "type": "string" },
+        "heading": { "type": "string" },
+        "photos": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "image"],
+            "additionalProperties": false,
+            "properties": {
+              "id":    { "type": "string" },
+              "image": { "type": "string" }
             }
           }
         }

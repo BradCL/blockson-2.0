@@ -24,6 +24,7 @@ const ICONS = {
   paw:     '<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="7.5" cy="3.5" r="0.5"/><path d="M9 10a5 5 0 016 0l2.5 3.5a3 3 0 01-2.5 4.5h-6a3 3 0 01-2.5-4.5L9 10z"/>',
   car:     '<path d="M5 17H3v-5l2-5h12l2 5v5h-2"/><path d="M5 12h14"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>',
   scissors:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
+  facebook:'<path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>',
 };
 
 function getIcon(name) {
