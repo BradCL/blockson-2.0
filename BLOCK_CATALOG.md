@@ -54,6 +54,10 @@ Full-viewport landing section. Homepage opener. One per site, typically.
 - `background` image
 - `actions?` Repeats: `{label, href, style}` where `style` ∈ `primary` | `secondary`
 CSS: `.hero`, `.hero-bg`, `.hero-content`, `.hero-tag`, `.hero-actions`, `.btn`.
+**Theme tokens (opt-in):** `--hero-content-width`, `--header-overlay`,
+`--heading-wrap`, and the `--hero-texture-image` / `--hero-texture-opacity` pair
+tune the hero photo overlay, text column, and brand-texture layer — see
+THEME_AUTHORING.md §2.
 **Maintenance:** tag, headline, subhead editable. Background and actions developer-only
 (actions carry no ids — structural by design).
 
@@ -65,6 +69,10 @@ Sub-hero band used at the top of interior pages (about/services/gallery/contact)
 - `background?` image — defaults to the site hero image if omitted
 - `variant?` string ∈ `default` | `light` — `light` uses the lighter gradient (`.about-page-bg`)
 CSS: `.page-header`, `.page-header-content`, `.section-tag`.
+**Theme tokens (opt-in):** `--page-header-width`, `--header-overlay`,
+`--heading-wrap`, and `--hero-texture-image` / `--hero-texture-opacity` apply to
+the interior-page header the same way they do to the hero — see
+THEME_AUTHORING.md §2.
 **Maintenance:** tag, heading, subhead editable.
 
 ### `text`

@@ -62,6 +62,31 @@ guards running live. Two consequences for you:
 Extra keys beyond the required set are allowed (e.g. custom tokens your own CSS
 consumes) but get the same value-safety checks.
 
+### Optional tokens the shared (`default`) stylesheet recognizes
+
+Beyond the required set, the shared stylesheet reads a handful of **opt-in**
+tokens through `var(--name, <fallback>)`. They are not in `tokens.json` because
+they are optional — set one in your `tokens.json` (or a client's
+`site.themeOverrides`) to opt in; leave it out and the stylesheet uses the
+fallback below, so there is no behavior change. A token preset can reach for any
+of these without shipping its own CSS:
+
+| Token | Default | Effect |
+|-------|---------|--------|
+| `--header-overlay` | `rgb(0 0 0 / var(--hero-overlay-opacity))` | Replaces the flat dark wash over hero/page-header photos — e.g. a `linear-gradient(…)`. |
+| `--heading-wrap` | `normal` | `text-wrap` for hero / page-header / section headings — e.g. `balance` for tidier multi-line headings. |
+| `--section-header-width` | `none` | Caps the measure of `.section-header h2` (card-grid, gallery, testimonials, …) so it wraps to a column. |
+| `--hero-content-width` | `680px` | Width of the hero text column (`.hero-content`). |
+| `--page-header-width` | `640px` | Width of the interior-page header text column (`.page-header-content`). |
+| `--hero-texture-image` | `none` | A brand-texture layer tiled over hero/header photos. A `*-image` token — see below. |
+| `--hero-texture-opacity` | `0` | Opacity of that texture layer; pair it with `--hero-texture-image`. |
+
+Two value-shape notes (both follow the same injection guard every token value
+passes): `--header-overlay` may be a `linear-gradient(…)` but never a `url(…)`;
+and `--hero-texture-image` is a `*-image` token — give it a bare in-site path
+like `img/texture.svg` and the engine emits `url("../img/texture.svg")`,
+stylesheet-relative, for you (never write the `url()` yourself).
+
 ## 3. Hard rules
 
 Non-negotiable; each is checked mechanically:
