@@ -16,12 +16,17 @@ module.exports = function gallery(fields, site, bk) {
     const meta   = album.meta ? `<span class="album-meta"${bk.i(album.id, 'meta')}>${esc(album.meta)}</span>` : '';
     // An optional external link turns the album into a doorway to the full set
     // (a hosted Google/Facebook album, say): the local images stay an on-site
-    // lightbox teaser, and this link — its own click-to-edit target, so an owner
-    // can repoint it if the host changes — leads to everything. Opens in a new
-    // tab so the site stays put; main.js stops its click from also tripping the
-    // lightbox. Without a link the card behaves exactly as before.
+    // lightbox teaser, and this link leads to everything. Opens in a new tab so
+    // the site stays put; main.js stops its click from also tripping the
+    // lightbox. The URL and the label are independent click-to-edit targets —
+    // the href rides the anchor (clicking the arrow edits where it goes), the
+    // optional linkLabel rides its own span (clicking the words edits them); an
+    // owner can repoint the link if the host changes. `linkLabel` falls back to
+    // a default when unset, and bk.i self-gates so it's only an edit target once
+    // the field exists. Without an href the card behaves exactly as before.
+    const linkText = album.linkLabel != null ? album.linkLabel : 'See all photos';
     const link   = album.href
-      ? `<a class="album-link" href="${escAttr(album.href)}" target="_blank" rel="noopener"${bk.i(album.id, 'href')}>See all photos →</a>`
+      ? `<a class="album-link" href="${escAttr(album.href)}" target="_blank" rel="noopener"${bk.i(album.id, 'href')}><span class="album-link-text"${bk.i(album.id, 'linkLabel')}>${esc(linkText)}</span> <span class="album-link-arrow" aria-hidden="true">→</span></a>`
       : '';
     return `<div class="album-card fade-in"
         data-type="${escAttr(album.category)}"

@@ -112,9 +112,11 @@ photos; the first photo is the thumbnail.
   - `title` string
   - `meta?` string
   - `href?` url — optional link to the full set hosted elsewhere (e.g. a Google
-    Photos / Facebook album). Renders a "See all photos →" link on the card that
-    opens in a new tab; the local images stay an on-site lightbox teaser. Use
-    `https://UNCONFIGURED` as a placeholder and the build warns until it's set.
+    Photos / Facebook album). Renders a link on the card that opens in a new tab;
+    the local images stay an on-site lightbox teaser. Use `https://UNCONFIGURED`
+    as a placeholder and the build warns until it's set.
+  - `linkLabel?` string — text for that link (defaults to "See all photos");
+    seed it so an owner can edit the wording (e.g. "Full album on Facebook").
   - `images` Repeats: image paths (first = thumbnail)
 CSS: `.gallery`, `.filter-bar`, `.filter-btn`, `.album-grid`, `.album-card` (+ `data-type`,
 `data-images`, `data-title`), `.album-link`, `.gallery-empty`. JS reads the `data-*` attributes.
@@ -310,13 +312,14 @@ album grid on its own page, `photo-strip` is a flat, edge-to-edge banner of imag
 (typically dropped under a services overview). Modeled on the home-page strip of
 the contractor site that inspired Blockson.
 - `tag?`, `heading?` — optional eyebrow + heading rendered above the strip
-- `photos` Repeats: `{id, image, link?}` — each photo's alt text is derived from
-  the site name (the same convention `gallery`/`team-grid`/`before-after` use).
-  A link-less photo carries exactly one edit target: the picture itself. Give a
-  photo a `link` (typically the gallery page) and the whole cell becomes a
-  doorway — the photo zooms and a "View gallery →" cue fades in on hover; the
-  link is its own click-to-edit target (reached via the cue), the image stays
-  editable by clicking the photo.
+- `photos` Repeats: `{id, image, link?, linkLabel?}` — each photo's alt text is
+  derived from the site name (the same convention `gallery`/`team-grid`/
+  `before-after` use). A link-less photo carries exactly one edit target: the
+  picture itself. Give a photo a `link` (typically the gallery page) and the
+  whole cell becomes a doorway — the photo zooms and a cue (the `linkLabel`,
+  defaulting to "View gallery") fades in on hover. Three independent click-to-edit
+  targets: the image (click the photo), the cue label (click the words), and the
+  link URL (click the cue's arrow).
 CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cell`,
 `.photo-strip-cell--link`, `.photo-strip-img`, `.photo-strip-cue`.
 **Maintenance:** tag/heading editable; each photo replaceable by item id through the

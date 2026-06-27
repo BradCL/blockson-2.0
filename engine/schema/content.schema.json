@@ -362,6 +362,7 @@
               "title":    { "type": "string" },
               "meta":     { "type": "string" },
               "href":     { "$ref": "#/$defs/safeHref" },
+              "linkLabel": { "type": "string" },
               "images": {
                 "type": "array",
                 "items": { "type": "string" },
@@ -701,7 +702,8 @@
             "properties": {
               "id":    { "type": "string" },
               "image": { "type": "string" },
-              "link":  { "$ref": "#/$defs/safeHref" }
+              "link":  { "$ref": "#/$defs/safeHref" },
+              "linkLabel": { "type": "string" }
             }
           }
         }
