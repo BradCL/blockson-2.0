@@ -403,6 +403,16 @@ section, .page-header { padding: 5rem 0; }
 }
 .album-card-body h3 { font-size: 1.05rem; }
 .album-meta { display: block; margin-top: 0.25rem; font-size: 0.85rem; color: var(--color-muted, #9aa1ab); }
+.album-link {
+  display: inline-block;
+  margin-top: 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-primary, #ffb703);
+  text-decoration: none;
+}
+.album-link:hover, .album-link:focus-visible { text-decoration: underline; }
 .gallery-empty { text-align: center; color: var(--color-muted, #9aa1ab); padding: 2.5rem 0; }
 
 /* Photo strip — full-bleed banner of finished-work photos (no titles/filter/
@@ -413,6 +423,33 @@ section, .page-header { padding: 5rem 0; }
 .photo-strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .photo-strip-cell { aspect-ratio: 4 / 3; overflow: hidden; background: rgba(127,127,127,0.12); }
 .photo-strip-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* A linked cell is a doorway: the photo zooms gently and a label fades in on
+   hover/focus to signal there's more to see. Plain (link-less) cells are
+   untouched by these rules. */
+.photo-strip-cell--link { position: relative; display: block; cursor: pointer; }
+.photo-strip-img { display: block; width: 100%; height: 100%; }
+.photo-strip-cell--link img { transition: transform 0.3s ease; }
+.photo-strip-cell--link:hover img,
+.photo-strip-cell--link:focus-visible img { transform: scale(1.05); }
+.photo-strip-cell--link:focus-visible {
+  outline: 2px solid var(--color-primary, #ffb703);
+  outline-offset: -2px;
+}
+.photo-strip-cue {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 1.6rem 1rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.photo-strip-cell--link:hover .photo-strip-cue,
+.photo-strip-cell--link:focus-visible .photo-strip-cue { opacity: 1; }
 
 /* Lightbox (built by js/main.js) */
 .lightbox {

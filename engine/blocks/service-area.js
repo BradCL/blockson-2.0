@@ -3,6 +3,7 @@
 const { esc } = require('../lib/escape');
 
 module.exports = function serviceArea(fields, site, bk) {
+  const tag   = fields.tag  ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
   const body  = fields.body ? `<p class="area-desc"${bk.f('body')}>${esc(fields.body)}</p>` : '';
   const items = (fields.areas || []).map((a, idx) => `<li${bk.l('areas', idx)}>${esc(a)}</li>`).join('\n          ');
 
@@ -21,6 +22,7 @@ module.exports = function serviceArea(fields, site, bk) {
   <div class="container">
     <div class="service-area-inner"${innerCols}>
       <div>
+        ${tag}
         <h2${bk.f('heading')}>${esc(fields.heading)}</h2>
         ${body}
         <ul class="area-list">

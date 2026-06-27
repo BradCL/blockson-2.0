@@ -102,6 +102,13 @@
     render();
   }
 
+  // An album's optional "See all photos" link is a real anchor inside the
+  // card: let it navigate, but stop the click from bubbling to the card and
+  // also opening the lightbox.
+  document.querySelectorAll('.album-link').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.stopPropagation(); });
+  });
+
   albumCards.forEach(function (card) {
     function activate() {
       var images = (card.getAttribute('data-images') || '').split(',').filter(Boolean);

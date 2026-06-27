@@ -361,6 +361,7 @@
               "category": { "type": "string" },
               "title":    { "type": "string" },
               "meta":     { "type": "string" },
+              "href":     { "$ref": "#/$defs/safeHref" },
               "images": {
                 "type": "array",
                 "items": { "type": "string" },
@@ -417,6 +418,7 @@
       "additionalProperties": false,
       "properties": {
         "hidden":  { "type": "boolean" },
+        "tag":         { "type": "string" },
         "heading":     { "type": "string" },
         "body":        { "type": "string" },
         "areas": {
@@ -698,7 +700,8 @@
             "additionalProperties": false,
             "properties": {
               "id":    { "type": "string" },
-              "image": { "type": "string" }
+              "image": { "type": "string" },
+              "link":  { "$ref": "#/$defs/safeHref" }
             }
           }
         }

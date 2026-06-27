@@ -217,6 +217,13 @@ warnOnHeavyImages(imgSrc);
 // it is replaced. Advisory only — warn, never fail.
 warnOnPlaceholderForms(content);
 
+// ── Unconfigured gallery-album link advisory ───────────────────
+// Same "https://UNCONFIGURED" placeholder convention as contact forms: a
+// gallery album whose external href is still the placeholder builds fine but
+// would send visitors nowhere, so warn loudly until it is set to the real
+// hosted-album URL. Advisory only — warn, never fail.
+warnOnPlaceholderAlbumLinks(content);
+
 // ── Helpers ────────────────────────────────────────────────────
 function findSiteHeroImage(content) {
   const pages = content.pages || [];
@@ -235,6 +242,20 @@ function warnOnPlaceholderForms(content) {
       if (block && block.type === 'contact-form' && block.fields
           && block.fields.formAction === PLACEHOLDER) {
         console.warn(`  ⚠ The contact form "${block.id}" (page "${page.slug}") still points at the placeholder endpoint ${PLACEHOLDER} — submissions will go nowhere until formAction is set to a real https:// endpoint or the block is switched to another delivery mode (see "Contact form delivery" in OPERATOR.md).`);
+      }
+    }
+  }
+}
+
+function warnOnPlaceholderAlbumLinks(content) {
+  const PLACEHOLDER = 'https://UNCONFIGURED';
+  for (const page of content.pages || []) {
+    for (const block of page.blocks || []) {
+      if (!block || block.type !== 'gallery' || !block.fields) continue;
+      for (const album of block.fields.albums || []) {
+        if (album && album.href === PLACEHOLDER) {
+          console.warn(`  ⚠ The gallery album "${album.id}" (page "${page.slug}") still links to the placeholder ${PLACEHOLDER} — its "See all photos" link goes nowhere until href is set to the real hosted-album URL (e.g. the Google Photos or Facebook album), or removed to drop the link.`);
+        }
       }
     }
   }

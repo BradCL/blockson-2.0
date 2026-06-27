@@ -111,10 +111,15 @@ photos; the first photo is the thumbnail.
   - `category` string — must equal one of the `filters[].value`
   - `title` string
   - `meta?` string
+  - `href?` url — optional link to the full set hosted elsewhere (e.g. a Google
+    Photos / Facebook album). Renders a "See all photos →" link on the card that
+    opens in a new tab; the local images stay an on-site lightbox teaser. Use
+    `https://UNCONFIGURED` as a placeholder and the build warns until it's set.
   - `images` Repeats: image paths (first = thumbnail)
 CSS: `.gallery`, `.filter-bar`, `.filter-btn`, `.album-grid`, `.album-card` (+ `data-type`,
-`data-images`, `data-title`), `.gallery-empty`. JS reads the `data-*` attributes.
-**Maintenance:** album titles/meta editable; image lists support append/delete by filename.
+`data-images`, `data-title`), `.album-link`, `.gallery-empty`. JS reads the `data-*` attributes.
+**Maintenance:** album titles/meta editable; the per-album `href` is click-to-edit so an
+owner can repoint it if the host changes; image lists support append/delete by filename.
 Filters and album add/remove: developer.
 
 ### `testimonials`
@@ -135,11 +140,12 @@ CSS: `.mission-pillars`, `.mission-card`, `.mission-list`.
 
 ### `service-area`
 Two-column: descriptive text + dashed area list on one side, an embedded map on the other.
+- `tag?` string — optional uppercase eyebrow above the heading (same `.section-tag` as card-grid/testimonials)
 - `heading` string, `body?` string
 - `areas` Repeats: plain strings
 - `mapEmbedUrl?` url — a Google Maps embed src; omit to render text side full-width
 CSS: `.service-area`, `.service-area-inner`, `.area-list`, `.area-map`.
-**Maintenance:** heading/body/area lines editable. mapEmbedUrl: developer.
+**Maintenance:** tag/heading/body/area lines editable. mapEmbedUrl: developer.
 
 ### `contact-cards`
 Two side-by-side "path" cards (e.g. "Start a project" vs "Join the team").
@@ -304,13 +310,18 @@ album grid on its own page, `photo-strip` is a flat, edge-to-edge banner of imag
 (typically dropped under a services overview). Modeled on the home-page strip of
 the contractor site that inspired Blockson.
 - `tag?`, `heading?` — optional eyebrow + heading rendered above the strip
-- `photos` Repeats: `{id, image}` — each photo's alt text is derived from the site
-  name (the same convention `gallery`/`team-grid`/`before-after` use), so a
-  captionless photo carries exactly one edit target: the picture itself
-CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cell`.
+- `photos` Repeats: `{id, image, link?}` — each photo's alt text is derived from
+  the site name (the same convention `gallery`/`team-grid`/`before-after` use).
+  A link-less photo carries exactly one edit target: the picture itself. Give a
+  photo a `link` (typically the gallery page) and the whole cell becomes a
+  doorway — the photo zooms and a "View gallery →" cue fades in on hover; the
+  link is its own click-to-edit target (reached via the cue), the image stays
+  editable by clicking the photo.
+CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cell`,
+`.photo-strip-cell--link`, `.photo-strip-img`, `.photo-strip-cue`.
 **Maintenance:** tag/heading editable; each photo replaceable by item id through the
-click-to-edit image picker. Adding/removing photos is developer work (no item
-blueprint ships for it yet).
+click-to-edit image picker, and an owner can set/repoint its `link`. Adding/removing
+photos is developer work (no item blueprint ships for it yet).
 
 ### Evaluated and deliberately NOT included
 - `announcement-banner` — a *site-wide* notice conflicts with the per-page block model;
