@@ -85,6 +85,16 @@
 //             theme-CSS-only fallback silently broke; an explicit page-header
 //             background still wins; and a site with no hero at all emits no
 //             inline background, leaving the theme CSS as the last-ditch default.
+// Proof 21:   hero background focal-point + zoom (owner-editable bgPosition /
+//             bgZoom): out-of-range or malformed values are refused by the
+//             per-field format guard in patch.js with nothing written; a valid
+//             pair round-trips through applyPatch and reaches the built hero as
+//             inline background-position / transform:scale (the live HTML
+//             carrying only that inline style — no ids, no data-bk-*); a
+//             numeric-string zoom is normalized to a number; the fields are
+//             optional (absent → default paint); and the edit map reports them
+//             as block metadata, never scalars (so proof 1 demands no
+//             annotation for an element no renderer emits).
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -178,7 +188,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 20;
+const TOTAL = 21;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1624,6 +1634,16 @@ console.log('\n═══ PROOF 17 — Visibility flag: hidden blocks leave live 
     if (!ann.includes(HERO_TEXT)) failures.push('hidden block missing from the annotated preview — the owner could never unhide it');
     if (!ann.includes('data-bk-hidden="true"')) failures.push('annotated preview does not mark the hidden block');
     if (!ann.includes('data-bk-block="home-hero"')) failures.push('hidden block lost its click-to-edit annotations');
+    // The overlay's unhide reachability (a click anywhere in a hidden section —
+    // dead space or the badge — resolves to that block's editor, so the owner
+    // never needs "Discard all" to escape a section they just hid) depends on a
+    // structural contract: the data-bk-hidden root must CONTAIN a data-bk-block
+    // descendant for the same block. The overlay's per-event DOM resolution is
+    // browser-only (manual check), but this precondition is testable here.
+    const heroSection = ann.match(/<section\b[^>]*\bdata-bk-hidden="true"[^>]*>([\s\S]*?)<\/section>/);
+    if (!heroSection || !heroSection[1].includes('data-bk-block="home-hero"')) {
+      failures.push('the hidden section does not contain its own data-bk-block — the overlay could not resolve a click in its dead space to the unhide toggle');
+    }
 
     const show = applyPatch(content, { action: 'set', block: 'home-hero', field: 'hidden', value: false });
     if (!show.ok) failures.push(`boolean show rejected: ${show.error}`);
@@ -2140,6 +2160,115 @@ console.log('\n═══ PROOF 20 — page-header background inherits the site h
     console.log('       even when the hero is not named banner.jpg; an explicit page-header');
     console.log('       background still wins; and a site with no hero at all emits no inline');
     console.log('       background, leaving the theme CSS as the last-ditch fallback.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 21 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 21 — Hero focal-point + zoom: guarded values round-trip; bad values bounce ═══');
+{
+  const CLIENT  = '__proof-hero-focal';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const failures = [];
+  const heroBg = (html) => {
+    const m = html.match(/<div class="hero-bg"[^>]*\bstyle="([^"]*)"/);
+    return m ? m[1].replace(/&#39;|&apos;/g, "'") : null;
+  };
+
+  try {
+    // (a) Every malformed / out-of-range value is refused, and each rejection
+    //     leaves the content byte-identical — no raw CSS can pass the guard.
+    const content = readContent('example-contractor');
+    const hero = content.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero');
+    if (typeof hero.fields.bgPosition !== 'string' || typeof hero.fields.bgZoom !== 'number') {
+      failures.push('example-contractor hero is not seeded with bgPosition/bgZoom');
+    }
+    const orig = JSON.stringify(content);
+    const bad = [
+      ['position out of range',  { action: 'set', block: hero.id, field: 'bgPosition', value: '110% 50%' }],
+      ['position raw CSS',       { action: 'set', block: hero.id, field: 'bgPosition', value: "50% 50%;}body{display:none" }],
+      ['position url()',         { action: 'set', block: hero.id, field: 'bgPosition', value: 'url(evil)' }],
+      ['zoom too large',         { action: 'set', block: hero.id, field: 'bgZoom', value: 9 }],
+      ['zoom too small',         { action: 'set', block: hero.id, field: 'bgZoom', value: 0.5 }],
+      ['zoom non-numeric',       { action: 'set', block: hero.id, field: 'bgZoom', value: 'huge' }],
+    ];
+    for (const [label, patch] of bad) {
+      const r = applyPatch(content, patch);
+      if (r.ok) failures.push(`accepted what must be rejected: ${label}`);
+    }
+    if (JSON.stringify(content) !== orig) failures.push('a rejected focal/zoom write modified the content');
+
+    // (b) A valid pair round-trips through applyPatch, persists, and reaches
+    //     the BUILT hero as inline background-position + transform:scale; the
+    //     live HTML carries only that inline style (no ids, no data-bk-*).
+    const okPos = applyPatch(content, { action: 'set', block: hero.id, field: 'bgPosition', value: '20% 80%' });
+    const okZoom = applyPatch(content, { action: 'set', block: hero.id, field: 'bgZoom', value: '2' }); // numeric string
+    if (!okPos.ok || !okZoom.ok) failures.push(`a valid focal/zoom set was rejected: ${okPos.error || okZoom.error}`);
+    if (hero.fields.bgPosition !== '20% 80%') failures.push(`bgPosition did not persist: ${hero.fields.bgPosition}`);
+    if (hero.fields.bgZoom !== 2) failures.push(`bgZoom did not normalize to the number 2 (got ${typeof hero.fields.bgZoom} ${hero.fields.bgZoom})`);
+
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const bLive = build(CLIENT);
+    if (!bLive.ok) failures.push(`live build with focal/zoom failed:\n${bLive.out}`);
+    else {
+      const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      const style = heroBg(html);
+      if (!style || !style.includes('background-position:20% 80%')) failures.push(`built hero is missing the focal point (style="${style}")`);
+      if (!style || !/transform:scale\(2\)/.test(style)) failures.push(`built hero is missing the zoom transform (style="${style}")`);
+      if (html.includes('data-bk-')) failures.push('live hero HTML carries data-bk-* — focal/zoom must be plain inline style');
+      if (html.includes('id="home-hero"')) failures.push('live hero HTML leaks a block id');
+    }
+
+    // (c) The build's schema gate accepts the result (a string zoom would have
+    //     failed it — the normalization in (b) is what keeps the build clean).
+    const bAnn = build(CLIENT, ['--annotate']);
+    if (!bAnn.ok) failures.push(`annotated build with focal/zoom failed:\n${bAnn.out}`);
+
+    // (d) The fields are OPTIONAL: a hero without them builds and paints the
+    //     default (background-position:50% 50%, scale(1)) — backward compatible.
+    delete hero.fields.bgPosition;
+    delete hero.fields.bgZoom;
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    const bDefault = build(CLIENT);
+    if (!bDefault.ok) failures.push(`build without focal/zoom failed (they must stay optional):\n${bDefault.out}`);
+    else {
+      const style = heroBg(fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8'));
+      if (!style || !style.includes('background-position:50% 50%') || !/transform:scale\(1\)/.test(style)) {
+        failures.push(`absent fields did not default to centre/no-zoom (style="${style}")`);
+      }
+    }
+
+    // (e) The edit map reports the fields as block metadata, never scalars —
+    //     so proof 1 demands no annotation no renderer emits (kept in sync by
+    //     construction with the annotator).
+    const seeded = readContent('example-contractor'); // fields present again
+    const map = buildEditMap(seeded, loadTokens(seeded));
+    const heroDesc = map.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero');
+    for (const banned of ['bgPosition', 'bgZoom']) {
+      if (heroDesc.scalars.some(s => s.field === banned)) failures.push(`edit map lists ${banned} as a scalar (would demand an annotation)`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — out-of-range and malformed focal/zoom values (raw CSS, url(), zoom');
+    console.log('       9 / 0.5 / non-numeric) are refused with nothing written; a valid pair');
+    console.log('       round-trips through applyPatch (a string zoom normalized to a number)');
+    console.log('       and reaches the built hero as inline background-position + transform:');
+    console.log('       scale, with no ids and no data-bk-* in the live HTML; the fields are');
+    console.log('       optional (absent → default paint); and the edit map reports them as');
+    console.log('       block metadata, never scalars.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
