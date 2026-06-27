@@ -94,6 +94,8 @@
             "headline": "Your neighbourhood, your league.",
             "subhead": "Programs, events, skating, and a hall for hire — run by volunteers.",
             "background": "img/banner.jpg",
+            "bgPosition": "50% 50%",
+            "bgZoom": 1,
             "actions": [
               {
                 "label": "Become a Member",

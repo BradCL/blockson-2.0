@@ -76,6 +76,8 @@ const starter = {
           headline: 'Replace this headline.',
           subhead: 'One sentence on what the business does and for whom.',
           background: 'img/banner.jpg',
+          bgPosition: '50% 50%',
+          bgZoom: 1,
           actions: [{ label: 'Get in Touch', href: 'contact.html', style: 'primary' }],
           hidden: false
         }},

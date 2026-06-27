@@ -416,6 +416,18 @@ function describeField(session, ref) {
     const fields = indexHosts(content).get(ref.block);
     if (fields && typeof fields.hidden === 'boolean') res.blockHidden = fields.hidden;
 
+    // Hero focal point + zoom ride along on the hero's background-image
+    // editor (the click that opens "Replace image" is the click that opens
+    // the reposition/zoom controls). Only when the block carries the seeded
+    // fields — absent → no controls, the editor degrades to image-replace.
+    if (fields && ref.field === 'background'
+        && (typeof fields.bgPosition === 'string' || typeof fields.bgZoom === 'number')) {
+      res.heroFocal = {
+        position: typeof fields.bgPosition === 'string' ? fields.bgPosition : '50% 50%',
+        zoom: typeof fields.bgZoom === 'number' ? fields.bgZoom : 1,
+      };
+    }
+
     let block = null;
     for (const p of content.pages || []) {
       for (const b of p.blocks || []) if (b && b.id === ref.block) block = b;

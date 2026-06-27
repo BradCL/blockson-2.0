@@ -198,6 +198,42 @@ function validateTokenValue(type, raw) {
   return { ok: false, error: `unknown token type "${type}"` };
 }
 
+/* ── Guarded scalar fields ───────────────────────────────────
+   A small allowlist of ordinary block fields whose VALUE space is
+   constrained (mirroring validateTokenValue for tokens): a plain "set"
+   may reach them, but only with a value that passes the per-type format
+   guard below. Like the token guards, this keeps the maintenance tier's
+   power to bounded values — a wrong value is ugly, never broken, and no
+   raw CSS can pass. Keyed by the field's LEAF name (the last dotted
+   segment), so the guard fires wherever such a field lives.
+
+   Today: the hero background's owner-editable focal point + zoom
+   (engine/blocks/hero.js paints these as inline background-position /
+   transform:scale on .hero-bg). */
+const FIELD_FORMATS = {
+  bgPosition: 'position',  // two percentages, each 0–100 (focal point)
+  bgZoom:     'zoom',      // a bounded number, 1–3
+};
+
+/* Per-type whitelist format guards for FIELD_FORMATS scalars. Everything
+   not matched is rejected; no raw CSS can pass. */
+function validateFieldValue(type, raw) {
+  if (type === 'position') {
+    const v = String(raw).trim();
+    const m = v.match(/^(\d{1,3})%\s+(\d{1,3})%$/);
+    if (m && Number(m[1]) <= 100 && Number(m[2]) <= 100) return { ok: true, value: v };
+    return { ok: false, error: `"${v}" is not a valid focal point — use two percentages from 0–100, e.g. "50% 50%"` };
+  }
+  if (type === 'zoom') {
+    // Always store the NUMBER, whichever type the caller sent — a number
+    // field that ends up holding a string would fail the build-time schema.
+    const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
+    if (Number.isFinite(n) && n >= 1 && n <= 3) return { ok: true, value: n };
+    return { ok: false, error: `"${raw}" is not a valid zoom — use a number from 1 to 3` };
+  }
+  return { ok: false, error: `unknown field type "${type}"` };
+}
+
 /* Apply a set-token patch: the only sanctioned write path into
    site.themeOverrides. Creating the themeOverrides object itself is the
    one object-creation this resolver permits (analogous to append).
@@ -390,6 +426,15 @@ function applyPatch(content, patch, presetTokens) {
     if (typeof existing === 'boolean' && typeof patch.value !== 'boolean') {
       return { ok: false, error: `"${patch.field}" holds true/false — set it with a boolean value, not ${typeof patch.value === 'string' ? `"${patch.value}"` : patch.value}` };
     }
+    // Value-constrained scalars (focal point, zoom): a plain set reaches
+    // them, but only with a value the per-field format guard accepts.
+    const fmt = FIELD_FORMATS[String(key)];
+    if (fmt) {
+      const guard = validateFieldValue(fmt, patch.value);
+      if (!guard.ok) return { ok: false, error: guard.error };
+      parent[key] = guard.value;   // normalized (e.g. zoom stored as a number)
+      return { ok: true, action: 'set' };
+    }
     parent[key] = patch.value;
     return { ok: true, action: 'set' };
   }
@@ -412,6 +457,7 @@ function applyPatch(content, patch, presetTokens) {
 module.exports = {
   applyPatch, indexHosts, findItemById,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
+  FIELD_FORMATS, validateFieldValue,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,
   // Exported (additive) so the theme validator applies the SAME injection
   // blacklist to preset token values that set-token applies to owner values.

@@ -264,6 +264,8 @@
         "headline":   { "type": "string" },
         "subhead":    { "type": "string" },
         "background": { "type": "string" },
+        "bgPosition": { "type": "string" },
+        "bgZoom":     { "type": "number" },
         "actions": {
           "type": "array",
           "items": { "$ref": "#/$defs/action" }

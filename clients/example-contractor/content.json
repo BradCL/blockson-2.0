@@ -114,6 +114,8 @@
             "headline": "Built right, the first time.",
             "subhead": "Framing specialists offering full renovation and general contracting services.",
             "background": "img/banner.jpg",
+            "bgPosition": "50% 50%",
+            "bgZoom": 1,
             "actions": [
               {
                 "label": "View Our Work",

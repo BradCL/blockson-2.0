@@ -97,6 +97,8 @@
             "headline": "Comfort food, wood-fired.",
             "subhead": "Seasonal plates built on Alberta farms and a nine-year-old sourdough starter.",
             "background": "img/hero-dining-room.jpg",
+            "bgPosition": "50% 50%",
+            "bgZoom": 1,
             "actions": [
               {
                 "label": "See the Menu",
