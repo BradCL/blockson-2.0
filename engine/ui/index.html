@@ -20,6 +20,14 @@
       <header class="panel-head">
         <h1 id="client-name">…</h1>
         <p class="hint">Click anything highlighted in the preview to edit it.</p>
+        <!-- Edit / Preview: Edit keeps the click-to-edit overlay active;
+             Preview makes the page behave exactly like the live site
+             (links navigate, the gallery lightbox and accordions work). -->
+        <div class="mode-toggle" role="group" aria-label="Editor mode">
+          <button id="btn-mode-edit" class="btn mode-btn is-active" type="button">Edit</button>
+          <button id="btn-mode-preview" class="btn mode-btn" type="button">Preview</button>
+        </div>
+        <p id="mode-hint" class="hint"></p>
       </header>
 
       <div id="message" class="message" hidden></div>

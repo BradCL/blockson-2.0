@@ -437,6 +437,85 @@
     }));
     row.appendChild(button('Cancel', null, closeEditor));
     ed.appendChild(row);
+
+    // Hero backgrounds also offer reposition + zoom (when the block carries
+    // the seeded bgPosition/bgZoom fields). Each saves as its own set patch
+    // through the normal stage() path — the engine guards the values.
+    if (info.heroFocal) appendHeroFocal(ed, ref, info);
+  }
+
+  // Parse a "<x>% <y>%" focal point into clamped 0–100 numbers.
+  function parseFocal(s) {
+    var m = String(s == null ? '' : s).match(/(\d{1,3})%\s+(\d{1,3})%/);
+    var clamp = function (n) { return Math.max(0, Math.min(100, n)); };
+    return m ? { x: clamp(+m[1]), y: clamp(+m[2]) } : { x: 50, y: 50 };
+  }
+
+  // Reposition (drag a handle over a thumbnail) + zoom (slider) for the hero
+  // background. The thumbnail and dot give live feedback; "Save focus" /
+  // "Save zoom" each emit one set patch ({field:'bgPosition'|'bgZoom'}).
+  function appendHeroFocal(ed, ref, info) {
+    var pos = parseFocal(info.heroFocal.position);
+
+    ed.appendChild(el('div', 'field-label', 'Reposition the background'));
+    ed.appendChild(el('div', 'hint', 'Drag the dot to choose what stays centred, then save.'));
+    var box = el('div', 'hero-focal');
+    // info.value is the current image path (e.g. "img/banner.jpg"), served
+    // under /preview/. setProperty keeps the value out of any HTML string.
+    box.style.backgroundImage = "url('/preview/" + info.value + "')";
+    box.style.backgroundPosition = pos.x + '% ' + pos.y + '%';
+    var dot = el('div', 'hero-focal-dot');
+    var placeDot = function () { dot.style.left = pos.x + '%'; dot.style.top = pos.y + '%'; };
+    placeDot();
+    box.appendChild(dot);
+    ed.appendChild(box);
+
+    function setFrom(ev) {
+      var r = box.getBoundingClientRect();
+      pos = {
+        x: Math.max(0, Math.min(100, Math.round((ev.clientX - r.left) / r.width * 100))),
+        y: Math.max(0, Math.min(100, Math.round((ev.clientY - r.top) / r.height * 100))),
+      };
+      box.style.backgroundPosition = pos.x + '% ' + pos.y + '%';
+      placeDot();
+    }
+    box.addEventListener('mousedown', function (ev) {
+      ev.preventDefault();
+      setFrom(ev);
+      function move(e2) { setFrom(e2); }
+      function up() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+
+    var posRow = el('div', 'btn-row');
+    posRow.appendChild(button('Save focus', 'primary', function () {
+      var p = basePatch(ref, 'set');
+      p.field = 'bgPosition';
+      p.value = pos.x + '% ' + pos.y + '%';
+      stage(p, null, ed);
+    }));
+    ed.appendChild(posRow);
+
+    ed.appendChild(el('div', 'field-label', 'Zoom'));
+    var zoomRow = el('div', 'hero-zoom');
+    var slider = el('input');
+    slider.type = 'range';
+    slider.min = '1'; slider.max = '3'; slider.step = '0.1';
+    slider.value = String(info.heroFocal.zoom);
+    var readout = el('span', 'hero-zoom-readout', Number(info.heroFocal.zoom).toFixed(1) + '×');
+    slider.addEventListener('input', function () { readout.textContent = Number(slider.value).toFixed(1) + '×'; });
+    zoomRow.appendChild(slider);
+    zoomRow.appendChild(readout);
+    ed.appendChild(zoomRow);
+    var saveZoomRow = el('div', 'btn-row');
+    saveZoomRow.appendChild(button('Save zoom', 'primary', function () {
+      var p = basePatch(ref, 'set');
+      p.field = 'bgZoom';
+      p.value = Number(slider.value);
+      stage(p, null, ed);
+    }));
+    ed.appendChild(saveZoomRow);
   }
 
   // Gallery image list: remove an existing photo (match form) or add one
@@ -763,6 +842,32 @@
       refreshState().then(reloadPreview);
     });
   });
+
+  // ── Edit / Preview mode ──────────────────────────────────────
+  // The mode is UI-side state, relayed to the preview iframe's overlay over
+  // postMessage. The overlay starts every page load in edit mode, so the
+  // mode is re-posted on every iframe load (navigations in preview mode, and
+  // candidate rebuilds after an edit) to keep the two in step.
+  var mode = 'edit';
+  function postMode() {
+    try {
+      iframe.contentWindow.postMessage({ type: 'bk-mode', mode: mode }, window.location.origin);
+    } catch (e) { /* iframe not ready yet — the load handler re-posts */ }
+  }
+  function setMode(m) {
+    mode = m === 'preview' ? 'preview' : 'edit';
+    $('btn-mode-edit').classList.toggle('is-active', mode === 'edit');
+    $('btn-mode-preview').classList.toggle('is-active', mode === 'preview');
+    $('mode-hint').textContent = mode === 'preview'
+      ? 'Preview: the page behaves like the live site. Switch to Edit to make changes.'
+      : '';
+    if (mode === 'preview') { clearMessage(); closeEditor(); }
+    postMode();
+  }
+  $('btn-mode-edit').addEventListener('click', function () { setMode('edit'); });
+  $('btn-mode-preview').addEventListener('click', function () { setMode('preview'); });
+  // Re-assert the current mode whenever the iframe (re)loads.
+  iframe.addEventListener('load', postMode);
 
   // ── Overlay messages ─────────────────────────────────────────
   window.addEventListener('message', function (e) {

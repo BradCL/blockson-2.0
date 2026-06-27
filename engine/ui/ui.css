@@ -51,6 +51,14 @@ html, body {
   color: #5b6372;
 }
 
+/* ── Edit / Preview toggle ── */
+.mode-toggle { display: flex; margin: 8px 0 2px; }
+.mode-btn { border-radius: 0; padding: 6px 16px; font-size: 13px; }
+.mode-btn:first-child { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.mode-btn:last-child { border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: none; }
+.mode-btn.is-active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.mode-btn.is-active:hover { background: #1d4fd1; }
+
 .card {
   background: #fff;
   border: 1px solid #d4d8e0;
@@ -199,5 +207,32 @@ select {
   background: #fff;
 }
 input[type="file"] { margin: 4px 0 10px; font-size: 13px; }
+
+/* ── Hero focal point + zoom ── */
+.hero-focal {
+  position: relative;
+  height: 150px;
+  margin: 6px 0 8px;
+  border: 1px solid #c6ccd8;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  cursor: crosshair;
+  overflow: hidden;
+  user-select: none;
+}
+.hero-focal-dot {
+  position: absolute;
+  width: 18px; height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(37, 99, 235, .85);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .45);
+  pointer-events: none;
+}
+.hero-zoom { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.hero-zoom input[type="range"] { flex: 1; }
+.hero-zoom-readout { flex: none; font-size: 13px; color: #5b6372; min-width: 34px; }
 
 .panel-foot { margin-top: auto; padding: 4px 2px; }
