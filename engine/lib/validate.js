@@ -70,7 +70,9 @@ function validate(content) {
 // Keeping a copy here means the scheme guard holds even when AJV is absent.
 const SAFE_HREF_RE = /^(?:(?:https?:\/\/|mailto:|tel:|sms:|#).*|[^:]*)$/;
 // Keys whose values become iframe/form/network targets: https only.
-const HTTPS_ONLY_KEYS = new Set(['formAction', 'mapEmbedUrl', 'videoUrl']);
+// `url` is the reviews-link outbound profile link — an external listing must
+// be https (the schema enforces the same pattern on the AJV path).
+const HTTPS_ONLY_KEYS = new Set(['formAction', 'mapEmbedUrl', 'videoUrl', 'url']);
 
 function scanLinkTargets(node, where, errors) {
   if (Array.isArray(node)) {

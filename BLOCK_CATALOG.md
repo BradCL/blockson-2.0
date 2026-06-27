@@ -330,6 +330,38 @@ CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cel
 click-to-edit image picker, and an owner can set/repoint its `link`. Adding/removing
 photos is developer work (no item blueprint ships for it yet).
 
+### `reviews-link`
+A styled, **capture-free** outbound social-proof badge linking to a business's
+external reviews/profile page (Google today; Facebook/etc. later). It is **not** an
+embed, **not** a third-party widget, **not** the Places API — no API key, no
+JavaScript, no network call, no data capture. The whole badge is a single `<a href>`;
+the rating and review count are **owner-maintained static text**, not live-synced. Its
+honesty rests on it being a real link to the real listing, not a scraped or faked
+rating. Platform-agnostic — nothing hard-codes "Google". Different from `booking-cta`
+(which drives an action): this advertises existing reputation.
+- `tag?`, `heading?` — optional eyebrow + heading above the badge
+- `url` string **(required, `https://…`)** — the external reviews/listing link,
+  validated by the same `$defs/safeHref` scheme guard the engine uses everywhere; a
+  `javascript:` (or any non-https) scheme is rejected at build time.
+- `platform?` string (e.g. "Google") — named in the composed label
+- `rating?` string (e.g. "5.0") — omit → not rendered
+- `reviewCount?` string or number (e.g. "11") — omit → not rendered
+- `label?` string — overrides the composed link text outright
+The default label is composed from the present fields ("★ 5.0 · 11 reviews on Google
+→") and gracefully degrades when `rating`/`reviewCount`/`platform` are absent (down to
+"Reviews →"), always producing one valid outbound link. Opens in a new tab with
+`rel="noopener noreferrer"`.
+CSS: `.reviews-link-section`, `.reviews-link-heading`, `.reviews-link`,
+`.reviews-link-text`, `.reviews-link-star`, `.reviews-link-rating`,
+`.reviews-link-count`, `.reviews-link-platform`, `.reviews-link-label`,
+`.reviews-link-arrow`.
+**Maintenance:** every value is owner-editable through the ordinary `set` path —
+`tag`, `heading`, `url`, `platform`, `rating`, `reviewCount`, `label`. There is **no
+structural or resolver surface**: an optional field is "hidden" simply by clearing it
+(the render omits empty fields), and the whole block is hidden with the standard
+per-block `hidden` flag. Owners keep the rating/count honest by hand; the link itself
+points at the live listing for anyone to verify.
+
 ### Evaluated and deliberately NOT included
 - `announcement-banner` — a *site-wide* notice conflicts with the per-page block model;
   it would need a new partial-level data path and a dismissal cookie. Per-page notices

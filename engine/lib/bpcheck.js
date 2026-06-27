@@ -383,6 +383,10 @@ const SHOWCASE_BLOCKS = [
       { id: 'photo-three', image: 'img/sample-3.jpg' },
       { id: 'photo-four', image: 'img/sample-4.jpg' },
     ] } },
+  { id: 'show-reviews-link', type: 'reviews-link', fields: {
+    tag: 'Social proof', heading: 'A reviews link',
+    url: 'https://example.com/listing', platform: 'Google',
+    rating: '5.0', reviewCount: '11' } },
 ];
 
 // Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks

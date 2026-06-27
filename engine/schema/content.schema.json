@@ -137,7 +137,7 @@
                     "contact-form","cta",
                     "pricing-table","team-grid","faq","hours-table","before-after",
                     "stats-bar","process-steps","video-embed","booking-cta",
-                    "photo-strip"
+                    "photo-strip","reviews-link"
                   ]
                 },
                 "fields": { "type": "object" }
@@ -230,6 +230,10 @@
                 {
                   "if":   { "properties": { "type": { "const": "photo-strip" } },   "required": ["type"] },
                   "then": { "properties": { "fields": { "$ref": "#/$defs/photoStripFields" } } }
+                },
+                {
+                  "if":   { "properties": { "type": { "const": "reviews-link" } },   "required": ["type"] },
+                  "then": { "properties": { "fields": { "$ref": "#/$defs/reviewsLinkFields" } } }
                 }
               ]
             }
@@ -709,6 +713,21 @@
             }
           }
         }
+      }
+    },
+    "reviewsLinkFields": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": {
+        "hidden":      { "type": "boolean" },
+        "tag":         { "type": "string" },
+        "heading":     { "type": "string" },
+        "url":         { "$ref": "#/$defs/safeHref", "pattern": "^https://" },
+        "platform":    { "type": "string" },
+        "rating":      { "type": "string" },
+        "reviewCount": { "type": ["string", "number"] },
+        "label":       { "type": "string" }
       }
     },
     "statsBarFields": {

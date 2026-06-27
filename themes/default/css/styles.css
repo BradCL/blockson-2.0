@@ -936,6 +936,35 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 }
 .booking-note { margin-top: 0.4rem; font-size: 0.88rem; font-style: italic; color: var(--color-muted, #9aa1ab); }
 
+/* ── reviews-link — capture-free outbound social-proof badge ─ */
+.reviews-link-section { text-align: center; }
+.reviews-link-heading { margin-bottom: 1.1rem; }
+.reviews-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.3rem;
+  border: 1px solid rgba(127, 127, 127, 0.22);
+  border-radius: var(--btn-radius, var(--radius, 8px));
+  background: var(--color-surface, #181b22);
+  color: var(--color-text, #e8eaed);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.reviews-link:hover {
+  border-color: var(--color-primary, #4f9d69);
+  transform: translateY(-1px);
+}
+.reviews-link-star { color: var(--color-accent, #f4b740); }
+.reviews-link-rating { font-weight: 700; }
+.reviews-link-platform { font-weight: 700; }
+.reviews-link-arrow {
+  color: var(--color-primary, #4f9d69);
+  transition: transform 0.2s ease;
+}
+.reviews-link:hover .reviews-link-arrow { transform: translateX(3px); }
+
 /* ── Fade-in animation (js/main.js IntersectionObserver) ──── */
 .fade-in {
   opacity: 0;

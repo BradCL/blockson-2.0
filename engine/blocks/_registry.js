@@ -26,4 +26,6 @@ module.exports = {
   'booking-cta':   require('./booking-cta'),
   // v4.3 addition
   'photo-strip':   require('./photo-strip'),
+  // social-proof addition
+  'reviews-link':  require('./reviews-link'),
 };

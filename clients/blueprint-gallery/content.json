@@ -945,6 +945,19 @@
             ],
             "hidden": false
           }
+        },
+        {
+          "id": "show-reviews-link",
+          "type": "reviews-link",
+          "fields": {
+            "tag": "Social proof",
+            "heading": "A reviews link",
+            "url": "https://example.com/listing",
+            "platform": "Google",
+            "rating": "5.0",
+            "reviewCount": "11",
+            "hidden": false
+          }
         }
       ]
     }
