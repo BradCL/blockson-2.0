@@ -80,6 +80,17 @@ of these without shipping its own CSS:
 | `--page-header-width` | `640px` | Width of the interior-page header text column (`.page-header-content`). |
 | `--hero-texture-image` | `none` | A brand-texture layer tiled over hero/header photos. A `*-image` token — see below. |
 | `--hero-texture-opacity` | `0` | Opacity of that texture layer; pair it with `--hero-texture-image`. |
+| `--hero-align` | `left` | Text/button alignment inside the hero (`left`/`center`/`right`). Pair with `--hero-content-mi: auto` to also center the column. |
+| `--hero-content-mi` | `0` | `margin-inline` of the hero text column — set `auto` to center it. |
+| `--btn-radius` | `var(--radius, 10px)` | Corner radius for buttons (`.btn`, `.nav-cta`) independent of the global `--radius` — e.g. `2px` for sharp buttons. |
+| `--section-divider` | `none` | `border-top` rule between consecutive content sections — e.g. `1px solid rgba(127,127,127,.18)`. |
+| `--area-list-divider` | `none` | `border-bottom` under each `service-area` list item; pair with `--area-list-divider-pad`. |
+| `--area-list-divider-pad` | `0` | `padding-bottom` on those items when `--area-list-divider` is set. |
+| `--closing-statement-size` | `clamp(1.6rem, 3.5vw, 2.4rem)` | Font size of the closing-CTA statement. |
+| `--closing-statement-weight` | `700` | Font weight of the closing-CTA statement. |
+| `--closing-statement-width` | `760px` | Max width of the closing-CTA statement. |
+| `--footer-link` | `var(--footer-text, #9aa1ab)` | Footer link color. |
+| `--footer-link-hover` | `var(--color-primary, #ffb703)` | Footer link hover color. |
 
 Two value-shape notes (both follow the same injection guard every token value
 passes): `--header-overlay` may be a `linear-gradient(…)` but never a `url(…)`;
