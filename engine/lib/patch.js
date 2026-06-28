@@ -66,6 +66,42 @@
 
 const FORBIDDEN_KEYS = new Set(['id', 'type', 'slug']);
 
+// In-site image path shape (mirrors scaffold.js IMG_RE; kept local so this
+// canonical guard module stays dependency-free).
+const IMAGE_PATH_RE = /^img\/[A-Za-z0-9._-]+\.(png|jpe?g|gif|webp|avif|svg)$/i;
+
+// CREATABLE FIELDS — the single, narrow exception to "the resolver never
+// creates a field." Keyed by block TYPE → field → value guard. A plain `set`
+// may bring one of these into existence on a block that omits it, but ONLY
+// with a value the guard accepts; everything else still requires the field to
+// pre-exist. Today: a page-header background, so an interior header that
+// inherits the site hero image can be given its own image from the editor.
+// The value guard means creation can never smuggle in arbitrary content, and
+// the editable surface is still developer-defined (this allowlist), not
+// owner-expandable.
+const CREATABLE_FIELDS = {
+  'page-header': { background: IMAGE_PATH_RE },
+};
+
+function blockTypeById(content, id) {
+  for (const page of (content && content.pages) || []) {
+    for (const block of (page && page.blocks) || []) {
+      if (block && block.id === id) return block.type;
+    }
+  }
+  return null;
+}
+
+// May a plain `set` CREATE this (block, field) with this value? Only for a
+// top-level block field (never an item field) whose (type, field) is in the
+// allowlist and whose value clears the guard.
+function canCreateField(content, blockId, item, key, value) {
+  if (item != null) return false;
+  const guard = CREATABLE_FIELDS[blockTypeById(content, blockId)];
+  const re = guard && guard[key];
+  return !!(re && typeof value === 'string' && re.test(value));
+}
+
 /* ── SAFE TOKENS ─────────────────────────────────────────────
    The curated allowlist of theme tokens the maintenance tier may edit.
    Keys are canonical token names WITHOUT the leading "--" — matching the
@@ -411,7 +447,15 @@ function applyPatch(content, patch, presetTokens) {
   const { parent, key } = fr;
 
   if (patch.action === 'set') {
-    if (parent == null || !(key in parent)) return { ok: false, error: `field does not exist: ${patch.field}` };
+    if (parent == null || !(key in parent)) {
+      // A missing field is an error EXCEPT for an allowlisted creatable field
+      // set to a guard-passing value (e.g. a page-header background image).
+      if (parent != null && canCreateField(content, patch.block, patch.item, String(key), patch.value)) {
+        parent[key] = patch.value;
+        return { ok: true, action: 'set', created: true };
+      }
+      return { ok: false, error: `field does not exist: ${patch.field}` };
+    }
     if (FORBIDDEN_KEYS.has(String(key))) return { ok: false, error: `"${key}" is not editable` };
     const existing = parent[key];
     if (existing !== null && typeof existing === 'object') {
@@ -455,7 +499,7 @@ function applyPatch(content, patch, presetTokens) {
 }
 
 module.exports = {
-  applyPatch, indexHosts, findItemById,
+  applyPatch, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
   FIELD_FORMATS, validateFieldValue,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,

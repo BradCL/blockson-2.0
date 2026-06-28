@@ -135,6 +135,16 @@ function describeBlock(block) {
       scalars.push({ field: name, preview: preview(v) });
     }
   }
+  // A page-header that OMITS its background inherits the site hero image at
+  // render time, so the field isn't in `fields` and wouldn't be editable. Add
+  // it to the surface anyway: the owner can give an interior header its own
+  // image, and applyPatch's CREATABLE allowlist permits creating exactly this
+  // field (with an image-path value). When the header already sets a
+  // background it's covered by the loop above, so only add it when missing.
+  if (block.type === 'page-header' && !scalars.some(s => s.field === 'background')) {
+    scalars.push({ field: 'background', preview: null });
+  }
+
   return {
     id: block.id, type: block.type, scalars, textLists, itemSets,
     // null = the flag is not seeded on this block (no toggle to offer);

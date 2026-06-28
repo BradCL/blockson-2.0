@@ -70,7 +70,7 @@ Sub-hero band used at the top of interior pages (about/services/gallery/contact)
 - `tag` string — eyebrow
 - `heading` string
 - `subhead?` string
-- `background?` image — defaults to the site hero image if omitted
+- `background?` image — defaults to the site hero image if omitted; an owner can set a per-page image from the editor even when it was omitted (the one field the maintenance tier may create — see "Owner-creatable fields" in OPERATOR.md), which overrides the inherited hero for that page
 - `variant?` string ∈ `default` | `light` — `light` uses the lighter gradient (`.about-page-bg`)
 CSS: `.page-header`, `.page-header-content`, `.section-tag`.
 **Theme tokens (opt-in):** `--page-header-width`, `--header-overlay`,

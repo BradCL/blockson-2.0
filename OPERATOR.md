@@ -181,6 +181,18 @@ never create a field. Migrate once with
 `node extras/add-hidden-flags.js <client-name>` (idempotent — seeds
 `"hidden": false` on every block that lacks it), then rebuild.
 
+**Owner-creatable fields (the one exception).** The maintenance tier otherwise
+only edits fields a developer seeded — it cannot invent new ones. The single,
+deliberate exception is a **page-header background**: an interior header that
+omits `background` inherits the site hero image, and the editor lets the owner
+give that page its own image instead (clicking the header area opens the image
+editor, showing the inherited hero as the current image). Saving creates the
+`background` field on that header, overriding the inherited hero for that page
+only. The write is narrowly guarded — only a `page-header`, only the
+`background` field, only an image-path value — so it never widens what else the
+owner can create. To go back to inheriting the hero, a developer removes the
+field. (This is the `CREATABLE_FIELDS` allowlist in `engine/lib/patch.js`.)
+
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
 editor scales it to at most 1920 px on the longest edge and re-encodes it (PNG →
 WebP to keep transparency, everything else → JPEG) before uploading — so a 4 MB

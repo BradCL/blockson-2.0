@@ -81,7 +81,7 @@ const fs   = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { applyPatch, SAFE_TOKENS, indexHosts, findItemById } = require('./patch');
+const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS } = require('./patch');
 const { buildEditMap } = require('./sitemap');
 const scaffold = require('./scaffold');
 
@@ -453,6 +453,27 @@ function describeField(session, ref) {
   return res;
 }
 
+// The site hero image (home-page hero background, else the first hero
+// anywhere) — what a page-header that omits its own background inherits at
+// render time. Mirrors findSiteHeroImage in build.js (that module is an entry
+// script and can't be required without running a build).
+function siteHeroImage(content) {
+  const pages = (content && content.pages) || [];
+  const heroBg = (page) => (page.blocks || [])
+    .find(b => b && b.type === 'hero' && b.fields && b.fields.background);
+  const index = pages.find(p => p.slug === 'index');
+  const hit = (index && heroBg(index)) || pages.map(heroBg).find(Boolean);
+  return hit ? hit.fields.background : null;
+}
+
+// Is (block, field) an allowlisted creatable field (today all image fields)?
+// Shares patch.js's CREATABLE_FIELDS so the editor offers exactly what the
+// write path will accept creating.
+function isCreatableImageField(content, blockId, field) {
+  const guard = CREATABLE_FIELDS[blockTypeById(content, blockId)];
+  return !!(guard && guard[field]);
+}
+
 function describeFieldValue(session, ref) {
   if (!ref || typeof ref.block !== 'string' || typeof ref.field !== 'string') {
     return { ok: false, error: 'a field reference needs at least "block" and "field"' };
@@ -461,7 +482,16 @@ function describeFieldValue(session, ref) {
   const r = resolveHost(content, ref.block, ref.item != null ? ref.item : null);
   if (r.error) return { ok: false, error: r.error };
   const f = readFieldValue(r.host, ref.field);
-  if (!f.exists) return { ok: false, error: `field "${ref.field}" does not exist on "${ref.block}"` };
+  if (!f.exists) {
+    // An omitted page-header background is editable even though it's absent:
+    // its "current" value is the inherited site hero image, and saving creates
+    // the field (permitted by applyPatch's CREATABLE allowlist).
+    if ((ref.index == null || ref.index === '') && (ref.item == null || ref.item === '')
+        && isCreatableImageField(content, ref.block, ref.field)) {
+      return { ok: true, kind: 'image', field: ref.field, value: siteHeroImage(content) || '', inherited: true };
+    }
+    return { ok: false, error: `field "${ref.field}" does not exist on "${ref.block}"` };
+  }
   const v = f.value;
 
   // A single line of a flat text list (annotated with data-bk-index).

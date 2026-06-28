@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all twenty-four end-to-end proofs in sequence and prints results.
+// Runs all twenty-five end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -120,6 +120,17 @@
 //             marker nor any data-bk-* (no preview-only attribute leaks live).
 //             The overlay's own click resolution is browser JS, exercised in
 //             the UI rather than this Node harness.
+// Proof 25:   per-page page-header background (owner can set an image where the
+//             header inherits the site hero): the edit map exposes background on
+//             a header that omits it and the annotated build marks it; the patch
+//             resolver's narrow CREATABLE allowlist creates the field ONLY for a
+//             page-header background set to an image-path value — a non-image
+//             value, an unrelated new field, and a background on a non-header
+//             block are all refused with nothing written; the owner editor opens
+//             it as an image whose current value is the inherited hero; and a
+//             created per-page background rides keep → publish to live HTML that
+//             shows the new image (overriding the inherited hero) with no
+//             annotations or ids.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -213,7 +224,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 24;
+const TOTAL = 25;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -2540,6 +2551,128 @@ console.log('\n═══ PROOF 24 — Reachable section backgrounds: data-bk-bg 
     console.log('       background fields; and a live build carries neither the marker nor any');
     console.log('       data-bk-* — the overlay routes a dead-space click to a target the live');
     console.log('       site never exposes.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 25 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 25 — Per-page page-header background: owner can set an image where the header inherits the hero ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-header-bg';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+  const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+  try {
+    // example-contractor has a hero on index (so heroImage exists) and interior
+    // page-headers that OMIT background (about-header inherits the hero).
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-contractor', 'content.json'),
+      path.join(liveDir, 'content.json'));
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Proof Client', publish: 'none' }) + '\n', 'utf8');
+
+    const content = readContent(CLIENT);
+    const header = content.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+    if (!header) failures.push('test premise broken: no about page-header');
+    if (header && 'background' in header.fields) failures.push('test premise broken: about-header already sets a background');
+
+    // (a) The edit map exposes background on the omitted-background header.
+    const map = buildEditMap(content, loadTokens(content));
+    const phDesc = map.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+    if (!phDesc.scalars.some(s => s.field === 'background')) {
+      failures.push('edit map does not expose background on a header that omits it');
+    }
+
+    // (b) The annotated build marks that header's background (so the overlay can
+    //     reach it) even though it's only the inherited hero being painted.
+    build(CLIENT, ['--annotate']);
+    const annAbout = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', 'about.html'), 'utf8');
+    if (!/class="page-header-bg[^"]*"[^>]*\sdata-bk-field="background"[^>]*\sdata-bk-bg/.test(annAbout)) {
+      failures.push('annotated omitted-background header is not marked editable (data-bk-field=background + data-bk-bg)');
+    }
+
+    // (c) The CREATABLE allowlist is narrow: a page-header background takes an
+    //     image-path value (created), but a non-image value, an unrelated new
+    //     field, and a background on a NON-header block are all refused — and
+    //     every rejection leaves the content byte-identical.
+    const orig = JSON.stringify(content);
+    const okCreate = applyPatch(JSON.parse(orig), { action: 'set', block: header.id, field: 'background', value: 'img/about-banner.jpg' });
+    if (!okCreate.ok || !okCreate.created) failures.push(`creating a header background with an image value failed: ${okCreate.error || 'no created flag'}`);
+
+    const nonHeader = content.pages.flatMap(p => p.blocks).find(b => b.type !== 'page-header' && b.type !== 'hero' && !('background' in (b.fields || {})));
+    const rejects = [
+      ['non-image value', { action: 'set', block: header.id, field: 'background', value: 'not-an-image' }],
+      ['unrelated new field', { action: 'set', block: header.id, field: 'invented', value: 'x' }],
+      ['traversal image value', { action: 'set', block: header.id, field: 'background', value: 'img/../../evil.png' }],
+    ];
+    if (nonHeader) rejects.push(['background on a non-header block', { action: 'set', block: nonHeader.id, field: 'background', value: 'img/x.jpg' }]);
+    for (const [label, patch] of rejects) {
+      const probe = JSON.parse(orig);
+      const r = applyPatch(probe, patch);
+      if (r.ok) failures.push(`creation that must be refused was accepted: ${label}`);
+      if (JSON.stringify(probe) !== orig) failures.push(`a refused creation (${label}) modified the content`);
+    }
+
+    // (d) Through the owner editor: the omitted background opens as an IMAGE
+    //     whose current value is the inherited hero; an uploaded image creates
+    //     the field candidate-side; publish puts a per-page background live that
+    //     OVERRIDES the inherited hero, with no annotations or ids in the HTML.
+    const session = owner.createSession(CLIENT);
+    const heroBg = content.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero').fields.background;
+    const d = owner.describeField(session, { block: header.id, field: 'background' });
+    if (!d.ok || d.kind !== 'image') failures.push(`describeField on the omitted background did not return an image editor: ${JSON.stringify(d)}`);
+    else if (d.value !== heroBg || !d.inherited) failures.push(`the omitted background's current value should be the inherited hero "${heroBg}" (got "${d.value}", inherited=${d.inherited})`);
+
+    const e = owner.applyEdit(session,
+      { action: 'set', block: header.id, field: 'background' },
+      { name: 'about header.png', dataBase64: PNG_1PX });
+    if (!e.ok) failures.push(`creating the header background through the editor failed: ${e.error}`);
+    else {
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const candHeader = cand.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+      if (candHeader.fields.background !== 'img/about-header.png') failures.push(`candidate header background not created as expected: ${candHeader.fields.background}`);
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      const liveHeader = live.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+      if ('background' in liveHeader.fields) failures.push('LIVE header gained a background before publish');
+    }
+    owner.keep(session);
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const liveAbout = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'about.html'), 'utf8');
+      if (!liveAbout.includes("background-image:url('img/about-header.png')")) {
+        failures.push('the published per-page header background is not in the live HTML');
+      }
+      if (liveAbout.includes(`url('${heroBg}')`)) failures.push('the live header still paints the inherited hero instead of the per-page image');
+      if (liveAbout.includes('data-bk-')) failures.push('live about page carries data-bk-* after publish');
+      if (!fs.existsSync(path.join(ROOT, 'dist', CLIENT, 'img', 'about-header.png'))) failures.push('the uploaded header image was not published to live img/');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a page-header that inherits the site hero exposes its background as');
+    console.log('       editable (mapped + marked in the annotated build); the patch resolver');
+    console.log('       creates it ONLY for a page-header background set to an image path, and');
+    console.log('       refuses a non-image value, an unrelated new field, and a background on');
+    console.log('       a non-header block with nothing written; the editor opens it as an');
+    console.log('       image whose current value is the inherited hero; and a created per-page');
+    console.log('       background publishes to live HTML, overriding the hero, with no');
+    console.log('       annotations or ids.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
