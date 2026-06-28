@@ -224,7 +224,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 25;
+const TOTAL = 26;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -2673,6 +2673,146 @@ console.log('\n═══ PROOF 25 — Per-page page-header background: owner can
     console.log('       image whose current value is the inherited hero; and a created per-page');
     console.log('       background publishes to live HTML, overriding the hero, with no');
     console.log('       annotations or ids.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 26 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 26 — Section doorway: a section can add the optional text it omits (subtitle), guarded ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-section-doorway';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  try {
+    // example-contractor: a hero on index (subhead is schema-REQUIRED, so it is
+    // always present — never creatable) and an about page-header whose subtitle
+    // is OPTIONAL. Ensure the header omits it — the dead-end the doorway addresses.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const hero   = base.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero');
+    const header = base.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+    if (!hero || !header) failures.push('test premise broken: missing hero or about page-header');
+    if (header) delete header.fields.subhead;
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Doorway Proof', publish: 'none' }) + '\n', 'utf8');
+
+    const content = readContent(CLIENT);
+
+    // (a) The edit map surfaces the omitted page-header subtitle as CREATABLE
+    //     (not a scalar, so proof 1 never demands an annotation for an element
+    //     that isn't rendered). A required hero subhead stays an ordinary scalar
+    //     and is never reported creatable.
+    const map = buildEditMap(content, loadTokens(content));
+    const heroDesc = map.pages.find(p => p.slug === 'index').blocks.find(b => b.id === hero.id);
+    const phDesc   = map.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id);
+    const phSub = (phDesc.creatable || []).find(x => x.field === 'subhead');
+    if (!phSub || phSub.kind !== 'text') failures.push('page-header edit map does not report subhead as a creatable text field');
+    if ((phDesc.scalars || []).some(s => s.field === 'subhead')) failures.push('an absent page-header subhead was put in scalars (would over-constrain proof 1)');
+    if ((heroDesc.creatable || []).some(c => c.field === 'subhead')) failures.push('a required hero subhead was wrongly reported creatable');
+    if (!(heroDesc.scalars || []).some(s => s.field === 'subhead')) failures.push('the required hero subhead is not a scalar');
+    // The inherited page-header BACKGROUND stays a scalar (whenAbsent:'inherits'),
+    // never surfaced as creatable — the prior behaviour is unchanged.
+    if (!(phDesc.scalars || []).some(s => s.field === 'background')) failures.push('page-header background no longer exposed as a scalar');
+    if ((phDesc.creatable || []).some(c => c.field === 'background')) failures.push('page-header background wrongly surfaced as creatable');
+    // Once a subtitle exists, it is an ordinary scalar and no longer creatable.
+    const withSub = JSON.parse(JSON.stringify(content));
+    withSub.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id).fields.subhead = 'Hello';
+    const phWith = buildEditMap(withSub, loadTokens(withSub)).pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id);
+    if ((phWith.creatable || []).some(c => c.field === 'subhead')) failures.push('a present subhead is still reported as creatable');
+    if (!(phWith.scalars || []).some(s => s.field === 'subhead')) failures.push('a present subhead is not a scalar');
+
+    // (b) The CREATABLE guard is narrow: a page-header subtitle takes a one-line
+    //     text value (created), but an over-long value, a control character, a
+    //     non-string, an unrelated new field, and a subtitle on a block type NOT
+    //     in the allowlist are all refused — each leaving the content untouched.
+    const orig = JSON.stringify(content);
+    const okCreate = applyPatch(JSON.parse(orig), { action: 'set', block: header.id, field: 'subhead', value: 'Serving the area since 1998.' });
+    if (!okCreate.ok || !okCreate.created) failures.push(`creating a page-header subtitle with a text value failed: ${okCreate.error || 'no created flag'}`);
+
+    const other = content.pages.flatMap(p => p.blocks).find(b => b.type !== 'hero' && b.type !== 'page-header' && !('subhead' in (b.fields || {})));
+    const rejects = [
+      ['over-long value', { action: 'set', block: header.id, field: 'subhead', value: 'x'.repeat(201) }],
+      ['control character', { action: 'set', block: header.id, field: 'subhead', value: 'line\nbreak' }],
+      ['non-string value', { action: 'set', block: header.id, field: 'subhead', value: 42 }],
+      ['unrelated new field', { action: 'set', block: header.id, field: 'invented', value: 'x' }],
+    ];
+    if (other) rejects.push([`subtitle on a ${other.type} block`, { action: 'set', block: other.id, field: 'subhead', value: 'nope' }]);
+    for (const [label, patch] of rejects) {
+      const probe = JSON.parse(orig);
+      const r = applyPatch(probe, patch);
+      if (r.ok) failures.push(`creation that must be refused was accepted: ${label}`);
+      if (JSON.stringify(probe) !== orig) failures.push(`a refused creation (${label}) modified the content`);
+    }
+
+    // (c) Through the owner editor: the omitted subtitle opens as an EMPTY text
+    //     editor flagged creating; describeSection reports the section's settings
+    //     + the addable subtitle; an edit creates it candidate-side; publish puts
+    //     it live with no annotations or ids.
+    const session = owner.createSession(CLIENT);
+    const d = owner.describeField(session, { block: header.id, field: 'subhead' });
+    if (!d.ok || d.kind !== 'text' || d.value !== '' || !d.creating) failures.push(`describeField on the omitted subtitle did not open an empty creating text editor: ${JSON.stringify(d)}`);
+
+    const sec = owner.describeSection(session, { block: header.id });
+    if (!sec.ok) failures.push(`describeSection on the page-header failed: ${sec.error}`);
+    else {
+      if (sec.type !== 'page-header') failures.push(`describeSection reported the wrong type: ${sec.type}`);
+      if (!sec.background) failures.push('describeSection did not report the page-header background setting');
+      if (!(sec.addable || []).some(a => a.field === 'subhead')) failures.push('describeSection did not offer to add the subtitle');
+    }
+    // A hero section: settings present, but nothing to add (subhead required).
+    const heroSec = owner.describeSection(session, { block: hero.id });
+    if (!heroSec.ok || heroSec.type !== 'hero') failures.push('describeSection on the hero failed');
+    else if ((heroSec.addable || []).some(a => a.field === 'subhead')) failures.push('describeSection offered to add a subtitle to a hero that already requires one');
+    const secMissing = owner.describeSection(session, { block: 'no-such-block' });
+    if (secMissing.ok) failures.push('describeSection accepted an unknown section');
+
+    const e = owner.applyEdit(session, { action: 'set', block: header.id, field: 'subhead', value: 'Serving the area since 1998.' });
+    if (!e.ok) failures.push(`creating the page-header subtitle through the editor failed: ${e.error}`);
+    else {
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const candHeader = cand.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id);
+      if (candHeader.fields.subhead !== 'Serving the area since 1998.') failures.push(`candidate page-header subtitle not created as expected: ${candHeader.fields.subhead}`);
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      const liveHeader = live.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id);
+      if ('subhead' in liveHeader.fields) failures.push('LIVE page-header gained a subtitle before publish');
+    }
+    owner.keep(session);
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const liveAbout = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'about.html'), 'utf8');
+      if (!liveAbout.includes('Serving the area since 1998.')) failures.push('the published page-header subtitle is not in the live HTML');
+      if (liveAbout.includes('data-bk-')) failures.push('live about page carries data-bk-* after publish');
+      if (liveAbout.includes('bk-section-chip')) failures.push('the section chip leaked into a live build');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a page-header that omits its (optional) subtitle surfaces it as a');
+    console.log('       CREATABLE text field (never a scalar, so the annotation proof is not over-');
+    console.log('       constrained), while a required hero subhead stays an ordinary scalar;');
+    console.log('       the resolver creates it ONLY for a one-line text value on');
+    console.log('       an allowlisted block, refusing an over-long/control-char/non-string');
+    console.log('       value, an unrelated field, and a subtitle on a non-allowlisted block with');
+    console.log('       nothing written; the editor opens the omission as an empty text field and');
+    console.log('       describeSection offers it alongside the section settings; and a created');
+    console.log('       subtitle publishes to live HTML with no annotations or chip leaking in.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

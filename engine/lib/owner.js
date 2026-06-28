@@ -81,7 +81,7 @@ const fs   = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS } = require('./patch');
+const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor } = require('./patch');
 const { buildEditMap } = require('./sitemap');
 const scaffold = require('./scaffold');
 
@@ -466,12 +466,11 @@ function siteHeroImage(content) {
   return hit ? hit.fields.background : null;
 }
 
-// Is (block, field) an allowlisted creatable field (today all image fields)?
-// Shares patch.js's CREATABLE_FIELDS so the editor offers exactly what the
-// write path will accept creating.
-function isCreatableImageField(content, blockId, field) {
-  const guard = CREATABLE_FIELDS[blockTypeById(content, blockId)];
-  return !!(guard && guard[field]);
+// The creatable-field descriptor for (block, field), or null. Shares patch.js's
+// CREATABLE_FIELDS so the editor offers exactly what the write path will accept
+// creating, and opens the right editor for the descriptor's `kind`.
+function creatableDescriptor(content, blockId, field) {
+  return creatableFieldsFor(blockTypeById(content, blockId)).find(c => c.field === field) || null;
 }
 
 function describeFieldValue(session, ref) {
@@ -483,12 +482,19 @@ function describeFieldValue(session, ref) {
   if (r.error) return { ok: false, error: r.error };
   const f = readFieldValue(r.host, ref.field);
   if (!f.exists) {
-    // An omitted page-header background is editable even though it's absent:
-    // its "current" value is the inherited site hero image, and saving creates
-    // the field (permitted by applyPatch's CREATABLE allowlist).
-    if ((ref.index == null || ref.index === '') && (ref.item == null || ref.item === '')
-        && isCreatableImageField(content, ref.block, ref.field)) {
+    // An allowlisted creatable field is editable even though it's absent —
+    // saving CREATES it (permitted by applyPatch's CREATABLE guard). The
+    // editor opened depends on the descriptor's kind:
+    //   image — an omitted page-header background, whose "current" value is the
+    //     inherited site hero image;
+    //   text  — an omitted subtitle, opened as an empty text field.
+    const desc = (ref.index == null || ref.index === '') && (ref.item == null || ref.item === '')
+      ? creatableDescriptor(content, ref.block, ref.field) : null;
+    if (desc && desc.kind === 'image') {
       return { ok: true, kind: 'image', field: ref.field, value: siteHeroImage(content) || '', inherited: true };
+    }
+    if (desc && desc.kind === 'text') {
+      return { ok: true, kind: 'text', field: ref.field, value: '', creating: true };
     }
     return { ok: false, error: `field "${ref.field}" does not exist on "${ref.block}"` };
   }
@@ -519,6 +525,38 @@ function describeFieldValue(session, ref) {
   const s = String(v == null ? '' : v);
   const kind = (s.includes('\n') || s.length > LONG_TEXT_THRESHOLD) ? 'long-text' : 'text';
   return { ok: true, kind, field: ref.field, value: s };
+}
+
+/* Describe one SECTION's settings + addable fields — what the overlay's
+   per-section chip opens in the Section panel. Read-only and derived from the
+   same edit map every other surface is: the section-level concerns it reports
+   (background, style/variant, visibility) and the optional fields it could ADD
+   but omits (the descriptor's `creatable`) all route back through the existing
+   /api/field + /api/edit path, so the panel adds no new write surface. */
+function describeSection(session, ref) {
+  if (!ref || typeof ref.block !== 'string') {
+    return { ok: false, error: 'a section reference needs a "block" id' };
+  }
+  const content = readCandidate(session);
+  const map = buildEditMap(content, presetTokensFor(content));
+  let desc = null;
+  for (const p of map.pages || []) {
+    for (const b of p.blocks || []) if (b.id === ref.block) desc = b;
+  }
+  if (!desc) return { ok: false, error: `unknown section "${ref.block}"` };
+  const fields = indexHosts(content).get(ref.block) || {};
+  const hasVariant = desc.scalars.some(s => s.field === 'variant');
+  return {
+    ok: true,
+    block: ref.block,
+    type: desc.type,
+    // background/variant report whether the section exposes that setting at all
+    // (a scalar on the edit map); the panel routes each to its existing editor.
+    background: desc.scalars.some(s => s.field === 'background'),
+    variant: hasVariant ? { value: fields.variant != null ? String(fields.variant) : '' } : null,
+    hidden: desc.hidden,          // null when the visibility flag isn't seeded
+    addable: (desc.creatable || []).map(c => ({ field: c.field, kind: c.kind })),
+  };
 }
 
 /* Run the token guards (format + contrast) against the CANDIDATE content
@@ -1046,7 +1084,7 @@ function runPublish(session, summary) {
 }
 
 module.exports = {
-  createSession, getState, describeField, checkToken,
+  createSession, getState, describeField, describeSection, checkToken,
   // The maintenance-tier handlers are exported through the ledger
   // boundary: one JSONL line per attempt, whoever the caller is.
   applyEdit: logged('edit', applyEdit,

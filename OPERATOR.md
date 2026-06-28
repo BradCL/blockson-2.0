@@ -181,17 +181,36 @@ never create a field. Migrate once with
 `node extras/add-hidden-flags.js <client-name>` (idempotent — seeds
 `"hidden": false` on every block that lacks it), then rebuild.
 
-**Owner-creatable fields (the one exception).** The maintenance tier otherwise
-only edits fields a developer seeded — it cannot invent new ones. The single,
-deliberate exception is a **page-header background**: an interior header that
-omits `background` inherits the site hero image, and the editor lets the owner
-give that page its own image instead (clicking the header area opens the image
-editor, showing the inherited hero as the current image). Saving creates the
-`background` field on that header, overriding the inherited hero for that page
-only. The write is narrowly guarded — only a `page-header`, only the
-`background` field, only an image-path value — so it never widens what else the
-owner can create. To go back to inheriting the hero, a developer removes the
-field. (This is the `CREATABLE_FIELDS` allowlist in `engine/lib/patch.js`.)
+**The Section panel (settings + adding what a section omits).** The editor is
+"click the thing on the page to edit the thing," but anything *not* rendered has
+nothing to click. So every hero and page-header shows a small **"Edit section"
+chip** on hover; clicking it opens a Section panel that gathers the section's
+settings (background, style, visibility) in one place and — its main job —
+offers to **add** the optional fields the section type supports but this section
+doesn't have yet. The chip is part of the editor overlay only: it is never in
+any build, and a live page (which carries no edit markers) never shows it.
+
+**Owner-creatable fields (the narrow exception).** The maintenance tier
+otherwise only edits fields a developer seeded — it cannot invent new ones. The
+deliberate, allowlisted exceptions are:
+- a **page-header background** — an interior header that omits `background`
+  inherits the site hero image, and the editor lets the owner give that page its
+  own image instead (clicking the header area, or the Section panel's
+  "Change background", opens the image editor showing the inherited hero as the
+  current image); saving creates the field, overriding the inherited hero for
+  that page only;
+- a **page-header subtitle** — a header that omits its optional `subhead` has no
+  element to click, so the Section panel offers "Add a subtitle"; saving creates
+  the field with the typed line. (A hero subhead is schema-*required*, so a hero
+  always has one and it is edited in place — it is not creatable.)
+
+Each write is narrowly guarded — only these block types and fields, an image
+field only an image-path value, a text field only a single capped line — so the
+exception never widens what else the owner can create. To remove a created
+field, a developer deletes it from `content.json`. (This is the
+`CREATABLE_FIELDS` allowlist in `engine/lib/patch.js`; the edit map reports each
+omitted field as "creatable" so the Section panel offers exactly what the write
+path will accept.)
 
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
 editor scales it to at most 1920 px on the longest edge and re-encodes it (PNG →

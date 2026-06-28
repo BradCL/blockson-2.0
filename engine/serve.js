@@ -21,6 +21,7 @@
      GET  /preview/...           annotated candidate build (+ overlay in HTML)
      GET  /api/state             session state: staged list, pending card, tokens, pages
      GET  /api/field?...         describe one editable field (current value, editor kind)
+     GET  /api/section?block=    describe one section's settings + addable fields (Section panel)
      GET  /api/blueprints        the validated blueprint registry (Add… menu)
      POST /api/edit              { patch, upload? }  → pending change
      POST /api/scaffold          { blueprint, variant, values, uploads?,
@@ -291,6 +292,10 @@ async function handle(req, res) {
         index: q.get('index'),
       };
       const r = owner.describeField(session, ref);
+      return sendJson(res, r.ok ? 200 : 400, r);
+    }
+    if (pathname === '/api/section') {
+      const r = owner.describeSection(session, { block: url.searchParams.get('block') || undefined });
       return sendJson(res, r.ok ? 200 : 400, r);
     }
     return sendError(res, 404, 'not found');

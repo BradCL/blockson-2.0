@@ -20,6 +20,17 @@
   var $ = function (id) { return document.getElementById(id); };
   var iframe = $('preview');
 
+  // Friendly names for section settings / addable fields (Section panel).
+  var FIELD_LABELS = {
+    subhead: 'subtitle',
+    variant: 'style',
+    background: 'background',
+  };
+  function fieldLabel(f) { return FIELD_LABELS[f] || f; }
+  function sectionTypeLabel(t) {
+    return t === 'hero' ? 'hero' : t === 'page-header' ? 'page header' : t;
+  }
+
   // Friendly labels for the safe-token allowlist.
   var TOKEN_LABELS = {
     '--color-primary': 'Brand color',
@@ -550,6 +561,62 @@
     ed.appendChild(row);
   }
 
+  // ── Section panel (the per-section doorway) ──────────────────
+  // Opened by the preview overlay's section chip (postMessage 'bk-section').
+  // Consolidates a section's settings (background, style, visibility) and the
+  // optional fields it could ADD but omits — each routed to the SAME field
+  // editor / toggle path a normal click uses, so the panel adds no new write
+  // surface. Drilling into a setting replaces this panel with that editor.
+  function openSectionEditor(block) {
+    if (state && state.pending) {
+      showMessage('info', 'You already have a pending change — keep or discard it first.');
+      return;
+    }
+    clearMessage();
+    apiGet('/api/section?block=' + encodeURIComponent(block)).then(function (info) {
+      if (!info.ok) { showMessage('error', info.error); return; }
+      var ed = editorShell('Section settings');
+      ed.appendChild(el('p', 'hint', 'Settings for this ' + sectionTypeLabel(info.type) + ' section.'));
+
+      if (info.background) {
+        ed.appendChild(el('div', 'field-label', 'Background'));
+        ed.appendChild(el('div', 'btn-row')).appendChild(
+          button('Change background…', null, function () { openEditor({ block: block, field: 'background' }); }));
+      }
+      if (info.variant) {
+        ed.appendChild(el('div', 'field-label', 'Style'));
+        ed.appendChild(el('div', 'btn-row')).appendChild(
+          button('Change style…', null, function () { openEditor({ block: block, field: 'variant' }); }));
+      }
+
+      // Add what this section could have but doesn't yet (e.g. a subtitle).
+      if (info.addable && info.addable.length) {
+        ed.appendChild(el('div', 'field-label', 'Add to this section'));
+        var addRow = el('div', 'btn-row');
+        info.addable.forEach(function (a) {
+          addRow.appendChild(button('Add a ' + fieldLabel(a.field), null, function () {
+            openEditor({ block: block, field: a.field });
+          }));
+        });
+        ed.appendChild(addRow);
+      }
+
+      // Section visibility, when the flag is seeded on this block.
+      if (typeof info.hidden === 'boolean') {
+        ed.appendChild(el('div', 'field-label', 'This whole section'));
+        ed.appendChild(el('div', 'hint', info.hidden
+          ? 'This section is hidden — visitors do not see it on the live site.'
+          : 'Visitors currently see this section on the live site.'));
+        ed.appendChild(el('div', 'btn-row')).appendChild(
+          button(info.hidden ? 'Show this section again' : 'Hide this section', null, function () {
+            stage({ action: 'set', block: block, field: 'hidden', value: !info.hidden }, null, ed);
+          }));
+      }
+
+      ed.appendChild(el('div', 'btn-row')).appendChild(button('Cancel', null, closeEditor));
+    });
+  }
+
   // ── Add… (blueprint scaffolding) ─────────────────────────────
   // The Add… menu lists the validated blueprint registry; choosing one
   // renders a form generated from its declared input schema, and the
@@ -878,6 +945,9 @@
     }
     if (e.data.type === 'bk-edit') {
       openEditor({ block: e.data.block, item: e.data.item, field: e.data.field, index: e.data.index });
+    }
+    if (e.data.type === 'bk-section' && typeof e.data.block === 'string') {
+      openSectionEditor(e.data.block);
     }
   });
 

@@ -20,7 +20,7 @@
 
 'use strict';
 
-const { SAFE_TOKENS } = require('./patch');
+const { SAFE_TOKENS, creatableFieldsFor } = require('./patch');
 
 const PREVIEW_LEN = 200;
 
@@ -135,18 +135,28 @@ function describeBlock(block) {
       scalars.push({ field: name, preview: preview(v) });
     }
   }
-  // A page-header that OMITS its background inherits the site hero image at
-  // render time, so the field isn't in `fields` and wouldn't be editable. Add
-  // it to the surface anyway: the owner can give an interior header its own
-  // image, and applyPatch's CREATABLE allowlist permits creating exactly this
-  // field (with an image-path value). When the header already sets a
-  // background it's covered by the loop above, so only add it when missing.
-  if (block.type === 'page-header' && !scalars.some(s => s.field === 'background')) {
-    scalars.push({ field: 'background', preview: null });
+  // CREATABLE fields the block currently OMITS — the editable surface a click
+  // can't reach because nothing renders for an absent value. Two kinds, by the
+  // descriptor's whenAbsent (see patch.js CREATABLE_FIELDS):
+  //   'inherits' — a rendered element exists even when omitted (a page-header
+  //     background inherits the site hero and always paints a bg div). Add it
+  //     to `scalars` so it stays click-reachable, exactly as before; proof 1's
+  //     annotation requirement is satisfied by that always-rendered element.
+  //   'omitted'  — no element renders for an absent value (a subhead). It can't
+  //     be a scalar (proof 1 would demand an annotation no renderer emits), so
+  //     it surfaces in `creatable` — the doorway the Section panel reads.
+  const creatable = [];
+  for (const c of creatableFieldsFor(block.type)) {
+    if (Object.prototype.hasOwnProperty.call(fields, c.field)) continue; // present → handled above
+    if (c.whenAbsent === 'inherits') {
+      if (!scalars.some(s => s.field === c.field)) scalars.push({ field: c.field, preview: null });
+    } else {
+      creatable.push({ field: c.field, kind: c.kind });
+    }
   }
 
   return {
-    id: block.id, type: block.type, scalars, textLists, itemSets,
+    id: block.id, type: block.type, scalars, textLists, itemSets, creatable,
     // null = the flag is not seeded on this block (no toggle to offer);
     // true/false = the owner-togglable visibility state.
     hidden: typeof fields.hidden === 'boolean' ? fields.hidden : null,
@@ -194,6 +204,9 @@ function renderEditMap(content, presetTokens) {
           const lbl = it.label ? `  ${it.label.key}: "${it.label.value}"` : '';
           L.push(`      item "${it.id}"${lbl}  — fields: ${it.fields.join(', ')}`);
         }
+      }
+      if (b.creatable && b.creatable.length) {
+        L.push(`    can add: ${b.creatable.map(c => c.field).join(', ')}`);
       }
     }
   }

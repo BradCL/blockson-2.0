@@ -51,7 +51,13 @@
     '[data-bk-hidden]::before{content:"Hidden section \\2014  visitors don\\2019t see this. Click anywhere in it to show it again.";' +
     'display:block;position:absolute;top:0;left:0;right:0;z-index:50;' +
     'background:#b45309;color:#fff;font:13px/1.6 system-ui,sans-serif;' +
-    'text-align:center;padding:2px 8px;opacity:1}';
+    'text-align:center;padding:2px 8px;opacity:1}' +
+    // The per-section doorway chip: a single hover-revealed affordance (see
+    // below). position:fixed so a section's overflow:hidden can't clip it.
+    '.bk-section-chip{position:fixed;z-index:2147483646;background:#2563eb;color:#fff;' +
+    'border:none;border-radius:4px;font:13px/1 system-ui,sans-serif;padding:6px 10px;' +
+    'cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}' +
+    '.bk-section-chip:hover{background:#1d4ed8}';
   document.head.appendChild(editStyle);
 
   // PREVIEW-mode styling: simulate the live site by dropping hidden sections
@@ -64,6 +70,45 @@
   function clearHover() {
     if (hovered) { hovered.classList.remove('bk-hover'); hovered = null; }
   }
+
+  // ── Section chip (the per-section doorway) ────────────────────
+  // A single hover-revealed affordance that opens the editor's Section panel —
+  // background, style, visibility, and "add what this section doesn't have
+  // yet" (e.g. a subtitle), none of which depends on a particular element
+  // being rendered. It lives in document.body (position:fixed) so a section's
+  // overflow:hidden can't clip it, the same reason the hover ring rings the
+  // section rather than its behind-content background. The chip is resolved
+  // from the existing data-bk-bg marker (always present on a hero/page-header
+  // in the annotated preview): its parent is the section, and the marker
+  // carries the block id. EDIT-mode only and overlay-injected — never in any
+  // build, and a live page has no data-bk-bg, so it never resolves a section.
+  var chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'bk-section-chip';
+  chip.textContent = 'Edit section ▾';
+  chip.style.display = 'none';
+  document.body.appendChild(chip);
+  var chipBlock = null;
+
+  function hideChip() { chip.style.display = 'none'; chipBlock = null; }
+
+  function showChipFor(section, blockId) {
+    var r = section.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) { hideChip(); return; }
+    chipBlock = blockId;
+    chip.style.display = 'block';
+    chip.style.top = Math.max(8, r.top + 8) + 'px';
+    chip.style.right = Math.max(8, window.innerWidth - r.right + 8) + 'px';
+  }
+
+  chip.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (chipBlock) window.parent.postMessage({ type: 'bk-section', block: chipBlock }, ORIGIN);
+  });
+  // A stale fixed-position chip after scrolling would float over the wrong
+  // place; drop it and let the next hover re-resolve it.
+  window.addEventListener('scroll', hideChip, true);
 
   // ── Target resolution ─────────────────────────────────────────
   // Normally the edit target is the innermost ancestor carrying data-bk-*
@@ -104,6 +149,7 @@
   function setMode(m) {
     mode = (m === 'preview') ? 'preview' : 'edit';
     clearHover();
+    hideChip();
     if (mode === 'preview') {
       if (editStyle.parentNode) editStyle.parentNode.removeChild(editStyle);
       if (!previewStyle.parentNode) document.head.appendChild(previewStyle);
@@ -115,6 +161,13 @@
 
   document.addEventListener('mouseover', function (e) {
     if (mode !== 'edit') return;
+    // Keep the chip up while the pointer is on it (it sits above the section).
+    if (e.target === chip) return;
+    // Reveal the chip for the section under the pointer (a hero/page-header,
+    // identified by its data-bk-bg child); hide it anywhere else.
+    var sec = sectionBackground(e.target);
+    if (sec) showChipFor(sec.section, sec.bg.dataset.bkBlock);
+    else hideChip();
     var el = resolveTarget(e.target);
     // For a behind-content background, ring the SECTION (its parent) instead:
     // the background's own outline would be clipped by the section's

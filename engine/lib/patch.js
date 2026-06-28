@@ -70,18 +70,46 @@ const FORBIDDEN_KEYS = new Set(['id', 'type', 'slug']);
 // canonical guard module stays dependency-free).
 const IMAGE_PATH_RE = /^img\/[A-Za-z0-9._-]+\.(png|jpe?g|gif|webp|avif|svg)$/i;
 
+// One-line text guard for a creatable text field (e.g. a subtitle): up to
+// 200 chars, no control characters or line breaks. The value is escaped at
+// render exactly like an existing subhead, so this is the privileged-create
+// gate (creation is the one act the resolver normally refuses), not a render
+// safety net. \x00-\x1F and \x7F are the C0/C1-adjacent control range.
+const TEXT_LINE_RE = /^[^\x00-\x1F\x7F]{1,200}$/;
+
 // CREATABLE FIELDS — the single, narrow exception to "the resolver never
-// creates a field." Keyed by block TYPE → field → value guard. A plain `set`
-// may bring one of these into existence on a block that omits it, but ONLY
-// with a value the guard accepts; everything else still requires the field to
-// pre-exist. Today: a page-header background, so an interior header that
-// inherits the site hero image can be given its own image from the editor.
-// The value guard means creation can never smuggle in arbitrary content, and
-// the editable surface is still developer-defined (this allowlist), not
-// owner-expandable.
+// creates a field." Keyed by block TYPE → field → a DESCRIPTOR
+// { kind, guard, whenAbsent }. A plain `set` may bring one of these into
+// existence on a block that omits it, but ONLY with a value the `guard`
+// (a RegExp) accepts; everything else still requires the field to pre-exist.
+//   kind:       'image' | 'text' — which editor the field opens / how the
+//               edit map surfaces it.
+//   whenAbsent: 'inherits' — a rendered element exists even when the value is
+//               omitted (the page-header background inherits the site hero and
+//               always paints a bg div), so the field stays click-reachable as
+//               an ordinary scalar; vs
+//               'omitted' — no element renders when the value is absent (a
+//               subhead), so the field is unreachable by clicking and is
+//               surfaced as a "creatable" doorway instead.
+// The guard means creation can never smuggle in arbitrary content, and the
+// editable surface is still developer-defined (this allowlist), not
+// owner-expandable. Only genuinely OPTIONAL fields belong here: a hero subhead
+// is schema-REQUIRED (heroFields in content.schema.json), so a hero always has
+// one and it is already click-editable — it is not creatable. A page-header
+// subhead IS optional (pageHeaderFields requires only tag + heading), so an
+// interior header that omits its subtitle can have one added from the editor.
 const CREATABLE_FIELDS = {
-  'page-header': { background: IMAGE_PATH_RE },
+  'page-header': { background: { kind: 'image', guard: IMAGE_PATH_RE,  whenAbsent: 'inherits' },
+                   subhead:    { kind: 'text',  guard: TEXT_LINE_RE,   whenAbsent: 'omitted'  } },
 };
+
+// The creatable-field descriptors for a block TYPE, as a flat list — the one
+// source the edit map and owner handlers read so the editor offers exactly
+// what the write path will accept creating.
+function creatableFieldsFor(blockType) {
+  const guard = CREATABLE_FIELDS[blockType] || {};
+  return Object.keys(guard).map(field => ({ field, ...guard[field] }));
+}
 
 function blockTypeById(content, id) {
   for (const page of (content && content.pages) || []) {
@@ -94,12 +122,12 @@ function blockTypeById(content, id) {
 
 // May a plain `set` CREATE this (block, field) with this value? Only for a
 // top-level block field (never an item field) whose (type, field) is in the
-// allowlist and whose value clears the guard.
+// allowlist and whose value clears the descriptor's guard.
 function canCreateField(content, blockId, item, key, value) {
   if (item != null) return false;
   const guard = CREATABLE_FIELDS[blockTypeById(content, blockId)];
-  const re = guard && guard[key];
-  return !!(re && typeof value === 'string' && re.test(value));
+  const desc = guard && guard[key];
+  return !!(desc && typeof value === 'string' && desc.guard.test(value));
 }
 
 /* ── SAFE TOKENS ─────────────────────────────────────────────
@@ -499,7 +527,7 @@ function applyPatch(content, patch, presetTokens) {
 }
 
 module.exports = {
-  applyPatch, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS,
+  applyPatch, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
   FIELD_FORMATS, validateFieldValue,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,

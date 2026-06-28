@@ -76,7 +76,7 @@ async function openWithOverlay(browser, url) {
   await page.evaluate(() => {
     window.__bk = [];
     window.addEventListener('message', (e) => {
-      if (e.data && e.data.type === 'bk-edit') window.__bk.push(e.data);
+      if (e.data && (e.data.type === 'bk-edit' || e.data.type === 'bk-section')) window.__bk.push(e.data);
     });
   });
   return { context, page };
@@ -101,6 +101,22 @@ async function clickDeadSpace(page, sectionSel, contentSel) {
     await new Promise((r) => setTimeout(r, 50)); // postMessage delivers async
     return { ok: true, posted: window.__bk.slice(), targetTag: target.tagName };
   }, { sectionSel, contentSel });
+}
+
+// Hover a section (to reveal the overlay's per-section chip), then click the
+// chip and return whether it showed and what it posted.
+async function hoverSectionClickChip(page, innerSel) {
+  return page.evaluate(async (innerSel) => {
+    const inner = document.querySelector(innerSel);
+    if (!inner) return { error: 'inner element not found: ' + innerSel };
+    inner.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    const chip = document.querySelector('.bk-section-chip');
+    const shown = !!(chip && chip.style.display !== 'none');
+    window.__bk.length = 0;
+    if (chip) chip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 50)); // postMessage delivers async
+    return { ok: true, shown, posted: window.__bk.slice() };
+  }, innerSel);
 }
 
 async function clickSelector(page, sel) {
@@ -144,6 +160,19 @@ async function main() {
       if (h.error) expect(false, `hero headline: ${h.error}`);
       else expect(h.posted[0] && h.posted[0].field === 'headline',
         `hero headline resolved to "${h.posted[0] && h.posted[0].field}", expected "headline"`);
+
+      // (b2) Hovering the hero reveals the per-section chip; clicking it posts a
+      //      bk-section ref carrying the hero block id (the doorway to the
+      //      Section panel), distinct from the per-element bk-edit path.
+      const chip = await hoverSectionClickChip(page, '.hero h1');
+      if (chip.error) expect(false, `hero chip: ${chip.error}`);
+      else {
+        expect(chip.shown, 'the section chip was not revealed on hero hover');
+        expect(chip.posted.length === 1 && chip.posted[0].type === 'bk-section',
+          `hero chip posted ${JSON.stringify(chip.posted)}, expected one bk-section`);
+        expect(chip.posted[0] && typeof chip.posted[0].block === 'string' && chip.posted[0].block,
+          'hero chip bk-section ref carries no block id');
+      }
       await context.close();
     }
 
@@ -172,6 +201,13 @@ async function main() {
       expect(!hasMarker, 'live build page carries data-bk-* attributes (must be annotated-only)');
       const r = await clickDeadSpace(page, '.hero', '.hero-content');
       if (!r.error) expect(r.posted.length === 0, `live dead-space posted ${r.posted.length} refs, expected 0`);
+      // The section chip never resolves on a live page (no data-bk-bg), so it
+      // never shows and never posts — the doorway is preview-only too.
+      const chip = await hoverSectionClickChip(page, '.hero h1');
+      if (!chip.error) {
+        expect(!chip.shown, 'the section chip showed on a live build page (must be preview-only)');
+        expect(chip.posted.length === 0, `live section chip posted ${chip.posted.length} refs, expected 0`);
+      }
       await context.close();
     }
   } catch (e) {
@@ -182,12 +218,14 @@ async function main() {
     liveServer.close();
   }
 
-  console.log('\n═══ OVERLAY E2E — dead-space clicks reach section backgrounds; live posts nothing ═══');
+  console.log('\n═══ OVERLAY E2E — dead-space clicks reach section backgrounds; hover chip opens the Section panel; live posts nothing ═══');
   if (failures.length === 0) {
     console.log('PASS — a dead-space click in a hero and in an explicit-background page-header');
     console.log('       both resolve to the section background field (where image-replace +');
     console.log('       focal/zoom open); a click on the hero headline still resolves to the');
-    console.log('       headline; and the same overlay on the live build posts nothing.');
+    console.log('       headline; hovering a section reveals the chip whose click posts a');
+    console.log('       bk-section ref with the block id; and the same overlay on the live build');
+    console.log('       neither resolves a background nor shows the chip — it posts nothing.');
     process.exit(0);
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
