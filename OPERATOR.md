@@ -149,10 +149,11 @@ CLI flags override `owner-config.json` for that run.
   and block blueprints (a new contact page, gallery page, or content page) as a
   new pending change, previewed the same way. **Repeating items** are offered in
   place: clicking into a section whose type has an item blueprint (cards, FAQ
-  pairs, testimonial quotes, team members ship covered) shows "Add \<thing\>…" in
-  the editor pane, and each item a "Remove this \<thing\>" button with a confirm
-  showing exactly what would be removed. Removal is refused on a section's last
-  item, and on any list without an item blueprint — those stay developer work.
+  pairs, testimonial quotes, team members, and **hero buttons** ship covered)
+  shows "Add \<thing\>…" in the editor pane, and each item a "Remove this
+  \<thing\>" button with a confirm showing exactly what would be removed. Removal
+  is refused on a section's last item, and on any list without an item blueprint —
+  those stay developer work.
 - **Keep** moves the pending change onto the session list and frees the next edit.
   **Discard** throws away only the pending change — everything kept survives.
   **Discard all** empties the whole session and resets the candidate from live.
@@ -189,6 +190,21 @@ settings (background, style, visibility) in one place and — its main job —
 offers to **add** the optional fields the section type supports but this section
 doesn't have yet. The chip is part of the editor overlay only: it is never in
 any build, and a live page (which carries no edit markers) never shows it.
+
+**Editable hero buttons (CTA buttons).** A hero's call-to-action buttons are a
+repeating item like cards or FAQ pairs. Clicking a button opens the **button
+editor** — its text, where it links (a page on the site, or an `https:` / `tel:`
+/ `mailto:` link), and its style (filled or outline) — each saved as its own
+pending change. The same click offers "Add button…" and "Remove this button"
+(the last button is refused, like any last item). When a hero has *no* buttons,
+there is nothing to click, so the **Section panel** offers "Add button…" as the
+doorway. A bad link or style is caught by the site's checks and rolled back, so
+a broken button can never be kept. **Clients created before buttons were
+editable** have id-less buttons that simply stay non-editable (no break, exactly
+like the visibility flag). Migrate once with
+`node extras/add-action-ids.js <client-name>` (idempotent — seeds a unique id on
+every hero button that lacks one), then rebuild; the live HTML is byte-identical,
+and the buttons become editable in the editor.
 
 **Owner-creatable fields (the narrow exception).** The maintenance tier
 otherwise only edits fields a developer seeded — it cannot invent new ones. The

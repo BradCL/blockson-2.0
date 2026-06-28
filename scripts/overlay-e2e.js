@@ -173,6 +173,21 @@ async function main() {
         expect(chip.posted[0] && typeof chip.posted[0].block === 'string' && chip.posted[0].block,
           'hero chip bk-section ref carries no block id');
       }
+
+      // (b3) A click on a hero BUTTON resolves to its (block, item, label) ref —
+      //      the single annotated element on the <a>. Its link and style are
+      //      edited through the button editor that opens from this click, so they
+      //      are not separately annotated (one element, one annotation).
+      const btn = await clickSelector(page, '.hero-actions a');
+      if (btn.error) expect(false, `hero button: ${btn.error}`);
+      else {
+        const m = btn.posted[0];
+        expect(btn.posted.length === 1 && m && m.type === 'bk-edit',
+          `hero button posted ${JSON.stringify(btn.posted)}, expected one bk-edit`);
+        expect(m && typeof m.block === 'string' && m.block, 'hero button ref carries no block id');
+        expect(m && typeof m.item === 'string' && m.item, 'hero button ref carries no item id');
+        expect(m && m.field === 'label', `hero button resolved to field "${m && m.field}", expected "label"`);
+      }
       await context.close();
     }
 
@@ -223,7 +238,8 @@ async function main() {
     console.log('PASS — a dead-space click in a hero and in an explicit-background page-header');
     console.log('       both resolve to the section background field (where image-replace +');
     console.log('       focal/zoom open); a click on the hero headline still resolves to the');
-    console.log('       headline; hovering a section reveals the chip whose click posts a');
+    console.log('       headline; a click on a hero button resolves to its (block, item, label)');
+    console.log('       ref; hovering a section reveals the chip whose click posts a');
     console.log('       bk-section ref with the block id; and the same overlay on the live build');
     console.log('       neither resolves a background nor shows the chip — it posts nothing.');
     process.exit(0);

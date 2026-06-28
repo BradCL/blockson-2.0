@@ -100,7 +100,8 @@
               {
                 "label": "Become a Member",
                 "href": "contact.html",
-                "style": "primary"
+                "style": "primary",
+                "id": "become-a-member"
               }
             ],
             "hidden": false

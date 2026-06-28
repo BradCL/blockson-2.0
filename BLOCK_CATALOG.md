@@ -54,7 +54,7 @@ Full-viewport landing section. Homepage opener. One per site, typically.
 - `background` image
 - `bgPosition?` string — focal point of the background, `"<x>% <y>%"` (each 0–100; default `"50% 50%"`); painted as inline `background-position` on `.hero-bg`
 - `bgZoom?` number — background zoom, 1–3 (default 1); painted as inline `transform: scale()` on `.hero-bg`
-- `actions?` Repeats: `{label, href, style}` where `style` ∈ `primary` | `secondary`
+- `actions?` Repeats: `{id?, label, href, style}` where `style` ∈ `primary` | `secondary`. The optional `id` makes each button an addressable, owner-editable item (see Maintenance). It is optional for backward compatibility; seed it on legacy content with `node extras/add-action-ids.js <client>`.
 CSS: `.hero`, `.hero-bg`, `.hero-content`, `.hero-tag`, `.hero-actions`, `.btn`.
 **Theme tokens (opt-in):** `--hero-content-width`, `--header-overlay`,
 `--heading-wrap`, and the `--hero-texture-image` / `--hero-texture-opacity` pair
@@ -63,7 +63,12 @@ THEME_AUTHORING.md §2.
 **Maintenance:** tag, headline, subhead editable. Background image is owner-replaceable,
 and (when `bgPosition`/`bgZoom` are seeded) its focal point + zoom are owner-editable from
 the hero's image editor — guarded to bounded values in `patch.js` (a wrong value is ugly,
-never broken). Actions are developer-only (they carry no ids — structural by design).
+never broken). Buttons (`actions`) are owner-editable once each carries an `id`: clicking a
+button opens the button editor (text, link, style — each its own change), and the owner can
+add a button (the `cta-button` item blueprint; also offered in the Section panel when a hero
+has none) or remove one (the last is refused, like any item). The link and style are gated by
+the build (`safeHref` + the style enum), so a bad value is rolled back. Id-less actions stay
+developer-only/structural until migrated — run `extras/add-action-ids.js`.
 
 ### `page-header`
 Sub-hero band used at the top of interior pages (about/services/gallery/contact).

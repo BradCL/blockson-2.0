@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all twenty-five end-to-end proofs in sequence and prints results.
+// Runs all twenty-seven end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -70,8 +70,8 @@
 //             [blockson-publish <client>] marker; restore refuses while
 //             changes are staged and, once clear, reverts the whole
 //             session as one unit.
-// Proof 19:   item blueprints + removeItem (v4.2 Task 4): the four shipped
-//             item blueprints validate; a valid add lands in the named
+// Proof 19:   item blueprints + removeItem (v4.2 Task 4): four item
+//             blueprints validate (cta-button is proof 27); a valid add lands in the named
 //             block with a site-wide-unique item id and builds clean;
 //             invalid inputs/targets rejected with nothing written; remove
 //             deletes exactly the addressed item, refuses the last item
@@ -131,6 +131,26 @@
 //             created per-page background rides keep → publish to live HTML that
 //             shows the new image (overriding the inherited hero) with no
 //             annotations or ids.
+// Proof 26:   section doorway (the click-to-edit blind spot — you can only click
+//             RENDERED things): a section's omitted OPTIONAL text (a page-header
+//             subtitle) surfaces as a CREATABLE field (never a scalar, so the
+//             annotation proof isn't over-constrained) while a required hero
+//             subhead stays an ordinary scalar; the resolver creates it only for
+//             a one-line text value on an allowlisted block; describeSection
+//             reports the section's settings + addable fields; and a created
+//             subtitle publishes with no annotations or chip leaking live.
+// Proof 27:   editable CTA buttons (builds on the doorway): extras/add-action-ids.js
+//             seeds a slugified, site-wide-unique id on every hero button
+//             (numeric-suffixed on a label collision) and is idempotent; a
+//             migrated hero exposes its actions as an item set whose only click
+//             field is label (the annotated build marks each button there, never
+//             its href/style) while the live build stays byte-identical and
+//             data-bk-free; label/link/style each edit through the item path with
+//             the build as the value gate (an unsafe link and an out-of-enum
+//             style roll back), a button removes via the item path (the last one
+//             refused), and the scaffold relaxation adds the FIRST button to an
+//             empty actions array through the Section-panel doorway — live only
+//             on publish, no annotations or ids leaking in.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -224,7 +244,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 26;
+const TOTAL = 27;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1902,7 +1922,8 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
   const failures = [];
 
   try {
-    // (a) Registry: the four shipped item blueprints load and validate.
+    // (a) Registry: these four item blueprints load and validate (the fifth,
+    //     cta-button, is covered in full by proof 27).
     const reg = scaffold.loadBlueprints();
     const bp = key => (reg.blueprints.find(b => b.key === key) || {}).blueprint;
     for (const want of ['card-grid-card', 'faq-pair', 'testimonial-quote', 'team-member']) {
@@ -2106,7 +2127,7 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
   }
 
   if (failures.length === 0) {
-    console.log('PASS — the four shipped item blueprints validate; a valid add lands in the');
+    console.log('PASS — four item blueprints validate (cta-button is proof 27); a valid add lands in the');
     console.log('       NAMED block with a site-wide-unique item id and the full build accepts');
     console.log('       it; bad inputs, unknown/wrong-type targets reject with nothing written;');
     console.log('       remove deletes exactly the addressed item, refuses the last item and');
@@ -2813,6 +2834,199 @@ console.log('\n═══ PROOF 26 — Section doorway: a section can add the opt
     console.log('       nothing written; the editor opens the omission as an empty text field and');
     console.log('       describeSection offers it alongside the section settings; and a created');
     console.log('       subtitle publishes to live HTML with no annotations or chip leaking in.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 27 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 27 — Editable CTA buttons: id migration, addressable buttons, first-button add, guarded ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-cta-buttons';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  // Build the throwaway client's live content fresh (example-contractor as a
+  // realistic base — a hero on index — with a known actions array). Returns the
+  // hero block id. Used to reset live state between phases.
+  function setupLive(actions) {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const hero = base.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero');
+    hero.fields.actions = JSON.parse(JSON.stringify(actions));
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'CTA Proof', publish: 'none' }) + '\n', 'utf8');
+    return hero.id;
+  }
+
+  try {
+    // ── Phase A: the migration (extras/add-action-ids.js) ───────────────────
+    // Two buttons SHARING a label, to exercise slug collision + site-wide
+    // uniqueness; one of them id-less so the array starts structural.
+    const heroId = setupLive([
+      { label: 'Get a Quote', href: 'contact.html', style: 'primary' },
+      { label: 'Get a Quote', href: 'tel:5551212',  style: 'secondary' },
+    ]);
+
+    // Before migration: id-less actions are STRUCTURAL — not an item set, and the
+    // annotated build marks no button (graceful: today's behaviour, no break).
+    const pre = readContent(CLIENT);
+    const preDesc = buildEditMap(pre, loadTokens(pre)).pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId);
+    if ((preDesc.itemSets || []).some(s => s.field === 'actions')) failures.push('un-migrated (id-less) actions were exposed as an item set');
+    build(CLIENT, ['--annotate']);
+    const preLiveBuild = (function () { build(CLIENT); return fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8'); })();
+    if (/class="btn [^"]*"[^>]*data-bk-item/.test(fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', 'index.html'), 'utf8'))) {
+      failures.push('an un-migrated hero button carried data-bk-item before migration');
+    }
+
+    // Run the REAL migration CLI on this client's content.json.
+    const mig1 = spawnSync(process.execPath, [path.join(ROOT, 'extras', 'add-action-ids.js'), path.join('clients', CLIENT, 'content.json')],
+      { cwd: ROOT, encoding: 'utf8' });
+    if (mig1.status !== 0) failures.push(`add-action-ids.js failed: ${(mig1.stdout + mig1.stderr).trim()}`);
+    if (!/seeded an id on 2 hero button/.test(mig1.stdout || '')) failures.push(`migration did not report seeding 2 ids: ${(mig1.stdout || '').trim()}`);
+
+    const migrated = readContent(CLIENT);
+    const acts = migrated.pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId).fields.actions;
+    const ids = acts.map(a => a.id);
+    if (!ids.every(id => typeof id === 'string' && id)) failures.push(`not every action got a string id: ${JSON.stringify(ids)}`);
+    if (ids[0] !== 'get-a-quote') failures.push(`first action id is not slugified from its label: ${ids[0]}`);
+    if (ids[0] === ids[1]) failures.push(`duplicate-label buttons got the SAME id (not uniqued): ${JSON.stringify(ids)}`);
+    if (!/^get-a-quote-\d+$/.test(ids[1])) failures.push(`the colliding id was not numeric-suffixed: ${ids[1]}`);
+    const allIds = [];
+    for (const p of migrated.pages) for (const b of p.blocks || []) { allIds.push(b.id); }
+    for (const id of ids) if (allIds.includes(id)) failures.push(`an action id collides with a block id: ${id}`);
+
+    // Idempotent: a second run changes nothing and says so.
+    const before2 = fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8');
+    const mig2 = spawnSync(process.execPath, [path.join(ROOT, 'extras', 'add-action-ids.js'), path.join('clients', CLIENT, 'content.json')],
+      { cwd: ROOT, encoding: 'utf8' });
+    if (!/already migrated/.test(mig2.stdout || '')) failures.push(`second migration run did not report "already migrated": ${(mig2.stdout || '').trim()}`);
+    if (fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8') !== before2) failures.push('a second migration run changed the content (not idempotent)');
+
+    // ── Phase B: addressable buttons; annotated marks each, live carries none ─
+    const mDesc = buildEditMap(migrated, loadTokens(migrated)).pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId);
+    const aSet = (mDesc.itemSets || []).find(s => s.field === 'actions');
+    if (!aSet) failures.push('migrated actions are not exposed as an item set');
+    else if (!aSet.items.every(it => it.fields.length === 1 && it.fields[0] === 'label')) {
+      failures.push(`an actions item exposed fields other than [label]: ${JSON.stringify(aSet.items.map(i => i.fields))}`);
+    }
+    build(CLIENT, ['--annotate']);
+    const annIndex = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', 'index.html'), 'utf8');
+    for (const id of ids) {
+      if (!new RegExp(`data-bk-item="${id}"[^>]*data-bk-field="label"`).test(annIndex)) {
+        failures.push(`annotated hero button "${id}" is not marked editable (data-bk-item + data-bk-field=label)`);
+      }
+    }
+    if (/data-bk-field="href"|data-bk-field="style"/.test(annIndex)) failures.push('a button href/style was annotated (only label should be)');
+    build(CLIENT);
+    const postLiveBuild = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+    if (/data-bk-/.test(postLiveBuild)) failures.push('the live build carries data-bk-* after migration');
+    if (postLiveBuild !== preLiveBuild) failures.push('the live build is NOT byte-identical after the id migration (it must be — only label/href/style render)');
+
+    // ── Phase C: edit through the owner item path; build gate + rollback ─────
+    let session = owner.createSession(CLIENT);
+    const id1 = ids[0], id2 = ids[1];
+    const df = owner.describeField(session, { block: heroId, item: id1, field: 'label' });
+    if (!df.ok || df.kind !== 'text') failures.push(`describeField on a button label did not open a text editor: ${JSON.stringify(df)}`);
+    if (!df.button || df.button.href !== 'contact.html' || df.button.style !== 'primary') failures.push(`the button editor ride-along is missing or wrong: ${JSON.stringify(df.button)}`);
+    if (!(df.addable || []).some(a => a.key === 'cta-button')) failures.push('describeField did not offer "Add Button" on a hero button');
+    if (!df.itemRemove || !df.itemRemove.allowed) failures.push('a button was not reported removable while two exist');
+
+    function editKeep(patch, label) {
+      const r = owner.applyEdit(session, patch);
+      if (!r.ok) { failures.push(`${label} failed: ${r.error}`); return; }
+      const k = owner.keep(session); if (!k.ok) failures.push(`keep after ${label} failed: ${k.error}`);
+    }
+    editKeep({ action: 'set', block: heroId, item: id1, field: 'label', value: 'Start Here' }, 'edit button label');
+    editKeep({ action: 'set', block: heroId, item: id1, field: 'href',  value: 'https://example.com/start' }, 'edit button link');
+    editKeep({ action: 'set', block: heroId, item: id1, field: 'style', value: 'secondary' }, 'change button style');
+
+    // A bad link (fails safeHref) and a bad style (not in the enum) are caught by
+    // the candidate BUILD with rollback — the value gate is the schema, exactly
+    // as the plan intends. Nothing is left pending and the candidate is unchanged.
+    const badHref = owner.applyEdit(session, { action: 'set', block: heroId, item: id1, field: 'href', value: 'javascript:alert(1)' });
+    if (badHref.ok || !badHref.buildFailed) failures.push('an unsafe button link was not refused by the build gate');
+    const afterBadHref = JSON.parse(fs.readFileSync(path.join(candDir, "content.json"), 'utf8')).pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId).fields.actions.find(a => a.id === id1);
+    if (afterBadHref.href !== 'https://example.com/start') failures.push(`a rejected link edit changed the candidate (href is now ${afterBadHref.href})`);
+
+    const badStyle = owner.applyEdit(session, { action: 'set', block: heroId, item: id1, field: 'style', value: 'ghost' });
+    if (badStyle.ok || !badStyle.buildFailed) failures.push('an out-of-enum button style was not refused by the build gate');
+
+    // Remove a button (item path, never applyPatch); the last one is refused.
+    const rm = owner.applyRemoveItem(session, { block: heroId, item: id2 });
+    if (!rm.ok) failures.push(`removing a button failed: ${rm.error}`);
+    else owner.keep(session);
+    const rmLast = owner.applyRemoveItem(session, { block: heroId, item: id1 });
+    if (rmLast.ok) failures.push('removing the LAST button was allowed (it must be refused)');
+
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const liveIndex = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!/<a href="https:\/\/example\.com\/start" class="btn btn-secondary">Start Here<\/a>/.test(liveIndex)) {
+        failures.push('the edited button (label/link/style) is not in the published live HTML');
+      }
+      // Count buttons inside the HERO's own actions row (other sections render
+      // their own .btn links — scope the count to the hero).
+      const heroActions = (liveIndex.match(/<div class="hero-actions">([\s\S]*?)<\/div>/) || [])[1] || '';
+      if ((heroActions.match(/<a /g) || []).length !== 1) failures.push('the published hero does not have exactly one button after the removal');
+      if (/data-bk-/.test(liveIndex)) failures.push('published live HTML carries data-bk-*');
+    }
+
+    // ── Phase D: add the FIRST button to an EMPTY actions array ──────────────
+    // The scaffold relaxation: an absent/empty target array is created by the
+    // first item. Reset live with empty actions; the Section panel's addItems
+    // is the doorway (no button to click).
+    setupLive([]);
+    session = owner.createSession(CLIENT);
+    const sec = owner.describeSection(session, { block: heroId });
+    if (!sec.ok || !(sec.addItems || []).some(a => a.key === 'cta-button')) failures.push('describeSection on a hero with empty actions did not offer to add a button');
+    const sc = owner.applyScaffold(session, { blueprint: 'cta-button', variant: 'primary', values: { label: 'Free Estimate', href: '#contact' }, targetBlock: heroId });
+    if (!sc.ok) failures.push(`adding the first button failed: ${sc.error}`);
+    else if (!sc.created || sc.created.kind !== 'item') failures.push(`the first button was not created as an item: ${JSON.stringify(sc.created)}`);
+    if (sc.ok) {
+      const candActs = JSON.parse(fs.readFileSync(path.join(candDir, "content.json"), 'utf8')).pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId).fields.actions;
+      if (!Array.isArray(candActs) || candActs.length !== 1) failures.push(`the candidate hero does not have exactly one created button: ${JSON.stringify(candActs)}`);
+      else if (typeof candActs[0].id !== 'string' || candActs[0].href !== '#contact' || candActs[0].style !== 'primary') failures.push(`the created button is malformed: ${JSON.stringify(candActs[0])}`);
+      const liveActsBefore = readContent(CLIENT).pages.find(p => p.slug === 'index').blocks.find(b => b.id === heroId).fields.actions;
+      if (Array.isArray(liveActsBefore) && liveActsBefore.length) failures.push('LIVE hero gained a button before publish');
+      owner.keep(session);
+      const pub2 = owner.publish(session);
+      if (!pub2.ok) failures.push(`publishing the first button failed: ${pub2.error}`);
+      else {
+        const liveIndex = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+        if (!/<a href="#contact" class="btn btn-primary">Free Estimate<\/a>/.test(liveIndex)) failures.push('the added first button is not in the published live HTML');
+        if (/data-bk-/.test(liveIndex)) failures.push('published live HTML (first button) carries data-bk-*');
+      }
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}\n${e.stack}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — extras/add-action-ids.js seeds a slugified, site-wide-unique id on every');
+    console.log('       hero button (numeric-suffixed on a label collision) and is a no-op on a');
+    console.log('       second run; a migrated hero exposes its actions as an item set whose only');
+    console.log('       click field is label (the annotated build marks each button there, never');
+    console.log('       its href/style), while the live build stays byte-identical and data-bk-');
+    console.log('       free; a button\'s label/link/style each edit through the item path with the');
+    console.log('       build as the value gate (an unsafe link and an out-of-enum style are');
+    console.log('       rolled back), a button removes via the item path (the last one refused),');
+    console.log('       and the scaffold relaxation adds the FIRST button to an empty actions array');
+    console.log('       through the Section-panel doorway — candidate-only, then live on publish,');
+    console.log('       with no annotations or ids leaking into the live HTML.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

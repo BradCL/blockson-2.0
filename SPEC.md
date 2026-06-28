@@ -450,10 +450,11 @@ Guarantees, enforced in code and proved by proofs 9–10 and 19:
   is dropping one item-blueprint JSON file in `blueprints/` — `scaffold.js` never
   changes.
 
-Seven blueprints ship: three page blueprints — contact page, photo gallery page,
-generic content page — each with two layout variants, and four item blueprints —
+Eight blueprints ship: three page blueprints — contact page, photo gallery page,
+generic content page — each with two layout variants, and five item blueprints —
 card (card-grid), FAQ pair (faq), quote (testimonials), team member (team-grid,
-with/without-photo variants).
+with/without-photo variants), and CTA button (hero `actions`, filled/outline
+variants).
 
 ### 10.1 Tier A / Tier B boundary
 

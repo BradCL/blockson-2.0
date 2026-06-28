@@ -253,6 +253,7 @@
       "required": ["label", "href", "style"],
       "additionalProperties": false,
       "properties": {
+        "id":    { "type": "string" },
         "label": { "type": "string" },
         "href":  { "$ref": "#/$defs/safeHref" },
         "style": { "$ref": "#/$defs/buttonStyle" }

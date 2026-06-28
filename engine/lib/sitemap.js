@@ -109,11 +109,22 @@ function describeBlock(block) {
     if (name === 'bgPosition' && typeof v === 'string') continue;
     if (name === 'bgZoom' && typeof v === 'number') continue;
     if (isAddressableItemArray(v)) {
-      // Repeating object items with ids -> addressed by id
+      // Repeating object items with ids -> addressed by id. An item normally
+      // exposes each of its own scalar fields as a separately-clickable element
+      // (an faq's question and answer render as two elements, each annotated).
+      // A CTA button is the exception: its label/href/style all render on ONE
+      // <a>, so only `label` carries the click annotation (the
+      // one-element-one-annotation scheme — see engine/lib/annotate.js COVERAGE
+      // SCOPE); href and style are reached through the button editor that opens
+      // from that click, never a per-element click of their own. Keying on the
+      // field name keeps proof 1's required-annotation set in sync with what
+      // hero.js actually annotates.
       const items = v.map(it => ({
         id:     it.id,
         label:  pickLabel(it),
-        fields: Object.keys(it).filter(k => k !== 'id' && k !== 'type'),
+        fields: name === 'actions'
+          ? Object.keys(it).filter(k => k === 'label')
+          : Object.keys(it).filter(k => k !== 'id' && k !== 'type'),
       }));
       itemSets.push({ field: name, items });
     } else if (isStringArray(v) && v.length) {

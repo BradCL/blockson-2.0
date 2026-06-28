@@ -65,6 +65,15 @@
      ids exactly as block ids). Pages also get a nav entry. The caller
      instantiates into a CANDIDATE copy only and uses the full build
      as the acceptance gate.
+       ONE LOOSENING for item blueprints: the target array may be ABSENT
+       or EMPTY (an optional repeating field such as a hero's `actions`),
+       in which case the FIRST item creates the array. A NON-empty target
+       must still be a fully addressable item array (every element carries
+       an id); a mixed array — some items with ids, some without — stays
+       rejected. That mixed state is exactly the un-migrated content
+       extras/add-action-ids.js seeds ids into. Everything else is
+       unchanged: only a field a loaded item-blueprint `target`s is
+       reachable, and the full candidate build is still the acceptance gate.
    - removeItem: the structural counterpart for repeating items —
      never applyPatch. Only on arrays of id-bearing object items,
      refused on the last item (whether a block may be empty is the
@@ -522,13 +531,20 @@ function instantiate(content, bp, variantKey, rawValues, opts) {
     if (host.type !== bp.target.blockType) {
       return { ok: false, errors: [`"${targetBlock}" is a ${host.type} section — ${bp.name} adds to ${bp.target.blockType} sections`] };
     }
-    const arr = host.fields && host.fields[bp.target.field];
-    if (!isAddressableItemArray(arr)) {
+    // The target array may be ABSENT or EMPTY for an optional repeating field
+    // (a hero's actions): the first item creates it. A non-empty array must
+    // already be addressable (every element id-bearing); a mixed array stays
+    // rejected — that is the un-migrated state add-action-ids.js fixes.
+    if (!host.fields || typeof host.fields !== 'object') host.fields = {};
+    let arr = host.fields[bp.target.field];
+    const emptyOrAbsent = arr === undefined || (Array.isArray(arr) && arr.length === 0);
+    if (!emptyOrAbsent && !isAddressableItemArray(arr)) {
       return { ok: false, errors: [`"${bp.target.field}" on "${targetBlock}" is not a list of addressable items`] };
     }
     // Item ids are generated exactly as block ids: the template hint,
     // numeric-suffixed against every id already in the site.
     const id = uniqueName(fragment.id, collectAllIds(content));
+    if (!Array.isArray(arr)) arr = host.fields[bp.target.field] = [];
     arr.push({ ...fragment, id });
     return { ok: true, created: { kind: 'item', slug: hostPage.slug, file: `${hostPage.slug}.html`, blockId: targetBlock, itemId: id, blockIds: [] } };
   }
@@ -636,6 +652,9 @@ module.exports = {
   loadBlueprints, validateBlueprint, validateInputs, instantiate,
   removeItem, itemBlueprintsFor,
   activeInputs, slugify, BLUEPRINT_DIR,
+  // Exported (additive) so the one-time content migration extras/add-action-ids.js
+  // seeds action ids with the SAME site-wide-unique id machinery instantiate uses.
+  collectAllIds, uniqueName,
   // Exported so the head partial's -image token helper validates a token's
   // image path against the SAME shape blueprint image inputs accept.
   IMG_RE,

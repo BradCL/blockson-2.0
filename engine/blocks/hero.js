@@ -3,8 +3,14 @@
 const { esc } = require('../lib/escape');
 
 module.exports = function hero(fields, site, bk) {
+  // Each button is an addressable item once its action carries an id (seeded
+  // by extras/add-action-ids.js). The annotation rides field=label only — the
+  // single clickable element for the whole button; href/style share this <a>
+  // and are edited through the button editor that opens from the click. bk.i
+  // is gated against the edit map, so an un-migrated (id-less) action gets no
+  // annotation, and a live build's NOOP annotator emits nothing at all.
   const actions = (fields.actions || []).map(a =>
-    `<a href="${esc(a.href)}" class="btn btn-${esc(a.style)}">${esc(a.label)}</a>`
+    `<a href="${esc(a.href)}" class="btn btn-${esc(a.style)}"${bk.i(a.id, 'label')}>${esc(a.label)}</a>`
   ).join('\n          ');
 
   // Owner-editable focal point + zoom (optional; absent → today's painting:

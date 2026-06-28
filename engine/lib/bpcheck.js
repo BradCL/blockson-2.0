@@ -263,9 +263,12 @@ const SHOWCASE_BLOCKS = [
     tag: 'Block showcase', headline: 'Every block type, one page',
     subhead: 'Theme coverage is checked against this page — every renderer, styled by your tokens.',
     background: 'img/sample-banner.jpg',
+    // id-bearing actions (the migrated state extras/add-action-ids.js produces):
+    // an addressable item array, so the cta-button item blueprint can append a
+    // button here exactly as every other item blueprint targets its showcase block.
     actions: [
-      { label: 'Primary action', href: 'index.html', style: 'primary' },
-      { label: 'Secondary action', href: 'index.html', style: 'secondary' },
+      { id: 'primary-action', label: 'Primary action', href: 'index.html', style: 'primary' },
+      { id: 'secondary-action', label: 'Secondary action', href: 'index.html', style: 'secondary' },
     ] } },
   { id: 'show-page-header', type: 'page-header', fields: {
     tag: 'Showcase', heading: 'A page header band', subhead: 'The interior-page opener.', variant: 'default' } },

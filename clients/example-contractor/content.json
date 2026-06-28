@@ -120,12 +120,14 @@
               {
                 "label": "View Our Work",
                 "href": "gallery.html",
-                "style": "primary"
+                "style": "primary",
+                "id": "view-our-work"
               },
               {
                 "label": "Get a Quote",
                 "href": "contact.html",
-                "style": "secondary"
+                "style": "secondary",
+                "id": "get-a-quote"
               }
             ],
             "hidden": false

@@ -416,13 +416,27 @@
             "background": "img/sample-banner.jpg",
             "actions": [
               {
+                "id": "primary-action",
                 "label": "Primary action",
                 "href": "index.html",
                 "style": "primary"
               },
               {
+                "id": "secondary-action",
                 "label": "Secondary action",
                 "href": "index.html",
+                "style": "secondary"
+              },
+              {
+                "id": "button",
+                "label": "Get a free quote",
+                "href": "contact.html",
+                "style": "primary"
+              },
+              {
+                "id": "button-2",
+                "label": "Get a free quote",
+                "href": "contact.html",
                 "style": "secondary"
               }
             ],

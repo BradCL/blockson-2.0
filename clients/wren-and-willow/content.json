@@ -120,12 +120,14 @@
               {
                 "label": "Book an Appointment",
                 "href": "https://book.wrenandwillow.ca",
-                "style": "primary"
+                "style": "primary",
+                "id": "book-an-appointment"
               },
               {
                 "label": "See Our Work",
                 "href": "gallery.html",
-                "style": "secondary"
+                "style": "secondary",
+                "id": "see-our-work"
               }
             ],
             "hidden": false

@@ -103,12 +103,14 @@
               {
                 "label": "See the Menu",
                 "href": "menu.html",
-                "style": "primary"
+                "style": "primary",
+                "id": "see-the-menu"
               },
               {
                 "label": "Book a Table",
                 "href": "contact.html",
-                "style": "secondary"
+                "style": "secondary",
+                "id": "book-a-table"
               }
             ],
             "hidden": false

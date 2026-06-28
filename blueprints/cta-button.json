@@ -1,0 +1,32 @@
+{
+  "name": "Button",
+  "purpose": "One more call-to-action button in a hero section.",
+  "kind": "item",
+  "target": { "blockType": "hero", "field": "actions" },
+  "variants": [
+    { "key": "primary",   "label": "Filled (primary) button" },
+    { "key": "secondary", "label": "Outline (secondary) button" }
+  ],
+  "inputs": [
+    { "key": "label", "label": "Button text", "type": "text", "required": true, "maxLength": 40,
+      "example": "Get a free quote" },
+    { "key": "href", "label": "Where it links (a page like contact.html, or https://… , tel:… , mailto:…)",
+      "type": "text", "required": true, "maxLength": 200,
+      "hint": "use a page on this site, or a full https:// / tel: / mailto: link",
+      "example": "contact.html" }
+  ],
+  "template": {
+    "primary": {
+      "id": "button",
+      "label": "{{label}}",
+      "href": "{{href}}",
+      "style": "primary"
+    },
+    "secondary": {
+      "id": "button",
+      "label": "{{label}}",
+      "href": "{{href}}",
+      "style": "secondary"
+    }
+  }
+}

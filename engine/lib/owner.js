@@ -437,6 +437,20 @@ function describeField(session, ref) {
       const addable = scaffold.itemBlueprintsFor(block.type, null, registry)
         .map(({ key, blueprint }) => ({ key, name: blueprint.name, purpose: blueprint.purpose }));
       if (addable.length) res.addable = addable;
+
+      // A hero CTA button: the overlay click resolves to (block, item, label) —
+      // the single annotated element on the <a> — but the editor also needs the
+      // button's link and style. Read them off the item directly (the same
+      // candidate content) and ride them along so the UI can open the button
+      // editor; label, href, and style each save their own guarded set patch.
+      // Mirrors heroFocal riding the hero image editor.
+      if (block.type === 'hero' && ref.item != null && ref.item !== '' && ref.field === 'label') {
+        const actions = (block.fields && Array.isArray(block.fields.actions)) ? block.fields.actions : [];
+        const action = actions.find(a => a && a.id === ref.item);
+        if (action && typeof action.href === 'string' && typeof action.style === 'string') {
+          res.button = { href: action.href, style: action.style };
+        }
+      }
       if (ref.item != null && ref.item !== '') {
         const probe = scaffold.removeItem(JSON.parse(JSON.stringify(content)),
           { block: ref.block, item: ref.item }, registry);
@@ -546,6 +560,12 @@ function describeSection(session, ref) {
   if (!desc) return { ok: false, error: `unknown section "${ref.block}"` };
   const fields = indexHosts(content).get(ref.block) || {};
   const hasVariant = desc.scalars.some(s => s.field === 'variant');
+  // Item blueprints that can ADD a repeating item to this section type — the
+  // doorway for "Add a button" when a hero's actions are empty (no button to
+  // click). Editing/removing existing buttons already rides describeField →
+  // appendItemControls; this is the empty-state entry the click can't reach.
+  const addItems = scaffold.itemBlueprintsFor(desc.type, null, scaffold.loadBlueprints())
+    .map(({ key, blueprint }) => ({ key, name: blueprint.name, purpose: blueprint.purpose }));
   return {
     ok: true,
     block: ref.block,
@@ -556,6 +576,7 @@ function describeSection(session, ref) {
     variant: hasVariant ? { value: fields.variant != null ? String(fields.variant) : '' } : null,
     hidden: desc.hidden,          // null when the visibility flag isn't seeded
     addable: (desc.creatable || []).map(c => ({ field: c.field, kind: c.kind })),
+    addItems,
   };
 }
 

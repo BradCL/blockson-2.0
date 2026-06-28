@@ -198,7 +198,8 @@
     if (ref.index != null && ref.index !== '') params.set('index', ref.index);
     apiGet('/api/field?' + params.toString()).then(function (info) {
       if (!info.ok) { showMessage('error', info.error); return; }
-      if (info.kind === 'text' || info.kind === 'long-text') renderTextEditor(ref, info);
+      if (info.kind === 'text' && info.button) renderButtonEditor(ref, info);
+      else if (info.kind === 'text' || info.kind === 'long-text') renderTextEditor(ref, info);
       else if (info.kind === 'list-line') renderLineEditor(ref, info);
       else if (info.kind === 'text-list') renderTextListEditor(ref, info);
       else if (info.kind === 'image') renderImageEditor(ref, info);
@@ -290,6 +291,58 @@
     row.appendChild(button('Cancel', null, closeEditor));
     ed.appendChild(row);
     input.focus();
+  }
+
+  // A CTA button (hero action): its text, link, and style all live on one
+  // <a>, so the click that lands on the button opens this combined editor
+  // (the overlay resolved it to field=label, the single annotated element).
+  // Each field saves as its OWN guarded set patch through the normal stage()
+  // path — the one-pending-change model is unchanged, and the candidate build
+  // validates the link (safeHref) and style (enum), rolling back on a bad value.
+  function renderButtonEditor(ref, info) {
+    var ed = editorShell('Edit button');
+
+    ed.appendChild(el('div', 'field-label', 'Button text'));
+    var labelInput = el('input');
+    labelInput.type = 'text';
+    labelInput.value = String(info.value == null ? '' : info.value);
+    ed.appendChild(labelInput);
+    ed.appendChild(el('div', 'btn-row')).appendChild(button('Save text', 'primary', function () {
+      var p = basePatch(ref, 'set');   // ref.field is already 'label'
+      p.value = labelInput.value;
+      stage(p, null, ed);
+    }));
+
+    ed.appendChild(el('div', 'field-label', 'Where it links'));
+    ed.appendChild(el('div', 'hint', 'A page on this site (e.g. contact.html), or a full https:// , tel: , or mailto: link.'));
+    var hrefInput = el('input');
+    hrefInput.type = 'text';
+    hrefInput.value = String(info.button.href == null ? '' : info.button.href);
+    ed.appendChild(hrefInput);
+    ed.appendChild(el('div', 'btn-row')).appendChild(button('Save link', 'primary', function () {
+      var p = basePatch(ref, 'set');
+      p.field = 'href';
+      p.value = hrefInput.value;
+      stage(p, null, ed);
+    }));
+
+    ed.appendChild(el('div', 'field-label', 'Style'));
+    var sel = el('select');
+    [['primary', 'Filled (primary)'], ['secondary', 'Outline (secondary)']].forEach(function (o) {
+      var opt = el('option', null, o[1]);
+      opt.value = o[0];
+      if (o[0] === info.button.style) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    ed.appendChild(sel);
+    ed.appendChild(el('div', 'btn-row')).appendChild(button('Save style', 'primary', function () {
+      var p = basePatch(ref, 'set');
+      p.field = 'style';
+      p.value = sel.value;
+      stage(p, null, ed);
+    }));
+
+    ed.appendChild(el('div', 'btn-row')).appendChild(button('Cancel', null, closeEditor));
   }
 
   // One line of a text list: edit it (match form built from the EXACT
@@ -599,6 +652,26 @@
           }));
         });
         ed.appendChild(addRow);
+      }
+
+      // Add a repeating item to this section from an item blueprint — the
+      // empty-state doorway for a hero whose buttons (actions) are all gone, so
+      // there is no button to click. Same scaffold form appendItemControls and
+      // the Add… menu render from the blueprint's input schema.
+      if (info.addItems && info.addItems.length) {
+        ed.appendChild(el('div', 'field-label', 'Add to this section'));
+        var addItemRow = el('div', 'btn-row');
+        info.addItems.forEach(function (a) {
+          addItemRow.appendChild(button('Add ' + a.name.toLowerCase() + '…', null, function () {
+            apiGet('/api/blueprints').then(function (r) {
+              if (!r.ok) { showMessage('error', r.error); return; }
+              var bp = null;
+              r.blueprints.forEach(function (b) { if (b.key === a.key) bp = b; });
+              if (bp) openScaffoldForm(bp, block);
+            });
+          }));
+        });
+        ed.appendChild(addItemRow);
       }
 
       // Section visibility, when the flag is seeded on this block.
