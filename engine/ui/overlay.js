@@ -46,7 +46,7 @@
     // clearly visible on text, images, and containers while leaving every
     // element's own background untouched.
     '.bk-hover{outline:2px solid #2563eb !important;outline-offset:2px;border-radius:2px;' +
-    'box-shadow:0 0 0 4px rgba(37,99,235,.25) !important;transition:box-shadow .1s}' +
+    'cursor:pointer;box-shadow:0 0 0 4px rgba(37,99,235,.25) !important;transition:box-shadow .1s}' +
     '[data-bk-hidden]{opacity:.45;outline:2px dashed #b45309;outline-offset:-2px;position:relative;cursor:pointer}' +
     '[data-bk-hidden]::before{content:"Hidden section \\2014  visitors don\\2019t see this. Click anywhere in it to show it again.";' +
     'display:block;position:absolute;top:0;left:0;right:0;z-index:50;' +
@@ -65,6 +65,42 @@
     if (hovered) { hovered.classList.remove('bk-hover'); hovered = null; }
   }
 
+  // ── Target resolution ─────────────────────────────────────────
+  // Normally the edit target is the innermost ancestor carrying data-bk-*
+  // (`closest`). But a SECTION BACKGROUND (hero / page-header) is painted
+  // behind the section content with a negative z-index, so it is never the
+  // event target and `closest` never reaches it: a dead-space click resolves
+  // to nothing (hero, whose <section> carries no field of its own) or to the
+  // section's own field such as variant (page-header) — and the background,
+  // plus the hero focal/zoom controls that open from it, can't be reached.
+  //
+  // The annotated build marks each such background with data-bk-bg as a direct
+  // child of its section. So walk up from the pointer to the nearest ancestor
+  // that owns a background child; if the click did NOT land on a more specific
+  // annotated element inside that section (it hit nothing, or only the section
+  // root), resolve to the background. The marker exists in the annotated
+  // preview only, so none of this can affect a live build.
+  function sectionBackground(node) {
+    while (node && node.nodeType === 1) {
+      var kids = node.children;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].hasAttribute && kids[i].hasAttribute('data-bk-bg')) {
+          return { section: node, bg: kids[i] };
+        }
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function resolveTarget(target) {
+    if (!target || !target.closest) return null;
+    var specific = target.closest('[data-bk-block]');
+    var found = sectionBackground(target);
+    if (found && (!specific || specific === found.section)) return found.bg;
+    return specific;
+  }
+
   function setMode(m) {
     mode = (m === 'preview') ? 'preview' : 'edit';
     clearHover();
@@ -79,10 +115,14 @@
 
   document.addEventListener('mouseover', function (e) {
     if (mode !== 'edit') return;
-    var el = e.target && e.target.closest ? e.target.closest('[data-bk-block]') : null;
-    if (el === hovered) return;
+    var el = resolveTarget(e.target);
+    // For a behind-content background, ring the SECTION (its parent) instead:
+    // the background's own outline would be clipped by the section's
+    // overflow:hidden, and ringing the section shows the whole editable area.
+    var ring = (el && el.hasAttribute('data-bk-bg')) ? el.parentNode : el;
+    if (ring === hovered) return;
     clearHover();
-    if (el) { hovered = el; el.classList.add('bk-hover'); }
+    if (ring) { hovered = ring; ring.classList.add('bk-hover'); }
   }, true);
 
   document.addEventListener('mouseleave', clearHover, true);
@@ -92,7 +132,7 @@
   // mode the handler is inert, so every native behaviour runs untouched.
   document.addEventListener('click', function (e) {
     if (mode !== 'edit') return; // preview: let the page behave like the live site
-    var el = e.target && e.target.closest ? e.target.closest('[data-bk-block]') : null;
+    var el = resolveTarget(e.target);
     if (!el) {
       // A click in a HIDDEN section's dead space or on its badge lands here
       // (the section root carries data-bk-hidden but no data-bk-block of its

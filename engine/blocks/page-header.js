@@ -14,7 +14,7 @@ module.exports = function pageHeader(fields, site, bk) {
     ? `<p${bk.f('subhead')}>${esc(fields.subhead)}</p>` : '';
 
   return `<header class="page-header"${bk.f('variant')}>
-  <div class="${bgClass}"${bk.f('background')}${bgStyle}></div>
+  <div class="${bgClass}"${bk.bg('background')}${bgStyle}></div>
   <div class="container">
     <div class="page-header-content">
       <div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>

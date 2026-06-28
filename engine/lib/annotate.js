@@ -49,7 +49,7 @@ function attr(name, value) {
 }
 
 // No-op annotators for live builds: every method returns ''.
-const NOOP_BLOCK = { f: () => '', i: () => '', l: () => '' };
+const NOOP_BLOCK = { f: () => '', i: () => '', l: () => '', bg: () => '' };
 const NOOP_SITE  = { f: () => '' };
 
 // Block-scoped annotator built from one block's edit-map descriptor.
@@ -67,6 +67,17 @@ function blockAnnotator(blockId, desc) {
     f(field) {
       return scalarSet.has(field)
         ? attr('data-bk-block', blockId) + attr('data-bk-field', field)
+        : '';
+    },
+    // A section-background scalar field (hero / page-header). Same gated
+    // annotation as f(), plus the data-bk-bg marker the overlay uses to make a
+    // behind-content background reachable from a dead-space click in its
+    // section (it is painted under the content with a negative z-index, so it
+    // never becomes the click target). Marker rides the annotated preview
+    // only — a live build's NOOP_BLOCK.bg returns '' — so it cannot leak live.
+    bg(field) {
+      return scalarSet.has(field)
+        ? attr('data-bk-block', blockId) + attr('data-bk-field', field) + attr('data-bk-bg', '')
         : '';
     },
     // Addressable item field (item addressed by its id).

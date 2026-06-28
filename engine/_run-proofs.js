@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all twenty-three end-to-end proofs in sequence and prints results.
+// Runs all twenty-four end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -109,6 +109,17 @@
 //             channel — content fields, the logo/favicon trio, a per-page
 //             og-image, or the theme CSS's hard-coded banner — are spared (no
 //             crying wolf), and the build still succeeds (exit 0).
+// Proof 24:   reachable section backgrounds (engine half of the click-to-edit
+//             fix): a behind-content background (hero / page-header) is painted
+//             under the content at a negative z-index, so the overlay can only
+//             route a dead-space click to it via a marker. The annotated build
+//             stamps data-bk-bg on each background, paired with its
+//             data-bk-field="background", as a DIRECT CHILD of its section (the
+//             structure the overlay's section-walk relies on); the marker rides
+//             ONLY background fields; and a live build carries neither the
+//             marker nor any data-bk-* (no preview-only attribute leaks live).
+//             The overlay's own click resolution is browser JS, exercised in
+//             the UI rather than this Node harness.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -202,7 +213,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 23;
+const TOTAL = 24;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -2445,6 +2456,90 @@ console.log('\n═══ PROOF 23 — Unreferenced-image advisory: orphans named
     console.log('       so it can be pruned, while images reached through any channel — content');
     console.log("       fields, the logo/favicon trio, a per-page og-image, or the theme CSS's");
     console.log('       hard-coded banner — are spared, and the build still succeeds (exit 0).');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 24 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 24 — Reachable section backgrounds: data-bk-bg marks hero/header backgrounds in preview, never live ═══');
+{
+  const CLIENT  = '__proof-bg-reach';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const failures = [];
+
+  // Every opening tag that carries the data-bk-bg marker.
+  const markedTags = (html) => html.match(/<[a-zA-Z][^>]*\sdata-bk-bg(?:=""|=|\s|>)[^>]*>/g) || [];
+
+  try {
+    // example-restaurant covers both shapes: a hero on the home page and a
+    // page-header that sets an EXPLICIT background on the menu page (an
+    // omitted-background header inherits the hero and is intentionally not a
+    // per-page editable target).
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'clients', 'example-restaurant', 'content.json'),
+      path.join(liveDir, 'content.json'));
+
+    const bAnn  = build(CLIENT, ['--annotate']);
+    const bLive = build(CLIENT);
+    if (!bAnn.ok)  failures.push(`annotated build failed:\n${bAnn.out}`);
+    if (!bLive.ok) failures.push(`live build failed:\n${bLive.out}`);
+
+    const annDir  = path.join(ROOT, 'dist', CLIENT + '__annotated');
+    const liveOut = path.join(ROOT, 'dist', CLIENT);
+    const annIndex = fs.readFileSync(path.join(annDir, 'index.html'), 'utf8');
+    const annMenu  = fs.readFileSync(path.join(annDir, 'menu.html'), 'utf8');
+
+    // (a) Each background is marked AND paired with its background-field
+    //     annotation AND sits as a DIRECT CHILD of its section — the exact
+    //     structure overlay.js walks (a marked child of the clicked section).
+    if (!/<section class="hero">\s*<div class="hero-bg"[^>]*\sdata-bk-field="background"[^>]*\sdata-bk-bg/.test(annIndex)) {
+      failures.push('annotated hero background is not a marked, background-field-annotated direct child of <section class="hero">');
+    }
+    if (!/<header class="page-header"[^>]*>\s*<div class="page-header-bg[^"]*"[^>]*\sdata-bk-field="background"[^>]*\sdata-bk-bg/.test(annMenu)) {
+      failures.push('annotated explicit page-header background is not a marked, background-field-annotated direct child of <header class="page-header">');
+    }
+
+    // (b) The marker rides ONLY background fields — never a heading, image, or
+    //     any other annotated element (so a dead-space click can't be misrouted).
+    for (const file of fs.readdirSync(annDir).filter(f => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(annDir, file), 'utf8');
+      for (const tag of markedTags(html)) {
+        if (!/\sdata-bk-field="background"/.test(tag)) {
+          failures.push(`data-bk-bg on a non-background element in ${file}: ${tag.slice(0, 80)}…`);
+        }
+      }
+    }
+    // The home hero must actually be among the marked tags (guards against the
+    // check passing vacuously if marking ever silently stopped).
+    if (markedTags(annIndex).length === 0) failures.push('no data-bk-bg marker found in the annotated home page');
+
+    // (c) No preview-only attribute leaks into a live build: neither the marker
+    //     nor any data-bk-* appears on the shipped backgrounds.
+    for (const file of fs.readdirSync(liveOut).filter(f => f.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(liveOut, file), 'utf8');
+      if (html.includes('data-bk-bg')) failures.push(`live ${file} contains the data-bk-bg marker`);
+      if (html.includes('data-bk-'))  failures.push(`live ${file} contains data-bk-* (preview-only attributes leaked live)`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the annotated build marks each behind-content background (hero and');
+    console.log('       explicit page-header) with data-bk-bg, paired with its background-field');
+    console.log('       annotation, as a direct child of its section; the marker rides only');
+    console.log('       background fields; and a live build carries neither the marker nor any');
+    console.log('       data-bk-* — the overlay routes a dead-space click to a target the live');
+    console.log('       site never exposes.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

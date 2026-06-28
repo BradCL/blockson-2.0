@@ -38,7 +38,7 @@ document.addEventListener('click', function (e) {
 }, true);
 ```
 
-Five classroom ideas, all load-bearing:
+Six classroom ideas, all load-bearing:
 
 1. **Event delegation** — one listener on `document` instead of one per
    element; `closest('[data-bk-block]')` walks up from whatever was
@@ -53,6 +53,17 @@ Five classroom ideas, all load-bearing:
    [the system map](../01-system-map.md)) are read back here.
 5. **`postMessage`** — the preview runs in an iframe, so it talks to the
    editor app cross-document, with the target origin pinned to `ORIGIN`.
+6. **`closest` walks up, not down** — and a *section background* (hero /
+   page-header) is painted *behind* the content at a negative z-index, so
+   it is never the click target and `closest` never reaches it. A
+   dead-space click would otherwise hit nothing (hero) or the section's
+   own field like variant (page-header). The real handler therefore calls
+   `resolveTarget`, not bare `closest`: the annotated build marks each
+   background with `data-bk-bg` as a direct child of its section, and when
+   a click finds no more-specific annotated element inside that section,
+   the overlay routes it to the marked background — which is also where the
+   hero focal-point/zoom controls open. The marker lives in the annotated
+   preview only, so it can never reach a live build.
 
 **The editor app** (`ui.js`) receives that message:
 

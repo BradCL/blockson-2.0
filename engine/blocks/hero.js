@@ -21,7 +21,7 @@ module.exports = function hero(fields, site, bk) {
     + `;transform:scale(${esc(String(bgZoom))});transform-origin:${esc(bgPosition)}`;
 
   return `<section class="hero">
-  <div class="hero-bg"${bk.f('background')} style="${bgStyle}"></div>
+  <div class="hero-bg"${bk.bg('background')} style="${bgStyle}"></div>
   <div class="container">
     <div class="hero-content">
       <div class="hero-tag"${bk.f('tag')}>${esc(fields.tag)}</div>
