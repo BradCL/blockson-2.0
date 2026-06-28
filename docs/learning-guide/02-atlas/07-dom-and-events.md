@@ -63,7 +63,10 @@ Six classroom ideas, all load-bearing:
    a click finds no more-specific annotated element inside that section,
    the overlay routes it to the marked background — which is also where the
    hero focal-point/zoom controls open. The marker lives in the annotated
-   preview only, so it can never reach a live build.
+   preview only, so it can never reach a live build. This resolution is DOM
+   logic the Node proof suite can't reach, so it has its own browser test:
+   `npm run test:overlay` (`scripts/overlay-e2e.js`) drives real clicks and
+   asserts the reference the overlay posts.
 
 **The editor app** (`ui.js`) receives that message:
 

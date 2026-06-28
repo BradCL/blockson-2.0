@@ -14,7 +14,8 @@
     "serve": "node engine/serve.js",
     "blueprints:check": "node engine/blueprints-check.js",
     "proofs": "node engine/_run-proofs.js",
-    "test": "node engine/_run-proofs.js"
+    "test": "node engine/_run-proofs.js",
+    "test:overlay": "node scripts/overlay-e2e.js"
   },
   "dependencies": {
     "ajv": "^8.20.0",
