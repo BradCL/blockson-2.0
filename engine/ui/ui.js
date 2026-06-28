@@ -481,17 +481,57 @@
     });
   }
 
+  // An <img> with its src set through the DOM (never an HTML string), used for
+  // the editor's image thumbnails.
+  function imageThumb(src) {
+    var img = el('img', 'editor-image');
+    if (src) img.src = src;
+    img.alt = '';
+    return img;
+  }
+
   // Image field: pick a file; the server stores it in the client's img/
   // folder and builds the path patch itself.
   function renderImageEditor(ref, info) {
     var ed = editorShell(fieldTitle(ref));
-    ed.appendChild(el('div', 'field-label', 'Current image'));
-    ed.appendChild(el('div', 'line-text', String(info.value)));
+
+    // Show the CURRENT image as a real thumbnail (served from the candidate
+    // build under /preview/), not just its path — so the owner can see what
+    // they are replacing. An inherited page-header background shows the hero.
+    ed.appendChild(el('div', 'field-label', info.inherited ? 'Current image (inherited from the site hero)' : 'Current image'));
+    if (info.value) {
+      ed.appendChild(imageThumb('/preview/' + info.value));
+      ed.appendChild(el('div', 'line-text', String(info.value)));
+    } else {
+      ed.appendChild(el('div', 'editor-image-empty', 'No image yet.'));
+    }
+
     ed.appendChild(el('div', 'field-label', 'Replace with'));
     var file = el('input');
     file.type = 'file';
     file.accept = 'image/png,image/jpeg,image/gif,image/webp,image/avif';
     ed.appendChild(file);
+
+    // Preview the CHOSEN file the moment it is picked, so "Use this image" is
+    // grounded in what the owner just selected instead of a silent file input.
+    // (The upload is re-encoded server-bound; the preview shows the original,
+    // which is visually identical.)
+    var chosen = imageThumb('');
+    chosen.style.display = 'none';
+    ed.appendChild(chosen);
+    var chosenUrl = null;
+    file.addEventListener('change', function () {
+      if (chosenUrl) { URL.revokeObjectURL(chosenUrl); chosenUrl = null; }
+      if (file.files && file.files[0]) {
+        chosenUrl = URL.createObjectURL(file.files[0]);
+        chosen.src = chosenUrl;
+        chosen.style.display = 'block';
+      } else {
+        chosen.removeAttribute('src');
+        chosen.style.display = 'none';
+      }
+    });
+
     var row = el('div', 'btn-row');
     row.appendChild(button('Use this image', 'primary', function () {
       if (!file.files || !file.files[0]) { editorError(ed, 'Choose an image file first.'); return; }

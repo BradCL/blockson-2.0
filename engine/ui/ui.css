@@ -208,6 +208,23 @@ select {
 }
 input[type="file"] { margin: 4px 0 10px; font-size: 13px; }
 
+/* ── Image editor thumbnails ── */
+.editor-image {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  margin: 4px 0 6px;
+  border: 1px solid #c6ccd8;
+  border-radius: 6px;
+  background: #f3f5f9;
+  object-fit: contain;
+}
+.editor-image-empty {
+  font-size: 13px;
+  color: #5b6372;
+  margin: 4px 0 10px;
+}
+
 /* ── Hero focal point + zoom ── */
 .hero-focal {
   position: relative;
