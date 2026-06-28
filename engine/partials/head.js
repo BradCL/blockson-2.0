@@ -13,9 +13,17 @@ module.exports = function head(page, site, tokens) {
   const title       = esc(page.meta.title);
   const description = esc(page.meta.description);
   const canonical   = `${site.baseUrl}/${page.slug === 'index' ? '' : page.slug + '.html'}`;
-  const ogImage     = page.meta.ogImage
-    ? `${site.baseUrl}/${page.meta.ogImage}`
-    : (site.logo && site.logo.black ? `${site.baseUrl}/${site.logo.black}` : '');
+  // og:image precedence: an explicit per-page image wins; otherwise the site
+  // hero photo (the same image page-headers inherit, derived in build.js) —
+  // a photographic card beats the logo, which as a transparent/one-color PNG
+  // often renders as a broken-looking social card. The logo stays the last
+  // resort so a page always has *something* (ugly, never broken). heroImage
+  // is gated by IMG_RE because it is a raw hero `background` field that could
+  // hold a non-image value; an explicit per-page ogImage still wins outright.
+  const ogSource    = page.meta.ogImage
+    || (site.heroImage && IMG_RE.test(site.heroImage) ? site.heroImage : '')
+    || (site.logo && site.logo.black ? site.logo.black : '');
+  const ogImage     = ogSource ? `${site.baseUrl}/${ogSource}` : '';
   const favicon     = site.logo.favicon;
 
   const rootBlock = tokens

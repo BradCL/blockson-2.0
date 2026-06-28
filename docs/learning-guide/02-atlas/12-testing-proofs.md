@@ -8,7 +8,7 @@ percentages as the measure of done.
 
 ## In Blockson it lives at…
 
-`engine/_run-proofs.js` — one file, twenty "proofs," run by `npm test`.
+`engine/_run-proofs.js` — one file, 23 "proofs," run by `npm test`.
 No test framework: plain Node, a `passed` counter with per-proof
 `failures` arrays, and a final
 `process.exit(passed === TOTAL ? 0 : 1)`. The file's 90-line header
@@ -89,7 +89,7 @@ unit test on `applyPatch` can't notice that `serve.js` forgot to call it,
 or that a renderer leaks an annotation into live HTML. The system's
 promises are end-to-end ("a bad patch can never leave a site broken"), so
 only end-to-end checks can certify them — and the engine's speed makes
-this affordable: twenty full-system proofs, including real builds, real
+this affordable: 23 full-system proofs, including real builds, real
 HTTP, and real git, in well under a minute.
 
 The transferable rule: **write your tests at the level of the sentence
@@ -108,7 +108,7 @@ chapters left it.
 
 <details><summary>What you should see</summary>
 
-`20/20 proofs passed.` The suite exercises the example clients, the
+`23/23 proofs passed.` The suite exercises the example clients, the
 shipped blueprints/themes, and throwaway sandboxes it creates itself -
 your scratch client isn't part of the contract, so it can't break the
 contract. (This is also why the guide had you experiment there.)</details>

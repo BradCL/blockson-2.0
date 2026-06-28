@@ -13,7 +13,7 @@ Images cross the whole system, and each station treats them differently:
 | Station | File | What happens |
 |---|---|---|
 | Content | `content.json` | images are *string paths* like `"img/deck-3.jpg"` |
-| Build | `engine/build.js` | `copyDir` copies `clients/<name>/img/` into `dist/`; `warnOnHeavyImages` complains about weight |
+| Build | `engine/build.js` | `copyDir` copies `clients/<name>/img/` into `dist/`; `warnOnHeavyImages` complains about weight; `warnOnUnreferencedImages` names files nothing points at |
 | Browser | `engine/ui/ui.js` | `compressImage` shrinks an upload before it's sent |
 | Server | `engine/lib/owner.js` | `prepareUpload` validates name, size, and *bytes*, then assigns the final path |
 
@@ -90,6 +90,15 @@ suffix rather than overwriting.
   with a one-sentence fix but never fails the build: it's advice about
   quality, not a violation of correctness, and the build distinguishes
   the two (see [atlas 10](10-error-handling.md)).
+- **Orphans are the symmetric blind spot.** An image `copyDir` ships but
+  nothing points at is dead weight the same way an oversized one is.
+  `warnOnUnreferencedImages` names each (also advisory, never fails) — and
+  to avoid crying wolf it gathers the *referenced* set from every channel
+  an image can be reached through: a recursive scan of `content.json`
+  (which already holds backgrounds, gallery photos, the logo/favicon trio,
+  and per-page `meta.ogImage`) plus a scan of the shipped theme CSS for the
+  assets it hard-codes (e.g. `url('../img/banner.jpg')`), which never appear
+  in content.
 - **Uploads stay in the candidate until publish.** Bytes land in the
   candidate's `img/`; only `publish()` copies them to live, and a
   discarded session deletes them with the candidate. Even file writes
@@ -124,8 +133,10 @@ node engine/build.js learning-lab
 
 `⚠ img/big.jpg is 600 KB - every visitor downloads it at full size...`
 on stderr, but `Built 2 page(s)` and exit `0`. Weight is advice
-(`warnOnHeavyImages`), not correctness. Delete `big.jpg`
-afterwards.</details>
+(`warnOnHeavyImages`), not correctness. You'll also see
+`⚠ img/big.jpg is not referenced ...` — nothing in the content or theme
+CSS points at it, so the second advisory (`warnOnUnreferencedImages`)
+flags it too. Delete `big.jpg` afterwards.</details>
 
 **Exercise 2 (predict, then verify).** That `big.jpg` from Exercise 1 is
 600 KB of the letter "A" - not a real JPEG. *Question:* if you tried to

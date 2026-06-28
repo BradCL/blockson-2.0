@@ -210,6 +210,15 @@ console.log(`Built ${content.pages.length} page(s) → dist/${clientName + distS
 // only — it never changes the exit code or the build output.
 warnOnHeavyImages(imgSrc);
 
+// ── Unreferenced-image advisory ────────────────────────────────
+// Symmetric with the weight advisory: an image that sits in img/ but is
+// referenced by nothing still gets copied into the build, quietly inflating
+// it. Name those orphans so they can be pruned. Advisory only — warn, never
+// fail. The "referenced" set spans every channel an image can be reached
+// through, so the check does not cry wolf over files used outside content.json
+// (favicon/og-image live in content; the theme CSS hard-codes others).
+warnOnUnreferencedImages(imgSrc, content, path.join(distDir, 'css'));
+
 // ── Unconfigured contact-form advisory ─────────────────────────
 // "https://UNCONFIGURED" is the documented placeholder for a contact-form
 // endpoint that has not been wired up yet (BLOCK_CATALOG.md): it passes the
@@ -284,6 +293,60 @@ function warnOnHeavyImages(imgDir) {
   }
   if (total > TOTAL_LIMIT) {
     console.warn(`  ⚠ img/ totals ${(total / 1048576).toFixed(1)} MB across ${files.length} files`);
+  }
+}
+
+function warnOnUnreferencedImages(imgDir, content, cssDir) {
+  if (!fs.existsSync(imgDir)) return;
+  const { IMG_RE } = require('./lib/scaffold');
+
+  // The set of img/ files something points at, gathered per channel. Paths are
+  // stored relative to img/ (the "img/" prefix dropped) so they line up with
+  // the directory walk below.
+  const referenced = new Set();
+
+  // (1) content.json — every string with the in-site image shape. This single
+  //     recursive scan covers hero/page-header backgrounds, gallery photos and
+  //     image blocks, AND the channels easy to forget: the logo white/black/
+  //     favicon trio, per-page meta.ogImage, and any *-image theme-override
+  //     token — they all live in the content tree, so they are not special
+  //     cases here.
+  (function scan(node) {
+    if (typeof node === 'string') {
+      if (IMG_RE.test(node)) referenced.add(node.slice(4)); // drop leading "img/"
+    } else if (Array.isArray(node)) {
+      node.forEach(scan);
+    } else if (node && typeof node === 'object') {
+      for (const v of Object.values(node)) scan(v);
+    }
+  })(content);
+
+  // (2) theme CSS — the one out-of-band channel. The stylesheet hard-codes
+  //     assets that never appear in content.json (e.g. the page-header fallback
+  //     url('../img/banner.jpg')), so scan the CSS that actually shipped or the
+  //     check would cry wolf over a client who provides banner.jpg.
+  const CSS_IMG_RE = /img\/([A-Za-z0-9._\-\/]+\.(?:png|jpe?g|gif|webp|avif|svg))/gi;
+  if (fs.existsSync(cssDir)) {
+    for (const entry of fs.readdirSync(cssDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith('.css')) continue;
+      const css = fs.readFileSync(path.join(cssDir, entry.name), 'utf8');
+      let m;
+      while ((m = CSS_IMG_RE.exec(css))) referenced.add(m[1]);
+    }
+  }
+
+  // Walk img/ and name anything nothing reaches. Advisory only.
+  const orphans = [];
+  (function walk(dir, rel) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const r = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(path.join(dir, entry.name), r);
+      else if (!referenced.has(r)) orphans.push(r);
+    }
+  })(imgDir, '');
+
+  for (const rel of orphans) {
+    console.warn(`  ⚠ img/${rel} is not referenced by content.json, the theme CSS, the logo/favicon, or any theme token — it still ships in the build; remove it from img/ if it is unused.`);
   }
 }
 

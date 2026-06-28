@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all twenty end-to-end proofs in sequence and prints results.
+// Runs all twenty-three end-to-end proofs in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -95,6 +95,20 @@
 //             optional (absent → default paint); and the edit map reports them
 //             as block metadata, never scalars (so proof 1 demands no
 //             annotation for an element no renderer emits).
+// Proof 22:   og:image fallback precedence (engine/partials/head.js): with no
+//             per-page meta.ogImage, a page's social card is the site hero photo
+//             (home and interior pages alike) rather than the logo — a logo
+//             often renders as a broken-looking transparent PNG; an explicit
+//             per-page ogImage still wins; a hero `background` that is not an
+//             image (the schema only types it as a string) is guarded out and
+//             falls through to the logo; and with no hero anywhere the logo is
+//             the last resort, so the tag is never broken-missing.
+// Proof 23:   unreferenced-image advisory (engine/build.js): an image sitting in
+//             img/ that nothing reaches (including a nested one) is named on
+//             stderr so it can be pruned, while images reached through any real
+//             channel — content fields, the logo/favicon trio, a per-page
+//             og-image, or the theme CSS's hard-coded banner — are spared (no
+//             crying wolf), and the build still succeeds (exit 0).
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -188,7 +202,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 21;
+const TOTAL = 23;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -1218,7 +1232,10 @@ console.log('\n═══ PROOF 14 — Image weight advisory: heavy files are nam
     if (!/img\/big-photo\.jpg is 600 KB/.test(b2.out)) failures.push('first per-file warning missing on rebuild');
     if (!/img\/huge-banner\.png is 1\.6 MB/.test(b2.out)) failures.push(`second per-file warning missing or wrong: ${b2.out}`);
     if (!/img\/ totals 2\.2 MB across 3 files/.test(b2.out)) failures.push(`folder total line missing or wrong: ${b2.out}`);
-    if (/small-icon/.test(b2.out)) failures.push('a file under the limit was named in a warning');
+    // Scoped to the WEIGHT message shape ("… is <n> KB/MB"): a small file is
+    // never named for its size. (It may legitimately appear in the separate
+    // unreferenced-image advisory — "… is not referenced" — which proof 23 owns.)
+    if (/small-icon\.png is \d+ (KB|MB)/.test(b2.out)) failures.push('a file under the limit was named in a weight warning');
   } catch (e) {
     failures.push(`exception: ${e.message}`);
   } finally {
@@ -2269,6 +2286,165 @@ console.log('\n═══ PROOF 21 — Hero focal-point + zoom: guarded values ro
     console.log('       scale, with no ids and no data-bk-* in the live HTML; the fields are');
     console.log('       optional (absent → default paint); and the edit map reports them as');
     console.log('       block metadata, never scalars.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 22 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 22 — og:image fallback: per-page image → site hero → logo ═══');
+{
+  const CLIENT  = '__proof-ogimage';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // The og:image content for a built page, or null if the tag is absent.
+  const ogImage = (slug) => {
+    const html = fs.readFileSync(path.join(distDir, pageFile(slug)), 'utf8');
+    const m = html.match(/<meta property="og:image"\s+content="([^"]*)">/);
+    return m ? m[1] : null;
+  };
+  const writeBuild = (content) => {
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+    return build(CLIENT);
+  };
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base    = readContent('example-contractor'); // index hero = img/banner.jpg
+    const baseUrl = base.site.baseUrl;
+    const heroUrl = `${baseUrl}/img/banner.jpg`;
+    const logoUrl = `${baseUrl}/${base.site.logo.black}`;
+    if (base.site.logo.black === 'img/banner.jpg') failures.push('test premise broken: logo equals hero');
+
+    // (a) No per-page ogImage: every page (home AND interior) takes the site
+    //     hero photo, not the logo — the whole point of the precedence change.
+    let b = writeBuild(clone(base));
+    if (!b.ok) failures.push(`base build failed:\n${b.out}`);
+    else {
+      if (ogImage('index') !== heroUrl) failures.push(`home og:image is "${ogImage('index')}", expected the hero ${heroUrl}`);
+      if (ogImage('about') !== heroUrl) failures.push(`interior og:image is "${ogImage('about')}", expected the inherited hero ${heroUrl}`);
+      if (ogImage('index') === logoUrl) failures.push('home og:image fell back to the logo while a hero exists');
+    }
+
+    // (b) An explicit per-page meta.ogImage wins outright on its page; other
+    //     pages still take the hero.
+    const withPer = clone(base);
+    withPer.pages.find(p => p.slug === 'about').meta.ogImage = 'img/custom-share.jpg';
+    b = writeBuild(withPer);
+    if (!b.ok) failures.push(`per-page build failed:\n${b.out}`);
+    else {
+      if (ogImage('about') !== `${baseUrl}/img/custom-share.jpg`) failures.push(`explicit per-page ogImage did not win (got "${ogImage('about')}")`);
+      if (ogImage('index') !== heroUrl) failures.push('a per-page ogImage on one page changed another page');
+    }
+
+    // (c) Guard: heroImage is a raw hero `background` the schema only types as a
+    //     string, so a non-image value must NOT be emitted as a social card —
+    //     it falls through to the logo.
+    const badHero = clone(base);
+    badHero.pages.find(p => p.slug === 'index').blocks.find(bl => bl.type === 'hero').fields.background = 'none';
+    b = writeBuild(badHero);
+    if (!b.ok) failures.push(`non-image-hero build failed:\n${b.out}`);
+    else if (ogImage('index') !== logoUrl) {
+      failures.push(`a non-image hero background was used as og:image instead of falling back to the logo (got "${ogImage('index')}")`);
+    }
+
+    // (d) No hero anywhere: the logo is the last resort, so the tag is never
+    //     missing entirely (ugly, never broken).
+    const noHero = clone(base);
+    const idx = noHero.pages.find(p => p.slug === 'index');
+    idx.blocks = idx.blocks.filter(bl => bl.type !== 'hero');
+    b = writeBuild(noHero);
+    if (!b.ok) failures.push(`no-hero build failed:\n${b.out}`);
+    else if (ogImage('index') !== logoUrl) {
+      failures.push(`with no hero, og:image is "${ogImage('index')}", expected the logo ${logoUrl}`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — with no per-page image, every page (home and interior) takes the site');
+    console.log('       hero as its og:image rather than the logo; an explicit per-page');
+    console.log('       meta.ogImage still wins on its page; a non-image hero background is');
+    console.log('       guarded and falls through to the logo; and with no hero at all the');
+    console.log('       logo is the last resort, so the tag is never broken-missing.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 23 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 23 — Unreferenced-image advisory: orphans named, every channel spared, build still succeeds ═══');
+{
+  const CLIENT  = '__proof-unref-img';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const imgDir  = path.join(liveDir, 'img');
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(imgDir, { recursive: true });
+    const content = readContent('example-contractor');
+
+    // Point the hero at a NON-default name so banner.jpg becomes reachable ONLY
+    // through the theme CSS (which hard-codes url('../img/banner.jpg')) — the
+    // exact cry-wolf case the check must understand and NOT flag.
+    content.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero').fields.background = 'img/hero-photo.jpg';
+    // An explicit per-page social card exercises the meta.ogImage channel.
+    content.pages.find(p => p.slug === 'about').meta.ogImage = 'img/share-card.jpg';
+    fs.writeFileSync(path.join(liveDir, 'content.json'), JSON.stringify(content, null, 2) + '\n', 'utf8');
+
+    // One file reachable through each real channel — none may be flagged.
+    const referenced = [
+      'hero-photo.jpg',   // content: hero background
+      'logo-white.png',   // content: logo.white
+      'logo-black.png',   // content: logo.black (and the og:image fallback)
+      'favicon.png',      // content: logo.favicon
+      'share-card.jpg',   // content: per-page meta.ogImage
+      'banner.jpg',       // theme CSS ONLY — the cry-wolf guard
+    ];
+    // Reachable from nothing — each must be named (a nested one proves the walk
+    // recurses into sub-folders).
+    const orphans = ['orphan.jpg', 'gallery/extra-shot.png'];
+    for (const rel of [...referenced, ...orphans]) {
+      fs.mkdirSync(path.dirname(path.join(imgDir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(imgDir, rel), Buffer.alloc(64));
+    }
+
+    const b = build(CLIENT);
+    if (!b.ok) failures.push(`build failed (the advisory must never fail a build):\n${b.out}`);
+    if (!/Built \d+ page\(s\)/.test(b.out)) failures.push('normal build output is missing');
+
+    for (const rel of orphans) {
+      if (!b.out.includes(`img/${rel} is not referenced`)) failures.push(`orphan not named: img/${rel}\n${b.out}`);
+    }
+    for (const rel of referenced) {
+      if (b.out.includes(`img/${rel} is not referenced`)) failures.push(`cried wolf over a referenced image: img/${rel}`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — an image reached by nothing (including a nested one) is named on stderr');
+    console.log('       so it can be pruned, while images reached through any channel — content');
+    console.log("       fields, the logo/favicon trio, a per-page og-image, or the theme CSS's");
+    console.log('       hard-coded banner — are spared, and the build still succeeds (exit 0).');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
