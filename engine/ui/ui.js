@@ -28,6 +28,14 @@
   var $ = function (id) { return document.getElementById(id); };
   var iframe = $('preview');
 
+  // In the Node editor this is null and every call below uses fetch + the
+  // iframe's own src, exactly as before. The browser demo installs an in-page
+  // transport (window.__blocksonTransport) that routes /api/* to the owner
+  // handlers over an in-memory host and loads preview pages into the iframe as
+  // Blob URLs — so this one file drives both the localhost editor and the demo
+  // with no fork. The demo only ever REMOVES Publish; it relaxes no guard.
+  var transport = window.__blocksonTransport || null;
+
   // Friendly names for section settings / addable fields (Section panel).
   var FIELD_LABELS = {
     subhead: 'subtitle',
@@ -50,15 +58,27 @@
   };
 
   // ── Server I/O ───────────────────────────────────────────────
+  // The default transport is fetch (Node localhost server); the demo transport
+  // answers the same /api/* contract from the in-page owner handlers.
   function apiGet(path) {
+    if (transport) return transport.apiGet(path);
     return fetch(path).then(function (r) { return r.json(); });
   }
   function apiPost(path, body) {
+    if (transport) return transport.apiPost(path, body);
     return fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-blockson-ui': '1' },
       body: JSON.stringify(body || {}),
     }).then(function (r) { return r.json(); });
+  }
+
+  // A URL for an asset under the candidate preview — image thumbnails and the
+  // hero focal preview shown in the editor chrome itself. The Node server
+  // serves these under /preview/; the demo transport resolves them to in-memory
+  // Blob URLs.
+  function previewAsset(p) {
+    return transport && transport.previewAsset ? transport.previewAsset(p) : '/preview/' + p;
   }
 
   // ── Small DOM helpers (textContent only — never innerHTML) ──
@@ -85,6 +105,7 @@
   function clearMessage() { $('message').hidden = true; }
 
   function reloadPreview() {
+    if (transport && transport.loadPreview) { transport.loadPreview(iframe, currentPath); return; }
     iframe.src = currentPath + (currentPath.indexOf('?') === -1 ? '?' : '&') + 't=' + Date.now();
   }
 
@@ -97,6 +118,11 @@
       renderPending();
       renderTokens();
       $('publish-status').textContent = s.lastPublish ? s.lastPublish.message : '';
+      // Demo build: publishing is disabled BY THE HOST, so remove the control
+      // that reverts a publish (there is none). The Publish button itself is
+      // disabled in renderSession, and a static banner in the demo shell says
+      // why. Inert in the Node editor (publishMode is never 'demo').
+      if (s.publishMode === 'demo') $('btn-restore').hidden = true;
       var contact = $('contact-line');
       if (s.contact && (s.contact.name || s.contact.email)) {
         contact.textContent = 'Need a bigger change? Contact ' +
@@ -212,6 +238,12 @@
     $('btn-publish').textContent = staged.length === 1
       ? 'Publish 1 change'
       : 'Publish ' + staged.length + ' changes';
+    // Demo build: Publish is visibly present but disabled — nothing can go live.
+    if (state.publishMode === 'demo') {
+      $('btn-publish').disabled = true;
+      $('btn-publish').title = 'Publishing is turned off in this demo.';
+      $('btn-publish').textContent = 'Publishing is off in this demo';
+    }
     cardEl.hidden = false;
   }
 
@@ -584,7 +616,7 @@
     // they are replacing. An inherited page-header background shows the hero.
     ed.appendChild(el('div', 'field-label', info.inherited ? 'Current image (inherited from the site hero)' : 'Current image'));
     if (info.value) {
-      ed.appendChild(imageThumb('/preview/' + info.value));
+      ed.appendChild(imageThumb(previewAsset(info.value)));
       ed.appendChild(el('div', 'line-text', String(info.value)));
     } else {
       ed.appendChild(el('div', 'editor-image-empty', 'No image yet.'));
@@ -648,9 +680,10 @@
     ed.appendChild(el('div', 'field-label', 'Reposition the background'));
     ed.appendChild(el('div', 'hint', 'Drag the dot to choose what stays centred, then save.'));
     var box = el('div', 'hero-focal');
-    // info.value is the current image path (e.g. "img/banner.jpg"), served
-    // under /preview/. setProperty keeps the value out of any HTML string.
-    box.style.backgroundImage = "url('/preview/" + info.value + "')";
+    // info.value is the current image path (e.g. "img/banner.jpg"), resolved
+    // through the preview transport. setProperty keeps the value out of any
+    // HTML string.
+    box.style.backgroundImage = "url('" + previewAsset(info.value) + "')";
     box.style.backgroundPosition = pos.x + '% ' + pos.y + '%';
     var dot = el('div', 'hero-focal-dot');
     var placeDot = function () { dot.style.left = pos.x + '%'; dot.style.top = pos.y + '%'; };
@@ -1146,7 +1179,10 @@
   window.addEventListener('message', function (e) {
     if (e.origin !== window.location.origin || !e.data || typeof e.data !== 'object') return;
     if (e.data.type === 'bk-nav' && typeof e.data.path === 'string') {
-      currentPath = e.data.path;
+      // The demo serves pages from a Blob URL (no real /preview path), so the
+      // overlay's reported path is meaningless there; the transport tracks the
+      // current page itself. Honour bk-nav only on the Node server path.
+      if (!transport) currentPath = e.data.path;
       return;
     }
     if (e.data.type === 'bk-edit') {
@@ -1156,6 +1192,10 @@
       openSectionEditor(e.data.block);
     }
   });
+
+  // The Node shell loads the first preview from the iframe's own src attribute;
+  // the demo iframe has none, so kick the initial load off through the transport.
+  if (transport && transport.loadPreview) reloadPreview();
 
   refreshState();
 })();

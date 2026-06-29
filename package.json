@@ -12,17 +12,20 @@
     "build:restaurant": "node engine/build.js example-restaurant",
     "build:all": "node engine/build.js example-contractor && node engine/build.js example-league && node engine/build.js example-restaurant",
     "serve": "node engine/serve.js",
+    "build:demo": "node engine/build-demo.js",
     "blueprints:check": "node engine/blueprints-check.js",
     "proofs": "node engine/_run-proofs.js",
     "test": "node engine/_run-proofs.js",
     "test:overlay": "node scripts/overlay-e2e.js",
-    "test:editor": "node scripts/editor-keepopen-e2e.js"
+    "test:editor": "node scripts/editor-keepopen-e2e.js",
+    "test:demo": "node scripts/demo-e2e.js"
   },
   "dependencies": {
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "playwright": "^1.60.0",
     "sharp": "^0.35.0"
   }

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<!-- engine/ui/demo/index.html — Owner editor shell, browser-demo variant.
+     Identical in structure to engine/ui/index.html (the same ids ui.js drives),
+     with three differences: assets are loaded by relative path (no localhost
+     server), the preview iframe starts with no src (the in-page transport loads
+     it via srcdoc), and a static banner makes the "nothing goes live" demo
+     posture plain. demo-bundle.js installs the transport BEFORE ui.js runs. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site editor — interactive demo</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    .demo-banner {
+      background: #1d4ed8; color: #fff; font: 13px/1.5 system-ui, sans-serif;
+      padding: 8px 14px; text-align: center;
+    }
+    .demo-banner strong { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="demo-banner">
+    <strong>Interactive demo.</strong> Try clicking anything in the preview to edit it.
+    Your changes stay in this browser — nothing is saved or published, and a refresh starts fresh.
+  </div>
+  <main class="layout">
+    <section class="preview-pane">
+      <iframe id="preview" title="Site preview"></iframe>
+    </section>
+
+    <aside class="panel">
+      <header class="panel-head">
+        <h1 id="client-name">…</h1>
+        <p class="hint">Click anything highlighted in the preview to edit it.</p>
+        <div class="mode-toggle" role="group" aria-label="Editor mode">
+          <button id="btn-mode-edit" class="btn mode-btn is-active" type="button">Edit</button>
+          <button id="btn-mode-preview" class="btn mode-btn" type="button">Preview</button>
+        </div>
+        <p id="mode-hint" class="hint"></p>
+      </header>
+
+      <div id="message" class="message" hidden></div>
+
+      <section id="session-card" class="card session" hidden>
+        <h2>Kept this session</h2>
+        <p class="hint">These changes are in the preview. In the real editor they would go live when you publish; this demo never publishes.</p>
+        <div id="staged-list" class="staged-list"></div>
+        <div class="session-actions">
+          <button id="btn-publish" class="btn primary">Publish</button>
+          <button id="btn-discard-all" class="btn danger">Discard all</button>
+        </div>
+      </section>
+
+      <section id="pending-card" class="card pending" hidden>
+        <h2>Pending change</h2>
+        <p id="pending-summary" class="pending-summary"></p>
+        <div class="diff">
+          <div class="diff-row"><span class="diff-label">Now</span><span id="pending-old" class="diff-value old"></span></div>
+          <div class="diff-row"><span class="diff-label">After</span><span id="pending-new" class="diff-value new"></span></div>
+        </div>
+        <div class="btn-row">
+          <button id="btn-keep" class="btn primary">Keep</button>
+          <button id="btn-discard" class="btn">Discard</button>
+        </div>
+        <p class="hint">Keep adds this change to the session above — in this demo nothing goes live.</p>
+      </section>
+
+      <section id="editor" class="card" hidden></section>
+
+      <section id="add-menu" class="card">
+        <h2>Add to the site</h2>
+        <p class="hint">New pages built from ready-made layouts. You'll see a full preview before anything is kept.</p>
+        <div class="btn-row"><button id="btn-add" class="btn">Add a page…</button></div>
+      </section>
+
+      <section id="brand-colors" class="card">
+        <h2>Brand colors</h2>
+        <p class="hint">Safe to experiment — anything unreadable is rejected before it can reach the site.</p>
+        <div id="token-list"></div>
+      </section>
+
+      <footer class="panel-foot">
+        <div id="publish-status" class="hint"></div>
+        <div id="contact-line" class="hint"></div>
+        <button id="btn-restore" class="btn subtle">Undo last publish</button>
+      </footer>
+    </aside>
+  </main>
+
+  <!-- The transport is installed first, then the unchanged editor app reads it. -->
+  <script src="demo-bundle.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

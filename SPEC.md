@@ -75,6 +75,8 @@ engine/
   build.js              Build script (Node, no external deps beyond a JSON schema validator)
   apply-patch.js        Patch CLI (content + token patches)
   serve.js              Owner-editor server (localhost; HTTP plumbing over lib/owner.js)
+  build-demo.js         Browser-demo builder: bundles lib/owner.js over the in-memory
+                        host into a static dist/demo-<client>/ (npm run build:demo; §13)
   sitemap.js            Edit-map inspection CLI
   new-client.js         Client scaffolder
   validate-blueprint.js Blueprint acceptance CLI (schema → sample instantiation →
@@ -85,7 +87,9 @@ engine/
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
   _run-proofs.js        Proof suite (28 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
-                        (injected at serve time into annotated preview pages only)
+                        (injected into annotated preview pages only). ui/demo/ is the
+                        browser-demo bootstrap (entry.js + shell + Node-builtin shims)
+                        the build-demo bundle is built from; ui.js drives both (§13)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 23 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
@@ -105,7 +109,10 @@ engine/
                         injected host (§13)
     host-node.js        Default (disk/git) host for owner.js: candidate copy, content +
                         image I/O, preview/live builds, the publish command, the
-                        per-client ledger file; the no-fs browser host is a peer (§13)
+                        per-client ledger file (§13)
+    host-browser.js     Peer in-memory host for owner.js: content in strings, images
+                        in a Map, an in-browser render; Publish disabled — drives the
+                        no-install browser demo (build-demo.js, §13)
     scaffold.js         Blueprint scaffolder + item removal — the only structural
                         path (§10)
     bpcheck.js          Blueprint authoring-kit pipeline behind validate-blueprint /
@@ -628,11 +635,27 @@ exercises the handlers directly.
   delegates every side effect — candidate + live content I/O, image bytes, the
   preview/live builds, publish, the ledger sink — to an injected host.
   `engine/lib/host-node.js` is the default (disk/git) host and does on disk exactly
-  what `owner.js` used to do inline, so the Node path is behavior-identical. A
-  browser host can drive the same handlers entirely in-memory (where Publish is a
-  host-level no-op, never a fork of the keep/staged flow); proof 28 exercises that
-  in-memory path through the same edit → keep → discard cycle as proof 8 so the
-  adapter cannot silently diverge.
+  what `owner.js` used to do inline, so the Node path is behavior-identical.
+  `engine/lib/host-browser.js` is the peer host that drives the same handlers
+  entirely in-memory — content in strings, images in a `Map`, the acceptance build
+  the same `validate()` gate plus an in-browser render (theme CSS/JS inlined, images
+  rewritten to Blob URLs, the overlay injected) — for the no-install **browser
+  demo**. Publish is a host-level no-op there (`shipSession` reports nothing
+  shipped, which leaves the staged session intact), never a fork of the keep/staged
+  flow; the demo only ever *removes* Publish and relaxes no guard. Proof 28
+  exercises the in-memory path through the same edit → keep → discard cycle as
+  proof 8 so the adapter cannot silently diverge.
+- **Browser demo.** `npm run build:demo <client>` (`engine/build-demo.js`) inlines a
+  client's content, images, active theme (tokens/CSS/JS), the content schema, and
+  the blueprint registry — seeded through the Phase-1 `validate.setSchema` /
+  `scaffold.setBlueprintRegistry` hooks — and bundles `engine/lib/owner.js` over the
+  browser host with esbuild into a self-contained static folder
+  (`dist/demo-<client>/`) deployable to any static host with no Node and no server.
+  `engine/ui/ui.js` is one file shared by both paths: a `window.__blocksonTransport`
+  seam (defaulting to `fetch` + the iframe's own `src`, so the Node editor is
+  unchanged) routes `/api/*` to the in-page handlers and loads preview pages via
+  Blob URLs; the editor hides/disables Publish when `publishMode === 'demo'`. The
+  static build is covered by the `test:demo` browser smoke.
 
 - **Candidate copy.** The session works on `clients/<client>__candidate/` (gitignored),
   a full copy of the live client reset from live at session start and on Discard all.
