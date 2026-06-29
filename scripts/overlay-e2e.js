@@ -119,6 +119,36 @@ async function hoverSectionClickChip(page, innerSel) {
   }, innerSel);
 }
 
+// Reveal the chip by hovering the section, then drive a hover PATH toward it
+// that crosses a non-section element (a stand-in for the gap between the
+// section and the chip, or a sticky nav overlapping the hero corner) before
+// arriving on the chip. Asserts the chip survives the whole trip: the old
+// behaviour hid it synchronously the instant the pointer left the section, so
+// it was unreachable. Returns the chip's visibility at each step.
+async function hoverPathToChip(page, innerSel) {
+  return page.evaluate(async (innerSel) => {
+    const inner = document.querySelector(innerSel);
+    if (!inner) return { error: 'inner element not found: ' + innerSel };
+    inner.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    const chip = document.querySelector('.bk-section-chip');
+    const visible = () => !!(chip && chip.style.display !== 'none');
+    const shownOnSection = visible();
+    // Cross a non-section pixel on the way to the chip. <body> resolves to no
+    // section, so this is exactly the dismissal the old code fired on.
+    document.body.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    // It must NOT have vanished synchronously — that was the bug.
+    const aliveAfterGap = visible();
+    // Arrive on the chip and wait out the grace period; it must stay up.
+    chip.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    const aliveOnChip = visible();
+    window.__bk.length = 0;
+    chip.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 50));
+    return { ok: true, shownOnSection, aliveAfterGap, aliveOnChip, posted: window.__bk.slice() };
+  }, innerSel);
+}
+
 async function clickSelector(page, sel) {
   return page.evaluate(async (sel) => {
     const target = document.querySelector(sel);
@@ -172,6 +202,20 @@ async function main() {
           `hero chip posted ${JSON.stringify(chip.posted)}, expected one bk-section`);
         expect(chip.posted[0] && typeof chip.posted[0].block === 'string' && chip.posted[0].block,
           'hero chip bk-section ref carries no block id');
+      }
+
+      // (b2b) The chip survives a hover PATH from the section across a
+      //       non-section pixel to the chip — the reachability fix. Without the
+      //       close-delay grace period the chip vanished the instant the pointer
+      //       left the section, so it could never be clicked.
+      const path = await hoverPathToChip(page, '.hero h1');
+      if (path.error) expect(false, `hero chip path: ${path.error}`);
+      else {
+        expect(path.shownOnSection, 'the section chip was not revealed on hero hover (path test)');
+        expect(path.aliveAfterGap, 'the chip vanished synchronously when the pointer crossed a non-section pixel (reachability regression)');
+        expect(path.aliveOnChip, 'the chip did not survive the trip to it across the grace period');
+        expect(path.posted.length === 1 && path.posted[0].type === 'bk-section',
+          `hero chip (after path) posted ${JSON.stringify(path.posted)}, expected one bk-section`);
       }
 
       // (b3) A click on a hero BUTTON resolves to its (block, item, label) ref —
@@ -240,8 +284,10 @@ async function main() {
     console.log('       focal/zoom open); a click on the hero headline still resolves to the');
     console.log('       headline; a click on a hero button resolves to its (block, item, label)');
     console.log('       ref; hovering a section reveals the chip whose click posts a');
-    console.log('       bk-section ref with the block id; and the same overlay on the live build');
-    console.log('       neither resolves a background nor shows the chip — it posts nothing.');
+    console.log('       bk-section ref with the block id; the chip survives a hover path from');
+    console.log('       the section across a non-section pixel to the chip (the reachability');
+    console.log('       fix); and the same overlay on the live build neither resolves a');
+    console.log('       background nor shows the chip — it posts nothing.');
     process.exit(0);
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

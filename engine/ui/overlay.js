@@ -90,11 +90,27 @@
   document.body.appendChild(chip);
   var chipBlock = null;
 
-  function hideChip() { chip.style.display = 'none'; chipBlock = null; }
+  // Hiding the chip is DELAYED by a short grace period so the pointer can
+  // travel from the section to the chip across a gap or an overlapping element
+  // (e.g. a sticky site nav sitting over the hero's top-right corner) without
+  // the chip vanishing mid-trip — the reachability bug owners hit. Arriving on
+  // the chip or re-entering the section cancels the pending hide; a hard hide
+  // (scroll, mode switch, a section that measured to zero size) drops it at
+  // once. Nothing here touches builds or annotation bytes — it is overlay-only.
+  var hideTimer = null;
+  function cancelHide() { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } }
+  function hideChip() { cancelHide(); chip.style.display = 'none'; chipBlock = null; }
+  function scheduleHideChip() {
+    if (hideTimer || chip.style.display === 'none') return;
+    hideTimer = setTimeout(function () {
+      hideTimer = null; chip.style.display = 'none'; chipBlock = null;
+    }, 260);
+  }
 
   function showChipFor(section, blockId) {
     var r = section.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) { hideChip(); return; }
+    cancelHide();
     chipBlock = blockId;
     chip.style.display = 'block';
     chip.style.top = Math.max(8, r.top + 8) + 'px';
@@ -161,13 +177,16 @@
 
   document.addEventListener('mouseover', function (e) {
     if (mode !== 'edit') return;
-    // Keep the chip up while the pointer is on it (it sits above the section).
-    if (e.target === chip) return;
+    // Keep the chip up while the pointer is on it (it sits above the section);
+    // arriving here cancels any pending hide from the trip across the gap.
+    if (e.target === chip) { cancelHide(); return; }
     // Reveal the chip for the section under the pointer (a hero/page-header,
-    // identified by its data-bk-bg child); hide it anywhere else.
+    // identified by its data-bk-bg child). Off-section, hide it — but only
+    // after a grace period (scheduleHideChip), so a pointer crossing a gap or
+    // an overlapping element on its way to the chip doesn't lose it.
     var sec = sectionBackground(e.target);
     if (sec) showChipFor(sec.section, sec.bg.dataset.bkBlock);
-    else hideChip();
+    else scheduleHideChip();
     var el = resolveTarget(e.target);
     // For a behind-content background, ring the SECTION (its parent) instead:
     // the background's own outline would be clipped by the section's
