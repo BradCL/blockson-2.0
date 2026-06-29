@@ -50,6 +50,12 @@ Pending:
   page-header's background editor as well; the path is keyed on the `background`
   field, not the block type. Reword "hero" → "hero/page-header" when next
   reconciling. `git log 73d5b75..HEAD -- engine/blocks/page-header.js` is the delta.
+- ⏳ **Image compression `MAX_EDGE` raised 1920 → 2400** — `02-atlas/09-images.md`
+  (~lines 34–35) cites the longest-edge cap as `MAX_EDGE` 1920 (the inline code
+  comment near line 27 just says "never upscale", no number). The cap is now 2400
+  px so a full-bleed hero stays crisp on large/retina displays; `QUALITY` 0.82 is
+  unchanged. Update the "1920" mention when next reconciling.
+  `git log 73d5b75..HEAD -- engine/ui/ui.js` is the delta.
 
 Reconciled (prose, 2026-06-28 pass):
 

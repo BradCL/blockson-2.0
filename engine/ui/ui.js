@@ -537,8 +537,8 @@
   // a control — the server's upload guards (extension allowlist, size cap,
   // file-signature check) treat the result as untrusted input regardless.
 
-  // MAX_EDGE: longest output edge in px — full-bleed-hero sharp on common displays, ~10x smaller than a phone photo.
-  var MAX_EDGE = 1920;
+  // MAX_EDGE: longest output edge in px — keeps a full-bleed hero crisp on large/retina displays, still far smaller than a raw phone photo.
+  var MAX_EDGE = 2400;
   // QUALITY: jpeg/webp encoder quality — visually clean for photos while still compressing hard.
   var QUALITY = 0.82;
   // Files already this small are uploaded untouched.

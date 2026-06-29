@@ -288,7 +288,7 @@ The candidate build IS the preview; nothing here is mocked.
   remove that line, an image field → file picker (saved into the candidate's
   `img/`), brand colors → a picker bound to `SAFE_TOKENS` that runs the format and
   contrast guards live and explains a rejection in plain language. Picked images
-  are compressed in the browser before upload (scaled to ≤1920 px, re-encoded —
+  are compressed in the browser before upload (scaled to ≤2400 px, re-encoded —
   PNG → WebP, the rest → JPEG; EXIF, including GPS, is stripped), so a 4 MB phone
   photo lands as a page-friendly few hundred KB; the server still treats the
   result as untrusted input and runs every upload guard on it.

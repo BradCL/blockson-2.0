@@ -237,7 +237,7 @@ omitted field as "creatable" so the Section panel offers exactly what the write
 path will accept.)
 
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
-editor scales it to at most 1920 px on the longest edge and re-encodes it (PNG →
+editor scales it to at most 2400 px on the longest edge and re-encodes it (PNG →
 WebP to keep transparency, everything else → JPEG) before uploading — so a 4 MB
 phone photo lands as a few hundred KB without the owner doing anything. The
 re-encode also strips EXIF metadata, including GPS position, which is a deliberate
