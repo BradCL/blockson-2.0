@@ -1,5 +1,12 @@
 # The Blockson learning guide
 
+> **❄️ Frozen doc — snapshot, may lag the code.** This guide is maintained as a
+> coherent teaching artifact, not updated on every change. Pending updates are
+> tracked in [`docs/DEFERRED_DOC_UPDATES.md`](../DEFERRED_DOC_UPDATES.md) and
+> applied in periodic reconciliation passes. Treat specifics (function names,
+> field lists) as true-as-of its baseline; verify against the code before relying
+> on them.
+
 **The promise:** everything you learned in your software development
 program is in this repository somewhere, working for its living — this
 guide shows you where, and what the classroom version didn't tell you.

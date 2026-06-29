@@ -1,5 +1,10 @@
 # Blockson: the developer workflow, end to end
 
+> **❄️ Frozen doc — snapshot, may lag the code.** This tutorial (prose plus
+> captured screenshots/transcripts) is reconciled in periodic bundled passes, not
+> on every change. Pending updates are tracked in
+> [`docs/DEFERRED_DOC_UPDATES.md`](../../DEFERRED_DOC_UPDATES.md).
+
 This is a walkthrough of the **setup tier** — what you, the developer, do
 exactly once per client: verify the engine, scaffold a site, author its
 content, survive the validation gate, and hand a locked-down editor to the
