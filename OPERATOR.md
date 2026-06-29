@@ -155,8 +155,12 @@ CLI flags override `owner-config.json` for that run.
   is refused on a section's last item, and on any list without an item blueprint —
   those stay developer work.
 - **Keep** moves the pending change onto the session list and frees the next edit.
-  **Discard** throws away only the pending change — everything kept survives.
-  **Discard all** empties the whole session and resets the candidate from live.
+  **Discard** throws away only the pending change — everything kept survives. After
+  a Save the editor stays open and shows that "old → new" review in place, with
+  **Keep**/**Discard** right there; choosing one returns to the same editor so the
+  owner can make the next related change (e.g. set a hero background, then adjust
+  its focus and zoom) without re-finding it. **Discard all** empties the whole
+  session and resets the candidate from live.
 - **Publish** ships the entire session — every kept change, every uploaded image —
   to the live `content.json` in one step, rebuilds the live site (no edit
   annotations), and runs the publish step (§5) once. One session = one commit.

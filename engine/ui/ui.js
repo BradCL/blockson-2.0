@@ -16,6 +16,14 @@
   var state = null;            // last /api/state payload
   var currentPath = '/preview/index.html';
   var tokenCheckTimer = null;
+  // When a field/token editor is open, `reopen` re-opens that SAME editor
+  // fresh. It lets a save keep the editor in place: stage() no longer closes
+  // it, renderPending() shows the Now→After review INSIDE the editor, and a
+  // Keep/Discard re-opens it via reopen() so the owner never loses their place
+  // (the one-pending-change rule is unchanged — they still keep between edits).
+  // Cleared by closeEditor(), so one-shot flows (scaffold, remove, page reload
+  // with a pending change) fall back to the standalone pending card.
+  var reopen = null;
 
   var $ = function (id) { return document.getElementById(id); };
   var iframe = $('preview');
@@ -112,11 +120,69 @@
   function renderPending() {
     var cardEl = $('pending-card');
     if (!state.pending) { cardEl.hidden = true; return; }
+    // An editor is open (a save just staged from it): keep it in place and show
+    // the review inside it. Otherwise (one-shot flow, or a reload with a pending
+    // change already present) show the standalone pending card.
+    if (reopen) {
+      cardEl.hidden = true;
+      renderInlinePending();
+      return;
+    }
     closeEditor();
     $('pending-summary').textContent = state.pending.summary;
     diffValue($('pending-old'), state.pending.old);
     diffValue($('pending-new'), state.pending.new);
     cardEl.hidden = false;
+  }
+
+  // The pending review shown INSIDE the editor after a save, so the editor
+  // never vanishes. Mirrors the standalone #pending-card markup; Keep/Discard
+  // act through the same /api endpoints, then re-open the editor via reopen()
+  // so the owner continues in place (e.g. set the hero image, keep, then adjust
+  // focus and zoom without re-finding the editor each time).
+  function renderInlinePending() {
+    var ed = editorShell('Review your change');
+    ed.appendChild(el('p', 'pending-summary', state.pending.summary));
+    var diff = el('div', 'diff');
+    var oldRow = el('div', 'diff-row');
+    oldRow.appendChild(el('span', 'diff-label', 'Now'));
+    diffValue(oldRow.appendChild(el('span', 'diff-value old')), state.pending.old);
+    var newRow = el('div', 'diff-row');
+    newRow.appendChild(el('span', 'diff-label', 'After'));
+    diffValue(newRow.appendChild(el('span', 'diff-value new')), state.pending.new);
+    diff.appendChild(oldRow);
+    diff.appendChild(newRow);
+    ed.appendChild(diff);
+
+    var row = el('div', 'btn-row');
+    row.appendChild(button('Keep', 'primary', inlineKeep));
+    row.appendChild(button('Discard', null, inlineDiscard));
+    ed.appendChild(row);
+    ed.appendChild(el('p', 'hint',
+      'Keep adds this to the session and returns to the editor for your next change — nothing goes live until you publish.'));
+  }
+
+  // Keep the inline pending change, then re-open the same editor fresh so the
+  // owner can make the next edit in place. No preview reload: keeping does not
+  // change the candidate (it was already built when the change was staged).
+  function inlineKeep() {
+    var go = reopen;
+    apiPost('/api/keep').then(function (r) {
+      if (!r.ok) { editorError($('editor'), r.error); return; }
+      showMessage('info', 'Change kept — it goes live when you publish this session.');
+      refreshState().then(function () { if (go) go(); });
+    });
+  }
+
+  // Discard the inline pending change (the candidate rebuilds back, so reload
+  // the preview), then re-open the same editor so the owner can try again.
+  function inlineDiscard() {
+    var go = reopen;
+    apiPost('/api/discard').then(function (r) {
+      if (!r.ok) { editorError($('editor'), r.error); return; }
+      showMessage('info', 'Pending change discarded — anything you kept is still staged.');
+      refreshState().then(function () { reloadPreview(); if (go) go(); });
+    });
   }
 
   // The session card: every KEPT change, summarized from its resolved
@@ -141,6 +207,7 @@
 
   // ── Editors ──────────────────────────────────────────────────
   function closeEditor() {
+    reopen = null;
     var ed = $('editor');
     clear(ed);
     ed.hidden = true;
@@ -162,7 +229,11 @@
   }
 
   // Stage a change: POST the patch (and optional upload), then show the
-  // pending card and refresh the preview with the candidate rebuild.
+  // pending review and refresh the preview with the candidate rebuild. The
+  // editor is NOT closed here — when an editor is open (reopen set),
+  // renderPending() shows the review inside it and Keep re-opens it in place;
+  // only a one-shot flow that closed itself first falls back to the standalone
+  // pending card.
   function stage(patch, upload, ed) {
     return apiPost('/api/edit', { patch: patch, upload: upload || undefined }).then(function (r) {
       if (!r.ok) {
@@ -170,7 +241,6 @@
         return;
       }
       clearMessage();
-      closeEditor();
       return refreshState().then(reloadPreview);
     });
   }
@@ -193,6 +263,7 @@
       return;
     }
     clearMessage();
+    reopen = null;   // cleared until a render succeeds (set at the end)
     var params = new URLSearchParams({ block: ref.block, field: ref.field });
     if (ref.item != null && ref.item !== '') params.set('item', ref.item);
     if (ref.index != null && ref.index !== '') params.set('index', ref.index);
@@ -208,6 +279,9 @@
       else { showMessage('error', 'This field cannot be edited here.'); return; }
       appendItemControls(ref, info);
       appendVisibilityToggle(ref, info);
+      // The editor rendered — remember how to re-open it after a save so the
+      // editor stays in place through the keep cycle (see renderInlinePending).
+      reopen = function () { openEditor(ref); };
     });
   }
 
@@ -666,6 +740,7 @@
       return;
     }
     clearMessage();
+    reopen = null;   // a panel, not a keep-in-place editor
     apiGet('/api/section?block=' + encodeURIComponent(block)).then(function (info) {
       if (!info.ok) { showMessage('error', info.error); return; }
       var ed = editorShell('Section settings');
@@ -740,6 +815,7 @@
       return;
     }
     clearMessage();
+    reopen = null;   // a panel, not a keep-in-place editor
     apiGet('/api/blueprints').then(function (r) {
       var ed = editorShell('Add to the site');
       if (!r.ok) { editorError(ed, r.error); return; }
@@ -772,6 +848,7 @@
   // `targetBlock` is set only for item blueprints: the id of the section
   // the owner clicked, which the new item is appended to.
   function openScaffoldForm(bp, targetBlock) {
+    reopen = null;   // a one-shot create form, not a keep-in-place editor
     var ed = editorShell('Add: ' + bp.name);
     ed.appendChild(el('p', 'hint', bp.purpose));
 
@@ -912,6 +989,12 @@
       return;
     }
     clearMessage();
+    // Re-open this token editor after a save, re-derived from fresh state so a
+    // kept change shows its new value as the current one.
+    reopen = function () {
+      var fresh = (state.tokens || []).filter(function (t) { return t.token === token.token; })[0];
+      openTokenEditor(fresh || token);
+    };
     var ed = editorShell('Change: ' + (TOKEN_LABELS[token.token] || token.token));
     var holder = el('div', 'token-editor');
     var feedback = el('div', 'token-feedback');

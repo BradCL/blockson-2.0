@@ -634,7 +634,9 @@ exercises the handlers directly.
   (every guard runs; UI input is untrusted input) → candidate rebuild (annotated;
   a failing build rolls the candidate back) → iframe refresh + change card whose
   old → new values are read by resolving the patch address against the candidate
-  content. Exactly one pending change at a time — Keep moves it onto the session's
+  content. The card renders inside the editor pane (which stays open through the
+  Keep/Discard, then re-opens for the next related edit) rather than closing it.
+  Exactly one pending change at a time — Keep moves it onto the session's
   staged list and frees the next edit; Discard drops only the pending change,
   reconstructing the candidate from live plus a deterministic replay of the staged
   list (kept changes are never disturbed); Discard all resets the candidate from
