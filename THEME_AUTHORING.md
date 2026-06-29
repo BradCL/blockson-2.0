@@ -82,13 +82,18 @@ of these without shipping its own CSS:
 | `--hero-texture-opacity` | `0` | Opacity of that texture layer; pair it with `--hero-texture-image`. |
 | `--hero-align` | `left` | Text/button alignment inside the hero (`left`/`center`/`right`). Pair with `--hero-content-mi: auto` to also center the column. |
 | `--hero-content-mi` | `0` | `margin-inline` of the hero text column — set `auto` to center it. |
+| `--page-header-align` | `left` | Text alignment of the interior-page header (tag/h1/subhead) — the page-header parallel of `--hero-align`. Pair with `--page-header-content-mi: auto` to also center the column. |
+| `--page-header-content-mi` | `0` | `margin-inline` of the page-header text column — set `auto` to center it (parallel of `--hero-content-mi`). |
 | `--btn-radius` | `var(--radius, 10px)` | Corner radius for buttons (`.btn`, `.nav-cta`) independent of the global `--radius` — e.g. `2px` for sharp buttons. |
 | `--section-divider` | `none` | `border-top` rule between consecutive content sections — e.g. `1px solid rgba(127,127,127,.18)`. |
 | `--area-list-divider` | `none` | `border-bottom` under each `service-area` list item; pair with `--area-list-divider-pad`. |
 | `--area-list-divider-pad` | `0` | `padding-bottom` on those items when `--area-list-divider` is set. |
+| `--list-panel-heading-gap` | `1.1rem` | Gap below the list-panel (`.mission-pillars`) heading, before its card. |
+| `--list-panel-heading-size` | `1.5rem` | Font size of the list-panel heading — raise it for a larger panel heading. |
 | `--closing-statement-size` | `clamp(1.6rem, 3.5vw, 2.4rem)` | Font size of the closing-CTA statement. |
 | `--closing-statement-weight` | `700` | Font weight of the closing-CTA statement. |
 | `--closing-statement-width` | `760px` | Max width of the closing-CTA statement. |
+| `--footer-heading` | `var(--color-text, #f2f3f5)` | Footer column heading (`.footer-col h4`) color, independent of body text — e.g. a brand accent. |
 | `--footer-link` | `var(--footer-text, #9aa1ab)` | Footer link color. |
 | `--footer-link-hover` | `var(--color-primary, #ffb703)` | Footer link hover color. |
 

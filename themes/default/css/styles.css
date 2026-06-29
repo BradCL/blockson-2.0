@@ -300,7 +300,16 @@ section + section { border-top: var(--section-divider, none); }
 .page-header-bg.about-page-bg::after {
   background: linear-gradient(rgb(0 0 0 / 0.35), rgb(0 0 0 / var(--hero-overlay-opacity, 0.55)));
 }
-.page-header-content { max-width: var(--page-header-width, 640px); color: #fff; }
+.page-header-content {
+  max-width: var(--page-header-width, 640px);
+  color: #fff;
+  /* Opt-in alignment, parallel to the hero (--hero-align/--hero-content-mi):
+     set --page-header-align (left|center|right) for the tag/h1/subhead, and
+     --page-header-content-mi: auto to center the column itself. Defaults
+     reproduce the current left-aligned page header exactly — no drift. */
+  text-align: var(--page-header-align, left);
+  margin-inline: var(--page-header-content-mi, 0);
+}
 /* Opt-in: set --heading-wrap (e.g. balance) for tidier multi-line headings.
    Default 'normal' is the current behavior — no drift. */
 .hero h1, .page-header h1, .section-header h2 { text-wrap: var(--heading-wrap, normal); }
@@ -512,6 +521,14 @@ section + section { border-top: var(--section-divider, none); }
 .attribution { color: var(--color-muted, #9aa1ab); font-size: 0.9rem; }
 
 /* ── List panel / mission pillars ─────────────────────────── */
+/* The list-panel heading sat flush against its card (global reset zeroes the
+   margin). Give it a default gap so it no longer reads cramped; the token lets a
+   client retune it. --list-panel-heading-size defaults to today's size (no
+   drift) for a client who wants the heading slightly larger. */
+.mission-pillars h2 {
+  font-size: var(--list-panel-heading-size, 1.5rem);
+  margin-bottom: var(--list-panel-heading-gap, 1.1rem);
+}
 .mission-card {
   background: var(--color-surface, #181b22);
   border: 1px solid rgba(127, 127, 127, 0.16);
@@ -677,7 +694,9 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 .footer-logo img { height: 40px; width: auto; margin-bottom: 1rem; }
 .footer-brand p { font-size: 0.93rem; max-width: 320px; }
 .footer-col h4 {
-  color: var(--color-text, #f2f3f5);
+  /* Opt-in: recolor footer headings (e.g. a brand accent) without touching body
+     text. Default = --color-text, so headings track body color as before. */
+  color: var(--footer-heading, var(--color-text, #f2f3f5));
   font-size: 0.85rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
