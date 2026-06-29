@@ -6,6 +6,10 @@ If you're authoring a theme or a blueprint, see [THEME_AUTHORING.md](THEME_AUTHO
 / [BLUEPRINT_AUTHORING.md](BLUEPRINT_AUTHORING.md) instead. For the engine's design and
 guarantees, see [SPEC.md](SPEC.md).
 
+For a turnkey, **walk-away** handover — every account in the client's name, a one-click
+editor on their machine, and a recovery sheet so they're never dependent on you — see
+the [handover kit](docs/handover/README.md), which builds on this guide.
+
 ---
 
 ## 1. Prerequisites

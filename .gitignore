@@ -13,6 +13,11 @@ themes/__theme-validate/
 clients/*/edits.log*.jsonl
 *.bak
 .DS_Store
+# Owner-launcher runtime artifacts (extras/owner-launcher), written at the repo
+# root on the owner's machine when the editor is launched — transient, not source.
+.editor-out.log
+.editor-err.log
+.editor-browser/
 # Local-only developer working notes and scaffolding — never published.
 _work/
 .local/
