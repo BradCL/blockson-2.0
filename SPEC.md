@@ -83,10 +83,10 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (20 proofs)
+  _run-proofs.js        Proof suite (27 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
-  blocks/               One template module per block type (see BLOCK_CATALOG.md, 21 types)
+  blocks/               One template module per block type (see BLOCK_CATALOG.md, 23 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
                         local-first — emits no external resource links)
