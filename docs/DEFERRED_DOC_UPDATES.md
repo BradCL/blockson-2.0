@@ -28,8 +28,17 @@ is the raw delta if an entry was ever missed.
 
 ## Learning guide (`docs/learning-guide/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Fully reconciled — the 2026-06-28 prose
-pass and the 2026-06-28 capture session are both applied. No pending entries.
+**Baseline:** `73d5b75` (2026-06-28). Prose + counts reconciled in the 2026-06-28
+passes; one prose entry pending below.
+
+Pending:
+
+- ⏳ **Focal point + zoom now on the page-header too** — `02-atlas/07-dom-and-events.md`
+  (~line 65) says the background-image editor is where "hero focal-point/zoom
+  controls open." The same `bgPosition`/`bgZoom` controls now ride the
+  page-header's background editor as well; the path is keyed on the `background`
+  field, not the block type. Reword "hero" → "hero/page-header" when next
+  reconciling. `git log 73d5b75..HEAD -- engine/blocks/page-header.js` is the delta.
 
 Reconciled (prose, 2026-06-28 pass):
 
@@ -52,8 +61,16 @@ Reconciled (counts, 2026-06-28 capture session):
 
 ## Developer tutorial (`docs/tutorial/developer/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Fully reconciled in the 2026-06-28 capture
-session. No pending entries.
+**Baseline:** `73d5b75` (2026-06-28). Reconciled in the 2026-06-28 capture
+session; one capture entry pending below.
+
+Pending:
+
+- ⏳ **Proof 21 retitled for the page-header** — `term/01-proofs.txt` (and the
+  README's proof excerpt) capture PROOF 21 as "Hero focal-point + zoom"; it is
+  now "Header focal-point + zoom (hero + page-header)" with a broadened PASS
+  message, since the feature now covers the page-header. Re-capture via
+  `node scripts/capture-terminal-snippets.js` in the next capture session.
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `27/27`,

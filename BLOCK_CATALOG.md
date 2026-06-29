@@ -76,13 +76,19 @@ Sub-hero band used at the top of interior pages (about/services/gallery/contact)
 - `heading` string
 - `subhead?` string — optional; when omitted there is no element to click, so the editor's Section panel offers "Add a subtitle" to create it (an owner-creatable field — see OPERATOR.md)
 - `background?` image — defaults to the site hero image if omitted; an owner can set a per-page image from the editor even when it was omitted (an owner-creatable field — see "Owner-creatable fields" in OPERATOR.md), which overrides the inherited hero for that page
+- `bgPosition?` string — focal point of the background, `"<x>% <y>%"` (each 0–100; default `"50% 50%"`); painted as inline `background-position` on `.page-header-bg`. Absent → the theme CSS's `background-position:center` stands. Lets the cover crop anchor on the subject so a wide/short desktop viewport doesn't behead a header photo.
+- `bgZoom?` number — background zoom, 1–3 (default 1); painted as inline `transform: scale()` on `.page-header-bg`
 - `variant?` string ∈ `default` | `light` — `light` uses the lighter gradient (`.about-page-bg`)
 CSS: `.page-header`, `.page-header-content`, `.section-tag`.
 **Theme tokens (opt-in):** `--page-header-width`, `--header-overlay`,
 `--heading-wrap`, and `--hero-texture-image` / `--hero-texture-opacity` apply to
 the interior-page header the same way they do to the hero — see
 THEME_AUTHORING.md §2.
-**Maintenance:** tag, heading, subhead editable.
+**Maintenance:** tag, heading, subhead editable. Background image is owner-replaceable,
+and (when `bgPosition`/`bgZoom` are seeded) its focal point + zoom are owner-editable from
+the same image editor as the hero's — guarded to bounded values in `patch.js` (a wrong value
+is ugly, never broken). Absent focal fields leave the build byte-identical to before the
+feature, so existing sites don't drift.
 
 ### `text`
 Prose region for mission/about/story content. The workhorse narrative block.

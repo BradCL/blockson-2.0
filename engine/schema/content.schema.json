@@ -287,6 +287,8 @@
         "heading":    { "type": "string" },
         "subhead":    { "type": "string" },
         "background": { "type": "string" },
+        "bgPosition": { "type": "string" },
+        "bgZoom":     { "type": "number" },
         "variant":    { "type": "string", "enum": ["default", "light"] }
       }
     },

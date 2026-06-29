@@ -99,9 +99,10 @@ function describeBlock(block) {
     // every non-dotted scalar), so it surfaces as block-level metadata below
     // and the UI reaches it through the editor pane's section toggle.
     if (name === 'hidden' && typeof v === 'boolean') continue;
-    // The hero's focal point + zoom are the same shape: no clickable element
-    // of their own (they paint as inline style on .hero-bg), edited through
-    // the hero image editor's drag handle + slider rather than a per-element
+    // A header background's focal point + zoom (hero or page-header) are the
+    // same shape: no clickable element of their own (they paint as inline style
+    // on the .hero-bg / .page-header-bg layer), edited through the image
+    // editor's drag handle + slider rather than a per-element
     // click. Excluding them here keeps the annotator and the proof's required
     // surface in sync by construction — neither will demand an annotation no
     // renderer emits. applyPatch still writes them (guarded), independent of

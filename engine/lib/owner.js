@@ -416,10 +416,12 @@ function describeField(session, ref) {
     const fields = indexHosts(content).get(ref.block);
     if (fields && typeof fields.hidden === 'boolean') res.blockHidden = fields.hidden;
 
-    // Hero focal point + zoom ride along on the hero's background-image
-    // editor (the click that opens "Replace image" is the click that opens
-    // the reposition/zoom controls). Only when the block carries the seeded
-    // fields — absent → no controls, the editor degrades to image-replace.
+    // Focal point + zoom ride along on the background-image editor (the click
+    // that opens "Replace image" is the click that opens the reposition/zoom
+    // controls). Shared by every header-style block whose background carries the
+    // seeded fields — the hero and the page-header alike; the gate is the
+    // `background` field plus the fields' presence, never the block type. Absent
+    // fields → no controls, the editor degrades to image-replace.
     if (fields && ref.field === 'background'
         && (typeof fields.bgPosition === 'string' || typeof fields.bgZoom === 'number')) {
       res.heroFocal = {

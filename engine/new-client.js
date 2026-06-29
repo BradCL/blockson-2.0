@@ -93,7 +93,7 @@ const starter = {
       meta: { title: `Contact | ${pretty}`, description: 'Get in touch.' },
       blocks: [
         { id: 'contact-header', type: 'page-header', fields: {
-          tag: 'Contact', heading: "Let's talk", hidden: false
+          tag: 'Contact', heading: "Let's talk", bgPosition: '50% 50%', bgZoom: 1, hidden: false
         }},
         { id: 'contact-info', type: 'contact-info', fields: {
           items: [

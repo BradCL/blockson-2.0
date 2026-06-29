@@ -85,16 +85,18 @@
 //             theme-CSS-only fallback silently broke; an explicit page-header
 //             background still wins; and a site with no hero at all emits no
 //             inline background, leaving the theme CSS as the last-ditch default.
-// Proof 21:   hero background focal-point + zoom (owner-editable bgPosition /
-//             bgZoom): out-of-range or malformed values are refused by the
-//             per-field format guard in patch.js with nothing written; a valid
-//             pair round-trips through applyPatch and reaches the built hero as
-//             inline background-position / transform:scale (the live HTML
-//             carrying only that inline style — no ids, no data-bk-*); a
-//             numeric-string zoom is normalized to a number; the fields are
-//             optional (absent → default paint); and the edit map reports them
-//             as block metadata, never scalars (so proof 1 demands no
-//             annotation for an element no renderer emits).
+// Proof 21:   header background focal-point + zoom (owner-editable bgPosition /
+//             bgZoom on the hero AND the page-header): out-of-range or malformed
+//             values are refused by the per-field format guard in patch.js with
+//             nothing written; a valid pair round-trips through applyPatch and
+//             reaches the built header as inline background-position /
+//             transform:scale (the live HTML carrying only that inline style —
+//             no ids, no data-bk-*); a numeric-string zoom is normalized to a
+//             number; the fields are optional (absent → byte-identical to the
+//             pre-feature paint); and the edit map reports them as block
+//             metadata, never scalars (so proof 1 demands no annotation for an
+//             element no renderer emits). The page-header rides the SAME guarded
+//             path — keyed on the background field, not the block type.
 // Proof 22:   og:image fallback precedence (engine/partials/head.js): with no
 //             per-page meta.ogImage, a page's social card is the site hero photo
 //             (home and interior pages alike) rather than the logo — a logo
@@ -2228,14 +2230,26 @@ console.log('\n═══ PROOF 20 — page-header background inherits the site h
 }
 
 // ── PROOF 21 ────────────────────────────────────────────────────────────────
-console.log('\n═══ PROOF 21 — Hero focal-point + zoom: guarded values round-trip; bad values bounce ═══');
+console.log('\n═══ PROOF 21 — Header focal-point + zoom (hero + page-header): guarded values round-trip; bad values bounce ═══');
 {
   const CLIENT  = '__proof-hero-focal';
   const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const PH_CLIENT  = '__proof-pageheader-focal';
+  const phLiveDir  = path.join(ROOT, 'clients', PH_CLIENT);
   const failures = [];
   const heroBg = (html) => {
     const m = html.match(/<div class="hero-bg"[^>]*\bstyle="([^"]*)"/);
     return m ? m[1].replace(/&#39;|&apos;/g, "'") : null;
+  };
+  const pageHeaderBg = (html) => {
+    const m = html.match(/<div class="page-header-bg[^"]*"[^>]*\bstyle="([^"]*)"/);
+    return m ? m[1].replace(/&#39;|&apos;/g, "'") : null;
+  };
+  const pageHeaderBgRaw = (html) => {
+    // The full opening tag of the first .page-header-bg — used to assert the
+    // ABSENCE of an inline style (and of any annotation) on the default paint.
+    const m = html.match(/<div class="page-header-bg[^"]*"[^>]*>/);
+    return m ? m[0] : null;
   };
 
   try {
@@ -2312,11 +2326,85 @@ console.log('\n═══ PROOF 21 — Hero focal-point + zoom: guarded values ro
     for (const banned of ['bgPosition', 'bgZoom']) {
       if (heroDesc.scalars.some(s => s.field === banned)) failures.push(`edit map lists ${banned} as a scalar (would demand an annotation)`);
     }
+
+    // (f) The page-header shares the SAME path — the feature is keyed on the
+    //     `background` field + the fields' presence, never the block type. A
+    //     page-header (example-restaurant's menu-header, which carries an
+    //     explicit background) gets a valid focal/zoom pair, and the BUILT
+    //     header paints it as inline background-position + transform:scale on
+    //     .page-header-bg, with no ids and no data-bk-* in the live HTML.
+    const phContent = readContent('example-restaurant');
+    const phHeader = phContent.pages.find(p => p.slug === 'menu').blocks.find(b => b.type === 'page-header');
+    // Seed the optional fields — a developer's job, exactly as with the hero
+    // (an un-seeded header exposes no controls and a plain set is refused: the
+    // fields aren't creatable, so raw CSS can never appear from nowhere). Once
+    // present, the SAME guarded set path adjusts them.
+    phHeader.fields.bgPosition = '50% 50%';
+    phHeader.fields.bgZoom = 1;
+    const phOkPos  = applyPatch(phContent, { action: 'set', block: phHeader.id, field: 'bgPosition', value: '35% 15%' });
+    const phOkZoom = applyPatch(phContent, { action: 'set', block: phHeader.id, field: 'bgZoom', value: '1.5' });
+    if (!phOkPos.ok || !phOkZoom.ok) failures.push(`a valid page-header focal/zoom set was rejected: ${phOkPos.error || phOkZoom.error}`);
+    if (phHeader.fields.bgPosition !== '35% 15%') failures.push(`page-header bgPosition did not persist: ${phHeader.fields.bgPosition}`);
+    if (phHeader.fields.bgZoom !== 1.5) failures.push(`page-header bgZoom did not normalize to 1.5 (got ${typeof phHeader.fields.bgZoom} ${phHeader.fields.bgZoom})`);
+
+    fs.rmSync(phLiveDir, { recursive: true, force: true });
+    fs.mkdirSync(phLiveDir, { recursive: true });
+    fs.writeFileSync(path.join(phLiveDir, 'content.json'), JSON.stringify(phContent, null, 2) + '\n', 'utf8');
+    const bPh = build(PH_CLIENT);
+    if (!bPh.ok) failures.push(`live page-header build with focal/zoom failed:\n${bPh.out}`);
+    else {
+      const html = fs.readFileSync(path.join(ROOT, 'dist', PH_CLIENT, 'menu.html'), 'utf8');
+      const style = pageHeaderBg(html);
+      if (!style || !style.includes('background-position:35% 15%')) failures.push(`built page-header is missing the focal point (style="${style}")`);
+      if (!style || !/transform:scale\(1\.5\)/.test(style)) failures.push(`built page-header is missing the zoom transform (style="${style}")`);
+      if (!style || !/transform-origin:35% 15%/.test(style)) failures.push(`built page-header is missing transform-origin (style="${style}")`);
+      const phTag = pageHeaderBgRaw(html);
+      if (phTag && phTag.includes('data-bk-')) failures.push('live page-header HTML carries data-bk-* — focal/zoom must be plain inline style');
+    }
+
+    // (g) The fields are OPTIONAL on the page-header too, and ABSENT they leave
+    //     the build BYTE-IDENTICAL to before the feature: no inline style at all
+    //     on a .page-header-bg whose background falls back to the site hero, and
+    //     only background-image when an explicit background is set — exactly
+    //     today's markup, so an existing site never drifts.
+    delete phHeader.fields.bgPosition;
+    delete phHeader.fields.bgZoom;
+    fs.writeFileSync(path.join(phLiveDir, 'content.json'), JSON.stringify(phContent, null, 2) + '\n', 'utf8');
+    const bPhDefault = build(PH_CLIENT);
+    if (!bPhDefault.ok) failures.push(`page-header build without focal/zoom failed (they must stay optional):\n${bPhDefault.out}`);
+    else {
+      // menu-header carries an explicit background → background-image only, no
+      // background-position / transform (the theme CSS's center crop stands).
+      const menuStyle = pageHeaderBg(fs.readFileSync(path.join(ROOT, 'dist', PH_CLIENT, 'menu.html'), 'utf8'));
+      if (!menuStyle || !/^background-image:url\('[^']*'\)$/.test(menuStyle)) {
+        failures.push(`absent page-header fields changed the default paint (style="${menuStyle}")`);
+      }
+      // contact-header omits its own background → inherits the site hero image,
+      // so it emits background-image only (no focal decls) — exactly as before
+      // the feature; the inherited-hero path stays just as clean.
+      const contactStyle = pageHeaderBg(fs.readFileSync(path.join(ROOT, 'dist', PH_CLIENT, 'contact.html'), 'utf8'));
+      if (!contactStyle || !/^background-image:url\('[^']*'\)$/.test(contactStyle)) {
+        failures.push(`an inherited-hero page-header changed the default paint with no focal fields (style="${contactStyle}")`);
+      }
+    }
+
+    // (h) The page-header's focal fields are block metadata in the edit map too,
+    //     never scalars — same as the hero, so the annotator demands nothing.
+    const phSeeded = readContent('example-restaurant');
+    const phSeededHeader = phSeeded.pages.find(p => p.slug === 'menu').blocks.find(b => b.type === 'page-header');
+    phSeededHeader.fields.bgPosition = '35% 15%';
+    phSeededHeader.fields.bgZoom = 1.5;
+    const phMap = buildEditMap(phSeeded, loadTokens(phSeeded));
+    const phDesc = phMap.pages.find(p => p.slug === 'menu').blocks.find(b => b.type === 'page-header');
+    for (const banned of ['bgPosition', 'bgZoom']) {
+      if (phDesc.scalars.some(s => s.field === banned)) failures.push(`edit map lists page-header ${banned} as a scalar (would demand an annotation)`);
+    }
   } catch (e) {
     failures.push(`exception: ${e.message}`);
   } finally {
     fs.rmSync(liveDir, { recursive: true, force: true });
-    for (const d of [CLIENT, CLIENT + '__annotated']) {
+    fs.rmSync(phLiveDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', PH_CLIENT, PH_CLIENT + '__annotated']) {
       fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
     }
   }
@@ -2328,7 +2416,10 @@ console.log('\n═══ PROOF 21 — Hero focal-point + zoom: guarded values ro
     console.log('       and reaches the built hero as inline background-position + transform:');
     console.log('       scale, with no ids and no data-bk-* in the live HTML; the fields are');
     console.log('       optional (absent → default paint); and the edit map reports them as');
-    console.log('       block metadata, never scalars.');
+    console.log('       block metadata, never scalars. The page-header shares the SAME guarded');
+    console.log('       path (keyed on the background field, not the block type): a valid pair');
+    console.log('       reaches its .page-header-bg as the same inline style, while absent fields');
+    console.log('       leave the build byte-identical to before the feature.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
