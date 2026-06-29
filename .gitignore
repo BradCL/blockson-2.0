@@ -18,6 +18,11 @@ clients/*/edits.log*.jsonl
 .editor-out.log
 .editor-err.log
 .editor-browser/
+# Test copies of the launcher scripts dropped at the repo root per the install
+# runbook. Their canonical home is extras/owner-launcher/; root copies are
+# throwaway test drops and must never be committed from here.
+/Edit My Site.vbs
+/editor-launcher.ps1
 # Local-only developer working notes and scaffolding — never published.
 _work/
 .local/
