@@ -48,8 +48,9 @@ Still pending:
 
 - ⏳ **Proof-count references** — `02-atlas/12-testing-proofs.md` says "25" in
   ~3 places (narrative + Exercise 1's "25/25"); `01-system-map.md` may reference
-  counts too. Deferred to the post-task-C pass because task C adds a proof, so
-  the final number should be written once (see below).
+  counts too. The count is now **27** and stable (task C added no proof — see
+  note below); bundled into the capture session purely so the transcripts and the
+  prose number are written in one sitting.
 
 ## Developer tutorial (`docs/tutorial/developer/`)
 
@@ -84,13 +85,15 @@ prose and captures must move together → post-task-C.
 
 ---
 
-## Next reconciliation: a single post-task-C capture pass
+## Next reconciliation: a single capture session
 
-Everything capture- or count-dependent above is intentionally bundled into one
-pass to run **after task C (owner-choosable social image) merges**, because task
-C changes the editor UI (a new settings panel) and adds at least one proof — so
-capturing now would be stale immediately. On a **clean working tree** at that
-point:
+Everything capture- or count-dependent above is bundled into one focused session
+(it regenerates harness-produced artifacts, which is heavy and best done
+deliberately on a clean tree, not piecemeal). **Note:** task C
+(owner-choosable social image) concluded *doc-only* — commit `267d826` documented
+that the site hero is already the default social-card image, with no editor-UI
+change and no new proof — so this session is **no longer blocked on task C**, and
+the proof count is settled at 27. On a **clean working tree**:
 
 1. Update `scripts/flows/owner-editor.js` steps for the keep-open inline review
    (and any social-image step), then re-run `node scripts/capture-tutorial.js
@@ -101,4 +104,7 @@ point:
 3. Write the final proof count into `02-atlas/12-testing-proofs.md` (+ any in
    `01-system-map.md`), then advance the three baselines to the then-current
    commit and clear the entries above.
-4. Add learning-guide + tutorial prose for task C's social-image feature.
+4. (Optional) Task C added no feature — it documented the existing hero-as-default
+   social image in the live docs (SPEC/OPERATOR). If the frozen docs discuss
+   `<head>`/SEO/OG tags, a one-line mention of that default could be added; not
+   required.
