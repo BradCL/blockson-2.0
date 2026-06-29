@@ -153,6 +153,22 @@
 //             refused), and the scaffold relaxation adds the FIRST button to an
 //             empty actions array through the Section-panel doorway — live only
 //             on publish, no annotations or ids leaking in.
+// Proof 28:   host seam (engine/lib/owner.js × an injected non-Node host): the
+//             SAME owner handlers drive an entirely in-memory host — content in
+//             JS strings, images in a Map, the acceptance "build" the engine's
+//             own validate() run with no filesystem (schema pre-seeded via
+//             validate.setSchema, blueprints via scaffold.setBlueprintRegistry)
+//             — through the same edit → keep → second edit → keep →
+//             pending-discard (replay) → discard-all cycle the Node path runs in
+//             proof 8: the one-pending-change gate holds, kept changes survive a
+//             pending-discard replay, the resolver guards still bounce a
+//             forbidden field and an unsafe token, an uploaded image rides the
+//             candidate Map (never the live Map) and survives the replay once
+//             kept, the ledger boundary still fires one entry per attempt
+//             through the injected sink, and Publish is a no-op PROPERTY OF THE
+//             HOST (shipSession reports nothing shipped) that leaves the staged
+//             session intact — proving the adapter can't silently diverge from
+//             the disk/git host without owner.js itself changing.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -246,7 +262,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 27;
+const TOTAL = 28;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3118,6 +3134,202 @@ console.log('\n═══ PROOF 27 — Editable CTA buttons: id migration, addres
     console.log('       and the scaffold relaxation adds the FIRST button to an empty actions array');
     console.log('       through the Section-panel doorway — candidate-only, then live on publish,');
     console.log('       with no annotations or ids leaking into the live HTML.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 28 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 28 — Host seam: owner handlers drive an in-memory (non-Node) host through edit → keep → discard ═══');
+{
+  const owner    = require('./lib/owner');
+  const validate = require('./lib/validate');
+  const scaffold = require('./lib/scaffold');
+  const failures = [];
+
+  // Seed fixture: example-restaurant's content, read once from disk (fixture
+  // loading only — the host below never touches the filesystem afterwards).
+  const seedText = fs.readFileSync(
+    path.join(ROOT, 'clients', 'example-restaurant', 'content.json'), 'utf8');
+  const tokens = loadTokens(JSON.parse(seedText));
+
+  // Pre-seed the engine's two filesystem reads so validate() + the blueprint
+  // registry run with NO fs — exactly what the browser bundle does at startup
+  // (validate.setSchema / scaffold.setBlueprintRegistry are the seam hooks the
+  // refactor added). Captured first so the finally block can restore the Node
+  // path (these are module-level singletons shared with later runs).
+  const schema   = JSON.parse(fs.readFileSync(
+    path.join(ROOT, 'engine', 'schema', 'content.schema.json'), 'utf8'));
+  const registry = scaffold.loadBlueprints();   // real disk scan, captured once
+  validate.setSchema(schema);
+  scaffold.setBlueprintRegistry(registry);
+
+  try {
+    // The seam hooks actually took effect: a dir-less blueprint load now returns
+    // the injected registry rather than re-scanning disk.
+    if (scaffold.loadBlueprints() !== registry) {
+      failures.push('setBlueprintRegistry did not divert the dir-less blueprint load');
+    }
+
+    // ── The in-memory host: the SAME interface engine/lib/host-node.js returns,
+    //    but content lives in JS strings, images in a Map, the acceptance build
+    //    is validate() over the in-memory content (no disk, no spawned build.js),
+    //    the ledger is captured to an array, and Publish is a host-level no-op.
+    const ledger = [];
+    let liveText = seedText;
+    let candText = seedText;
+    let liveImages = new Map();
+    let candImages = new Map();
+
+    const inMemoryBuild = (text) => {
+      let content;
+      try { content = JSON.parse(text); }
+      catch (e) { return { ok: false, out: `content is not valid JSON: ${e.message}` }; }
+      const r = validate.validate(content);   // the same schema gate build.js runs
+      return r.ok ? { ok: true, out: '' } : { ok: false, out: (r.errors || []).join('\n') };
+    };
+
+    const host = {
+      config: { clientName: 'In-Memory Client', publish: 'none' },
+      readCandidateText: () => candText,
+      writeCandidateText: (t) => { candText = t; },
+      readLiveText:  () => liveText,
+      writeLiveText: (t) => { liveText = t; },
+      liveExists: () => true,
+      resetCandidateFromLive: () => { candText = liveText; candImages = new Map(liveImages); },
+      writeCandidateImage: (name, bytes) => { candImages.set(name, bytes); },
+      removeCandidateImage: (name) => { candImages.delete(name); },
+      candidateImageExists: (name) => candImages.has(name),
+      buildCandidate: () => inMemoryBuild(candText),
+      buildLive:      () => inMemoryBuild(liveText),
+      presetTokens: () => tokens,
+      publishMode: () => 'none',
+      ledgerAppend: (entry) => { ledger.push(entry); },
+      // Publish disabled by the HOST: report nothing shipped (live:false), which
+      // tells owner.publish() to leave the staged session intact — the one and
+      // only difference between the demo host and the Node host.
+      shipSession: () => ({ ok: true, live: false }),
+      restore: () => ({ ok: false, error: 'publishing is disabled on this host' }),
+    };
+
+    const session = owner.createSession('__in-memory', null, host);
+
+    // (a) Session start: candidate equals live, and the in-memory acceptance
+    //     build accepts the seed content (createSession would have thrown otherwise).
+    if (candText !== liveText) failures.push('session did not start with candidate === live');
+
+    // (b) describeField reads the current candidate value through the seam.
+    const d = owner.describeField(session, { block: 'home-hero', field: 'headline' });
+    if (!d.ok || d.kind !== 'text' || d.value !== 'Comfort food, wood-fired.') {
+      failures.push(`describeField wrong on the in-memory host: ${JSON.stringify(d)}`);
+    }
+
+    // (c) Edit: candidate-only write; live string untouched; change card derived.
+    const NEW = 'Wood-fired, all winter.';
+    const e1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: NEW });
+    if (!e1.ok) failures.push(`edit failed on the in-memory host: ${e1.error}`);
+    else {
+      if (e1.pending.old !== 'Comfort food, wood-fired.' || e1.pending.new !== NEW) {
+        failures.push(`change card old→new wrong: ${JSON.stringify(e1.pending)}`);
+      }
+      if (JSON.parse(candText).pages[0].blocks[0].fields.headline !== NEW) failures.push('candidate string was not updated');
+      if (JSON.parse(liveText).pages[0].blocks[0].fields.headline === NEW) failures.push('LIVE string was touched before publish');
+    }
+
+    // (d) One pending change at a time.
+    if (owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: 'x' }).ok) {
+      failures.push('a second edit was accepted while one was pending (in-memory host)');
+    }
+
+    // (e) Keep stages the card; next edit allowed; second keep extends the list.
+    const k1 = owner.keep(session);
+    if (!k1.ok || session.pending || k1.staged.length !== 1 || k1.staged[0].new !== NEW) {
+      failures.push(`keep did not stage the change card: ${JSON.stringify(k1)}`);
+    }
+    const NEW2 = 'Open every winter evening.';
+    if (!owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'subhead', value: NEW2 }).ok) {
+      failures.push('the edit after a keep was refused (in-memory host)');
+    }
+    if (owner.keep(session).staged.length !== 2) failures.push('the second keep did not extend the staged list');
+
+    // (f) Staged changes survive a pending-discard: the candidate is rebuilt from
+    //     live + a REPLAY of the staged list, dropping only the pending change.
+    owner.applyEdit(session, { action: 'set', block: 'site', field: 'copyright', value: 'Temporary line.' });
+    const disc1 = owner.discard(session);
+    if (!disc1.ok) failures.push(`pending-discard failed (in-memory host): ${disc1.error}`);
+    const replayed = JSON.parse(candText);
+    if (replayed.pages[0].blocks[0].fields.headline !== NEW || replayed.pages[0].blocks[0].fields.subhead !== NEW2) {
+      failures.push('a pending-discard disturbed the staged changes on the in-memory host');
+    }
+    if (replayed.site.copyright === 'Temporary line.') failures.push('the discarded pending change survived the replay');
+
+    // (g) Resolver guards run unchanged on the in-memory path: a forbidden field
+    //     and an unsafe token value both bounce, nothing left pending.
+    const g1 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'id', value: 'x' });
+    const g2 = owner.applyEdit(session, { action: 'set-token', token: '--color-primary', value: 'red;background:url(evil)' });
+    if (g1.ok || g2.ok || session.pending) failures.push('a guarded write slipped through on the in-memory host');
+
+    // (h) Publish is a no-op PROPERTY OF THE HOST: with two changes staged,
+    //     publish() returns without shipping and the staged session is preserved
+    //     (live string never written) — the demo host's only divergence.
+    const liveBeforePublish = liveText;
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`demo publish reported an error: ${pub.error}`);
+    if (pub.live) failures.push('the demo host claimed it shipped to live');
+    if (session.staged.length !== 2) failures.push('demo publish consumed the staged session');
+    if (liveText !== liveBeforePublish) failures.push('demo publish wrote the live string');
+
+    // (i) An uploaded image rides the candidate Map (never the live Map), and
+    //     survives the pending-discard replay once kept.
+    const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const e5 = owner.applyEdit(session,
+      { action: 'set', block: 'home-team', item: 'member-chef', field: 'photo' },
+      { name: 'new portrait.png', dataBase64: PNG_1PX });
+    if (!e5.ok) failures.push(`image edit failed on the in-memory host: ${e5.error}`);
+    else {
+      if (e5.pending.new !== 'img/new-portrait.png') failures.push(`image path not assigned by the handler: ${e5.pending.new}`);
+      if (!candImages.has('new-portrait.png')) failures.push('uploaded image missing from the candidate Map');
+      if (liveImages.has('new-portrait.png')) failures.push('uploaded image leaked into the live Map');
+    }
+    owner.keep(session);
+    owner.applyEdit(session, { action: 'set', block: 'site', field: 'copyright', value: 'Replay check.' });
+    owner.discard(session);
+    if (!candImages.has('new-portrait.png')) failures.push('a kept upload did not survive the pending-discard replay (in-memory host)');
+
+    // (j) discard-all resets the candidate from live and empties the session —
+    //     candidate string and image Map both return to the live baseline.
+    const dAll = owner.discardAll(session);
+    if (!dAll.ok || candText !== liveText) failures.push('discard-all did not reset the candidate from live (in-memory host)');
+    if (candImages.has('new-portrait.png')) failures.push('discard-all left the uploaded image in the candidate Map');
+    if (liveImages.has('new-portrait.png')) failures.push('a discarded upload leaked into the live Map');
+
+    // (k) The ledger boundary still fires through the injected sink — one entry
+    //     per attempt, with the event + outcome owner.js records on every host.
+    if (!ledger.length) failures.push('no ledger entry was appended through the in-memory sink');
+    if (!ledger.some(l => l.event === 'edit' && l.outcome === 'ok')) failures.push('the ledger did not capture a successful edit');
+    if (!ledger.some(l => l.event === 'keep')) failures.push('the ledger did not capture a keep');
+    if (!ledger.some(l => l.event === 'edit' && l.outcome === 'rejected')) failures.push('the ledger did not capture a guarded rejection');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    // Restore the Node path for any later use of these module singletons.
+    scaffold.setBlueprintRegistry(null);
+    validate.setSchema(schema);   // the same schema the lazy fs load would cache
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the same owner.js handlers drive a fully in-memory host (content in JS');
+    console.log('       strings, images in a Map, the acceptance build = validate() with the');
+    console.log('       schema + blueprint registry pre-seeded so NO filesystem is touched)');
+    console.log('       through the same edit → keep → second edit → keep → pending-discard');
+    console.log('       (replay) → discard-all cycle as the Node path: one pending change at a');
+    console.log('       time, kept changes survive the replay, the resolver guards still bounce a');
+    console.log('       forbidden field and an unsafe token, an upload rides the candidate Map');
+    console.log('       only and survives the replay, the ledger fires one entry per attempt, and');
+    console.log('       Publish is a no-op property of the host that leaves the staged session');
+    console.log('       intact — the adapter cannot silently diverge from the disk/git host.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

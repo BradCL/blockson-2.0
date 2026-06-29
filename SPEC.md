@@ -83,7 +83,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (27 proofs)
+  _run-proofs.js        Proof suite (28 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected at serve time into annotated preview pages only)
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 23 types)
@@ -99,9 +99,13 @@ engine/
     icons.js            Named inline-SVG set (icon blocks reference these by name)
     patch.js            Canonical patch resolver — single source of truth for write allowlist
                         AND the safeTokens allowlist + token value guards (§9)
-    owner.js            Owner-editor request handlers: candidate copy, pending change,
-                        staged session, keep/discard/publish/restore, the
-                        maintenance ledger (§13)
+    owner.js            Owner-editor request handlers (storage/environment-agnostic):
+                        pending change, staged session, keep/discard/publish/restore,
+                        the ledger boundary — every side effect delegated to an
+                        injected host (§13)
+    host-node.js        Default (disk/git) host for owner.js: candidate copy, content +
+                        image I/O, preview/live builds, the publish command, the
+                        per-client ledger file; the no-fs browser host is a peer (§13)
     scaffold.js         Blueprint scaffolder + item removal — the only structural
                         path (§10)
     bpcheck.js          Blueprint authoring-kit pipeline behind validate-blueprint /
@@ -617,6 +621,18 @@ iframe beside the session panel — the staged list of kept changes above the
 pending-change card. All editing logic lives in `engine/lib/owner.js`
 as plain handler functions; `engine/serve.js` is HTTP plumbing only, so proof 8
 exercises the handlers directly.
+
+- **Host seam.** `owner.js` is storage- and environment-agnostic: it keeps all the
+  deterministic logic (patch construction, the one-pending-change rule, the staged
+  list, change-card derivation, replay orchestration, the ledger boundary) and
+  delegates every side effect — candidate + live content I/O, image bytes, the
+  preview/live builds, publish, the ledger sink — to an injected host.
+  `engine/lib/host-node.js` is the default (disk/git) host and does on disk exactly
+  what `owner.js` used to do inline, so the Node path is behavior-identical. A
+  browser host can drive the same handlers entirely in-memory (where Publish is a
+  host-level no-op, never a fork of the keep/staged flow); proof 28 exercises that
+  in-memory path through the same edit → keep → discard cycle as proof 8 so the
+  adapter cannot silently diverge.
 
 - **Candidate copy.** The session works on `clients/<client>__candidate/` (gitignored),
   a full copy of the live client reset from live at session start and on Discard all.

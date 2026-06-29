@@ -20,6 +20,12 @@ function loadSchema() {
   return _schema;
 }
 
+// Pre-populate the schema cache so validate() never reaches the filesystem.
+// Inert on the Node path (never called — the lazy fs load above stands); the
+// browser bundle calls this once at startup with the inlined schema so the
+// engine validates in-browser without fs.
+function setSchema(schema) { _schema = schema; }
+
 function formatErrors(errors) {
   // Suppress the generic "must match then schema" wrapper — the nested required/type
   // errors that caused it are already reported and are more actionable.
@@ -126,4 +132,4 @@ function fallbackValidate(content) {
   return errors.length ? { ok: false, errors } : { ok: true, errors: [] };
 }
 
-module.exports = { validate };
+module.exports = { validate, setSchema };
