@@ -627,7 +627,14 @@ function removeItem(content, ref, registry) {
    blueprint is added by dropping a JSON file in that directory — no
    code changes anywhere. Invalid files are excluded from `blueprints`
    and reported in `invalid` with named reasons. */
+// A registry injected in place of the filesystem scan (browser bundle). Inert
+// on the Node path: it stays null, so loadBlueprints() reads blueprints/ from
+// disk exactly as before. When set, the default (dir-less) load returns it.
+let _injectedRegistry = null;
+function setBlueprintRegistry(registry) { _injectedRegistry = registry; }
+
 function loadBlueprints(dir) {
+  if (_injectedRegistry && !dir) return _injectedRegistry;
   const root = dir || BLUEPRINT_DIR;
   const blueprints = [];
   const invalid = [];
@@ -649,7 +656,7 @@ function loadBlueprints(dir) {
 }
 
 module.exports = {
-  loadBlueprints, validateBlueprint, validateInputs, instantiate,
+  loadBlueprints, setBlueprintRegistry, validateBlueprint, validateInputs, instantiate,
   removeItem, itemBlueprintsFor,
   activeInputs, slugify, BLUEPRINT_DIR,
   // Exported (additive) so the one-time content migration extras/add-action-ids.js

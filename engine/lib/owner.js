@@ -77,62 +77,27 @@
 
 'use strict';
 
-const fs   = require('fs');
+// All side effects (candidate + live content I/O, image bytes, the
+// preview/live builds, publish, and the maintenance ledger) are delegated to
+// an injected `session.host`; see engine/lib/host-node.js for the default
+// (disk/git) host. owner.js itself is pure orchestration — the same code runs
+// in a browser against an in-memory host (the no-install demo editor), where
+// the ONLY difference is that publishing is a no-op. `path` is used here for
+// nothing but pure string ops (basename/extname) on upload filenames.
 const path = require('path');
-const { spawnSync } = require('child_process');
 
 const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor } = require('./patch');
 const { buildEditMap } = require('./sitemap');
 const scaffold = require('./scaffold');
 
-const ROOT = path.resolve(__dirname, '..', '..');
-const CANDIDATE_SUFFIX = '__candidate';
-const PUBLISH_MARKER = client => `[blockson-publish ${client}]`;
-
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const LONG_TEXT_THRESHOLD = 90;
 
-const DEFAULT_CONFIG = {
-  clientName: null,            // falls back to the client id
-  publish: 'git',
-  publishMessage: 'Site update ({client}): {summary} {marker}',
-  contact: null,
-  host: '127.0.0.1',
-  port: 4173,
-  allowRemote: false,
-  accessToken: '',             // enforced by serve.js when non-empty; required for allowRemote
-};
-
-// ── Paths & small helpers ──────────────────────────────────────
-
-function liveDir(session)  { return path.join(ROOT, 'clients', session.client); }
-function candDir(session)  { return path.join(ROOT, 'clients', session.candidateClient); }
-function liveContentPath(session) { return path.join(liveDir(session), 'content.json'); }
-function candContentPath(session) { return path.join(candDir(session), 'content.json'); }
-function candDistDir(session) {
-  return path.join(ROOT, 'dist', session.candidateClient + '__annotated');
-}
+// ── Small helpers ──────────────────────────────────────────────
 
 function readCandidate(session) {
-  return JSON.parse(fs.readFileSync(candContentPath(session), 'utf8'));
-}
-
-function presetTokensFor(content) {
-  const theme = (content.site && content.site.theme) || 'default';
-  const p = path.join(ROOT, 'themes', theme, 'tokens.json');
-  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; }
-}
-
-function buildClient(name, annotate) {
-  const args = [path.join(ROOT, 'engine', 'build.js'), name];
-  if (annotate) args.push('--annotate');
-  const r = spawnSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8' });
-  return { ok: r.status === 0, out: ((r.stdout || '') + (r.stderr || '')).trim() };
-}
-
-function git(args) {
-  return spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+  return JSON.parse(session.host.readCandidateText());
 }
 
 function isImagePath(v) {
@@ -224,34 +189,10 @@ function sessionSummary(staged) {
   return `${staged.length} changes: ${detail}`;
 }
 
-function publishMode(config) {
-  if (config.publish === 'none') return 'none';
-  if (config.publish === 'git' || config.publish == null) return 'git';
-  return 'custom';
-}
-
 // ── Maintenance ledger ─────────────────────────────────────────
-
-const LEDGER_FILE = 'edits.log.jsonl';
-const LEDGER_ROTATED = 'edits.log.1.jsonl';
-const LEDGER_MAX_BYTES = 1024 * 1024;
-
-/* Append one event line to the per-client ledger. Logging is a courtesy,
-   not a control: every failure in here is swallowed by design — a ledger
-   problem must never block, fail, or alter the edit it describes. */
-function ledgerWrite(session, entry) {
-  try {
-    const file = path.join(liveDir(session), LEDGER_FILE);
-    try {
-      if (fs.statSync(file).size > LEDGER_MAX_BYTES) {
-        const rotated = path.join(liveDir(session), LEDGER_ROTATED);
-        fs.rmSync(rotated, { force: true });
-        fs.renameSync(file, rotated);
-      }
-    } catch (e) { /* no existing ledger — nothing to rotate */ }
-    fs.appendFileSync(file, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n', 'utf8');
-  } catch (e) { /* swallowed by design — see above */ }
-}
+// The ledger is appended at the `logged` boundary below via
+// session.host.ledgerAppend(entry); WHERE the line lands (disk, rotated at
+// 1 MB, for the Node host; nowhere, for the demo host) is the host's concern.
 
 // Uploads are logged by name and size only — file bytes never enter the ledger.
 function describeUpload(u) {
@@ -305,78 +246,58 @@ function logged(event, fn, describe) {
     let result;
     try { result = fn(session, ...args); }
     catch (e) {
-      ledgerWrite(session, { event, request, outcome: 'rejected', error: e.message });
+      session.host.ledgerAppend({ event, request, outcome: 'rejected', error: e.message });
       throw e;
     }
     const entry = { event, request, outcome: result.ok ? 'ok' : (result.buildFailed ? 'build-failed' : 'rejected') };
     const reason = result.ok ? null : (result.error || result.reason);
     if (reason) entry.error = reason;
-    ledgerWrite(session, entry);
+    session.host.ledgerAppend(entry);
     return result;
   };
 }
 
-// ── Config & session ───────────────────────────────────────────
-
-function loadConfig(client) {
-  const p = path.join(ROOT, 'clients', client, 'owner-config.json');
-  let fileCfg = {};
-  if (fs.existsSync(p)) {
-    try { fileCfg = JSON.parse(fs.readFileSync(p, 'utf8')); }
-    catch (e) { throw new Error(`owner-config.json is not valid JSON: ${e.message}`); }
-  }
-  return { ...DEFAULT_CONFIG, ...fileCfg };
-}
+// ── Session ────────────────────────────────────────────────────
 
 /* Create an editing session: reset the candidate from live and build the
    annotated preview. Pending and staged state is in-memory, so a fresh
    session always starts clean — candidate equals live, nothing pending,
-   nothing staged. */
-function createSession(client, overrides) {
-  if (!/^[a-zA-Z0-9_-]+$/.test(client || '')) {
-    throw new Error(`invalid client name "${client}"`);
-  }
+   nothing staged.
+
+   `host` is the storage/environment adapter (see engine/lib/host-node.js).
+   It is OPTIONAL: when omitted, the default Node (disk/git) host is built for
+   `client` + `overrides`, so existing callers — engine/serve.js and the proof
+   suite — are unchanged. The browser demo passes its own in-memory host. */
+function createSession(client, overrides, host) {
+  host = host || require('./host-node').createNodeHost(client, overrides);
   const session = {
     client,
-    candidateClient: client + CANDIDATE_SUFFIX,
-    config: { ...loadConfig(client), ...(overrides || {}) },
+    config: host.config,
     pending: null,
     staged: [],
     lastPublish: null,
+    host,
   };
-  if (!fs.existsSync(liveContentPath(session))) {
+  if (!host.liveExists()) {
     throw new Error(`clients/${client}/content.json not found`);
   }
-  resetCandidate(session);
-  const b = buildCandidate(session);
+  host.resetCandidateFromLive();
+  const b = host.buildCandidate();
   if (!b.ok) throw new Error(`the live content does not build — fix it before editing:\n${b.out}`);
   return session;
 }
-
-function resetCandidate(session) {
-  fs.rmSync(candDir(session), { recursive: true, force: true });
-  // The ledger is a live-dir-only artifact, not site content — it never
-  // rides along into the candidate copy.
-  fs.cpSync(liveDir(session), candDir(session), {
-    recursive: true,
-    filter: src => !path.basename(src).startsWith('edits.log'),
-  });
-}
-
-function buildCandidate(session) { return buildClient(session.candidateClient, true); }
-function buildLive(session)      { return buildClient(session.client, false); }
 
 // ── Handlers ───────────────────────────────────────────────────
 
 function getState(session) {
   const content = readCandidate(session);
-  const preset = presetTokensFor(content);
+  const preset = session.host.presetTokens(content);
   return {
     ok: true,
     client: session.client,
     clientName: session.config.clientName || session.client,
     contact: session.config.contact || null,
-    publishMode: publishMode(session.config),
+    publishMode: session.host.publishMode(),
     pending: publicPending(session),
     staged: publicStaged(session),
     lastPublish: session.lastPublish,
@@ -554,7 +475,7 @@ function describeSection(session, ref) {
     return { ok: false, error: 'a section reference needs a "block" id' };
   }
   const content = readCandidate(session);
-  const map = buildEditMap(content, presetTokensFor(content));
+  const map = buildEditMap(content, session.host.presetTokens(content));
   let desc = null;
   for (const p of map.pages || []) {
     for (const b of p.blocks || []) if (b.id === ref.block) desc = b;
@@ -588,7 +509,7 @@ function describeSection(session, ref) {
 function checkToken(session, token, value) {
   const clone = readCandidate(session); // fresh parse — mutating it touches nothing
   const result = applyPatch(clone, { action: 'set-token', token: String(token), value: String(value) },
-    presetTokensFor(clone));
+    session.host.presetTokens(clone));
   return result.ok ? { ok: true } : { ok: false, error: result.error || 'rejected' };
 }
 
@@ -631,11 +552,10 @@ function prepareUpload(session, upload, taken) {
   if (!IMAGE_SIGNATURES[ext](bytes)) {
     return { error: `"${path.basename(upload.name)}" does not look like a real ${ext.slice(1).toUpperCase()} image — the file's contents don't match its name` };
   }
-  const imgDir = path.join(candDir(session), 'img');
-  const inUse = name => fs.existsSync(path.join(imgDir, name)) || (taken && taken.has(name));
+  const inUse = name => session.host.candidateImageExists(name) || (taken && taken.has(name));
   let name = stem + ext;
   for (let n = 2; inUse(name); n++) name = `${stem}-${n}${ext}`;
-  return { name, bytes, imgDir };
+  return { name, bytes };
 }
 
 /* The edit handler: construct → applyPatch on the candidate → candidate
@@ -666,9 +586,9 @@ function applyEdit(session, patch, upload) {
     patch.value = 'img/' + prep.name;
   }
 
-  const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
+  const beforeText = session.host.readCandidateText();
   const content = JSON.parse(beforeText);
-  const presetTokens = presetTokensFor(content);
+  const presetTokens = session.host.presetTokens(content);
 
   // If the field currently holds a number and the UI sent a numeric string,
   // keep the type — the schema gate at build time expects it.
@@ -693,19 +613,14 @@ function applyEdit(session, patch, upload) {
   if (result.refused) return { ok: false, error: result.reason || 'refused' };
   if (!result.ok) return { ok: false, error: result.error };
 
-  let uploadPath = null;
-  if (staged) {
-    fs.mkdirSync(staged.imgDir, { recursive: true });
-    uploadPath = path.join(staged.imgDir, staged.name);
-    fs.writeFileSync(uploadPath, staged.bytes);
-  }
-  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
+  if (staged) session.host.writeCandidateImage(staged.name, staged.bytes);
+  session.host.writeCandidateText(JSON.stringify(content, null, 2) + '\n');
 
-  const b = buildCandidate(session);
+  const b = session.host.buildCandidate();
   if (!b.ok) {
-    fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
-    if (uploadPath) fs.rmSync(uploadPath, { force: true });
-    buildCandidate(session); // restore the preview to the last good state
+    session.host.writeCandidateText(beforeText);
+    if (staged) session.host.removeCandidateImage(staged.name);
+    session.host.buildCandidate(); // restore the preview to the last good state
     return { ok: false, buildFailed: true, error: `That change did not pass the site's checks, so it was not kept:\n${b.out}` };
   }
 
@@ -784,26 +699,20 @@ function applyScaffold(session, req) {
     }
   }
 
-  const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
+  const beforeText = session.host.readCandidateText();
   const content = JSON.parse(beforeText);
   const inst = scaffold.instantiate(content, bp, req.variant, values,
     { targetSlug: req.targetPage, targetBlock: req.targetBlock });
   if (!inst.ok) return { ok: false, error: inst.errors.join('\n') };
 
-  const written = [];
-  for (const s of staged) {
-    fs.mkdirSync(s.imgDir, { recursive: true });
-    const p = path.join(s.imgDir, s.name);
-    fs.writeFileSync(p, s.bytes);
-    written.push(p);
-  }
-  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
+  for (const s of staged) session.host.writeCandidateImage(s.name, s.bytes);
+  session.host.writeCandidateText(JSON.stringify(content, null, 2) + '\n');
 
-  const b = buildCandidate(session);
+  const b = session.host.buildCandidate();
   if (!b.ok) {
-    fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
-    for (const p of written) fs.rmSync(p, { force: true });
-    buildCandidate(session); // restore the preview to the last good state
+    session.host.writeCandidateText(beforeText);
+    for (const s of staged) session.host.removeCandidateImage(s.name);
+    session.host.buildCandidate(); // restore the preview to the last good state
     return { ok: false, buildFailed: true, error: `That addition did not pass the site's checks, so it was not kept:\n${b.out}` };
   }
 
@@ -844,16 +753,16 @@ function applyRemoveItem(session, ref) {
   }
   if (!ref || typeof ref !== 'object') return { ok: false, error: 'bad remove request' };
 
-  const beforeText = fs.readFileSync(candContentPath(session), 'utf8');
+  const beforeText = session.host.readCandidateText();
   const content = JSON.parse(beforeText);
   const rm = scaffold.removeItem(content, { block: ref.block, item: ref.item });
   if (!rm.ok) return { ok: false, error: rm.errors.join('\n') };
 
-  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
-  const b = buildCandidate(session);
+  session.host.writeCandidateText(JSON.stringify(content, null, 2) + '\n');
+  const b = session.host.buildCandidate();
   if (!b.ok) {
-    fs.writeFileSync(candContentPath(session), beforeText, 'utf8');
-    buildCandidate(session); // restore the preview to the last good state
+    session.host.writeCandidateText(beforeText);
+    session.host.buildCandidate(); // restore the preview to the last good state
     return { ok: false, buildFailed: true, error: `That removal did not pass the site's checks, so it was not kept:\n${b.out}` };
   }
 
@@ -905,9 +814,9 @@ function keep(session) {
    session's uploaded files. This is how discard-pending leaves the staged
    list undisturbed without ever trying to invert a patch. */
 function replayStaged(session) {
-  resetCandidate(session);
-  const content = JSON.parse(fs.readFileSync(candContentPath(session), 'utf8'));
-  const presetTokens = presetTokensFor(content);
+  session.host.resetCandidateFromLive();
+  const content = JSON.parse(session.host.readCandidateText());
+  const presetTokens = session.host.presetTokens(content);
   for (const entry of session.staged) {
     if (entry.replay.kind === 'patch') {
       const r = applyPatch(content, { ...entry.replay.patch }, presetTokens);
@@ -929,14 +838,10 @@ function replayStaged(session) {
         return { ok: false, error: `replaying a kept addition failed unexpectedly:\n${inst.errors.join('\n')}` };
       }
     }
-    for (const f of entry.uploadFiles) {
-      const dir = path.join(candDir(session), 'img');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, f.name), f.bytes);
-    }
+    for (const f of entry.uploadFiles) session.host.writeCandidateImage(f.name, f.bytes);
   }
-  fs.writeFileSync(candContentPath(session), JSON.stringify(content, null, 2) + '\n', 'utf8');
-  const b = buildCandidate(session);
+  session.host.writeCandidateText(JSON.stringify(content, null, 2) + '\n');
+  const b = session.host.buildCandidate();
   if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
   return { ok: true };
 }
@@ -954,16 +859,21 @@ function discard(session) {
 function discardAll(session) {
   session.pending = null;
   session.staged = [];
-  resetCandidate(session);
-  const b = buildCandidate(session);
+  session.host.resetCandidateFromLive();
+  const b = session.host.buildCandidate();
   if (!b.ok) return { ok: false, buildFailed: true, error: `candidate rebuild failed:\n${b.out}` };
   return { ok: true };
 }
 
-/* Publish: the ONLY path that writes into clients/<client>/ (restore
-   aside). Writes the entire staged session to live in one step — the
-   candidate content plus every image the session uploaded — rebuilds
-   live WITHOUT annotations, then runs the publish command ONCE. */
+/* Publish: ship the whole staged session in one step. The session-state
+   guards (no pending change; something staged) and the staged-list
+   bookkeeping live here; the actual shipping — copy candidate content +
+   uploaded images to live, rebuild live without annotations, run the publish
+   command once, with rollback on a failing rebuild — is the host's
+   shipSession(). For the Node host that writes clients/<client>/ and runs
+   git/the custom command; for the demo host it is a no-op. The staged session
+   is consumed (and lastPublish recorded) ONLY when the host actually wrote
+   live (`result.live`), so a demo "publish" leaves the session intact. */
 function publish(session) {
   if (session.pending) {
     return { ok: false, error: 'Keep or discard the pending change before publishing.' };
@@ -972,138 +882,30 @@ function publish(session) {
     return { ok: false, error: 'There is nothing to publish — keep at least one change first.' };
   }
 
-  const liveBackup = fs.readFileSync(liveContentPath(session), 'utf8');
-  fs.writeFileSync(liveContentPath(session), fs.readFileSync(candContentPath(session), 'utf8'), 'utf8');
-
-  const copied = [];
-  for (const entry of session.staged) {
-    for (const name of entry.uploads) {
-      const src = path.join(candDir(session), 'img', name);
-      const dst = path.join(liveDir(session), 'img', name);
-      fs.mkdirSync(path.dirname(dst), { recursive: true });
-      fs.copyFileSync(src, dst);
-      copied.push(dst);
-    }
-  }
-
-  const b = buildLive(session);
-  if (!b.ok) {
-    // Should be impossible (the same content already built as the candidate)
-    // — but never leave live updated-and-broken. Roll everything back.
-    fs.writeFileSync(liveContentPath(session), liveBackup, 'utf8');
-    for (const f of copied) fs.rmSync(f, { force: true });
-    buildLive(session);
-    return { ok: false, buildFailed: true, error: `The live rebuild failed unexpectedly; the live site was left unchanged:\n${b.out}` };
-  }
-
+  const uploads = [];
+  for (const entry of session.staged) for (const name of entry.uploads) uploads.push(name);
   const summary = sessionSummary(session.staged);
+
+  const result = session.host.shipSession({ uploads, summary });
+  if (!result.ok) return result;     // build-failed (rolled back) or refused — session intact
+  if (!result.live) return result;   // demo host: nothing shipped, staged session preserved
   session.staged = [];
-  const result = runPublish(session, summary);
-  session.lastPublish = { at: new Date().toISOString(), ok: result.ok, message: result.message };
-  return { ok: true, publish: result };
+  session.lastPublish = { at: new Date().toISOString(), ok: result.publish.ok, message: result.publish.message };
+  return { ok: true, publish: result.publish };
 }
 
-/* Restore: revert the last publish commit (found by the marker the
-   default publish message embeds), rebuild live + candidate, republish.
-   One publish = one commit = the whole session, so restore reverts the
-   whole session as one unit. */
+/* Restore: revert the last publish (one publish = one commit = the whole
+   session, so this reverts the whole session as one unit). The session-state
+   guard lives here; the git-revert + rebuild + republish is the host's
+   restore(). */
 function restore(session) {
   if (session.pending || session.staged.length) {
     return { ok: false, error: 'Publish or discard your changes before restoring a previous version.' };
   }
-  let log = git(['log', '-n', '1', '--fixed-strings', '--grep', PUBLISH_MARKER(session.client), '--format=%H']);
-  if (log.error && log.error.code === 'ENOENT') {
-    return { ok: false, error: 'git is not installed (or not on PATH), so there is no publish history to restore from.' };
-  }
-  const hash = (log.stdout || '').trim();
-  if (log.status !== 0 || !hash) {
-    return { ok: false, error: 'No published change was found for this client — nothing to restore.' };
-  }
-  const revert = git(['revert', '--no-edit', hash]);
-  if (revert.status !== 0) {
-    git(['revert', '--abort']);
-    return { ok: false, error: `Could not undo the last publish automatically:\n${((revert.stdout || '') + (revert.stderr || '')).trim()}` };
-  }
-
-  resetCandidate(session);
-  const live = buildLive(session);
-  const cand = buildCandidate(session);
-  if (!live.ok || !cand.ok) {
-    return { ok: false, buildFailed: true, error: `The undo was committed but the rebuild failed:\n${(live.ok ? '' : live.out)}\n${(cand.ok ? '' : cand.out)}`.trim() };
-  }
-
-  let publish;
-  const mode = publishMode(session.config);
-  if (mode === 'git') {
-    const push = git(['push']);
-    publish = push.status === 0
-      ? { ok: true, message: 'The previous version is live again (reverted and pushed).' }
-      : { ok: false, message: `Reverted locally, but the push failed:\n${((push.stdout || '') + (push.stderr || '')).trim()}` };
-  } else if (mode === 'custom') {
-    publish = runPublish(session, `restore previous version`);
-  } else {
-    publish = { ok: true, skipped: true, message: 'Reverted locally. Publishing is turned off for this client.' };
-  }
-  session.lastPublish = { at: new Date().toISOString(), ok: publish.ok, message: publish.message };
-  return { ok: true, publish };
-}
-
-// ── Publish ────────────────────────────────────────────────────
-
-function publishMessageFor(session, summary) {
-  return String(session.config.publishMessage || DEFAULT_CONFIG.publishMessage)
-    .replace(/\{client\}/g, session.client)
-    .replace(/\{summary\}/g, summary || 'content update')
-    .replace(/\{marker\}/g, PUBLISH_MARKER(session.client));
-}
-
-function runPublish(session, summary) {
-  const mode = publishMode(session.config);
-  if (mode === 'none') {
-    return { ok: true, skipped: true, message: 'Saved and rebuilt locally. Publishing is turned off for this client (publish: "none").' };
-  }
-  const message = publishMessageFor(session, summary);
-
-  if (mode === 'custom') {
-    // {message} is interpolated into a SHELL command, so it is reduced to a
-    // conservative character set first (the summary embeds free-form owner
-    // text such as a blueprint's menu label). The git path below needs no
-    // such reduction — there the message travels as a spawn argument.
-    const shellSafeMessage = message.replace(/[^\w \[\]().,:'/-]+/g, ' ').trim();
-    const cmd = String(session.config.publish)
-      .replace(/\{message\}/g, shellSafeMessage)
-      .replace(/\{client\}/g, session.client);
-    const r = spawnSync(cmd, { shell: true, cwd: ROOT, encoding: 'utf8' });
-    const out = ((r.stdout || '') + (r.stderr || '')).trim();
-    if (r.error) return { ok: false, message: `The publish command could not be run: ${r.error.message}. The site was updated locally but not published.` };
-    return r.status === 0
-      ? { ok: true, message: 'Published.' }
-      : { ok: false, message: `The publish command failed (the site was updated locally but not published):\n${out}` };
-  }
-
-  // mode === 'git' (default): add → commit → push, with plain-language
-  // failure messages at each step.
-  const probe = git(['--version']);
-  if (probe.error && probe.error.code === 'ENOENT') {
-    return { ok: false, message: 'git is not installed (or not on PATH). The site was updated locally but not published.' };
-  }
-  const toAdd = [path.join('clients', session.client, 'content.json')];
-  if (fs.existsSync(path.join(liveDir(session), 'img'))) {
-    toAdd.push(path.join('clients', session.client, 'img'));
-  }
-  const add = git(['add', '--', ...toAdd]);
-  if (add.status !== 0) {
-    return { ok: false, message: `Could not stage the change for publishing:\n${(add.stderr || '').trim()}` };
-  }
-  const commit = git(['commit', '-m', message]);
-  if (commit.status !== 0) {
-    return { ok: false, message: `Could not record the change for publishing:\n${((commit.stdout || '') + (commit.stderr || '')).trim()}` };
-  }
-  const push = git(['push']);
-  if (push.status !== 0) {
-    return { ok: false, message: `The change was saved and recorded, but sending it to the host failed (it will go out with the next successful publish):\n${((push.stdout || '') + (push.stderr || '')).trim()}` };
-  }
-  return { ok: true, message: 'Published — the change is on its way to the live site.' };
+  const result = session.host.restore();
+  if (!result.ok) return result;
+  session.lastPublish = { at: new Date().toISOString(), ok: result.publish.ok, message: result.publish.message };
+  return { ok: true, publish: result.publish };
 }
 
 module.exports = {
@@ -1122,7 +924,12 @@ module.exports = {
   discardAll: logged('discard-all', discardAll, describeSessionRequest),
   publish: logged('publish', publish, describeSessionRequest),
   restore: logged('restore', restore, null),
-  loadConfig, resetCandidate, buildCandidate, buildLive,
-  candDistDir, candContentPath, liveContentPath,
-  CANDIDATE_SUFFIX, SAFE_TOKENS,
+  // Node convenience re-exports. loadConfig is lazily required so owner.js
+  // carries no static dependency on the Node host (the browser bundle injects
+  // its own host and never reaches these).
+  loadConfig: (client) => require('./host-node').loadConfig(client),
+  candDistDir: (session) => session.host.candDistDir(),
+  candContentPath: (session) => session.host.candContentPath(),
+  liveContentPath: (session) => session.host.liveContentPath(),
+  SAFE_TOKENS,
 };
