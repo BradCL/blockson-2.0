@@ -41,14 +41,16 @@ is Node stdlib. Then run the proof suite before you build anything:
 ```
 ═══ PROOF 1 — Live build hides ids & annotations; annotated build covers every editable field ═══
 PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every
-       editable field the edit map reports (315 required annotations across
+       editable field the edit map reports (327 required annotations across
        3 clients) and stamp nothing the map does not report.
    …
-═══ PROOF 20 — page-header background inherits the site hero image when omitted ═══
-PASS — a page-header with no background of its own inherits the site hero image …
+═══ PROOF 27 — Editable CTA buttons: id migration, addressable buttons, first-button add, guarded ═══
+PASS — a button's label/link/style each edit through the item path with the build
+       as the value gate, the first button adds to an empty actions array, and no
+       ids or annotations leak into the live HTML …
 
 ════════════════════════════════════════════════════════════
-20/20 proofs passed.
+27/27 proofs passed.
 ```
 
 *(Full transcript: [term/01-proofs.txt](term/01-proofs.txt).)*

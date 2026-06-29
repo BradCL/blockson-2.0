@@ -28,11 +28,10 @@ is the raw delta if an entry was ever missed.
 
 ## Learning guide (`docs/learning-guide/`)
 
-**Baseline:** `13242e1` (2026-06-27). Prose deltas below were reconciled in the
-2026-06-28 reconciliation pass; the baseline stays until the proof-count update
-(folded into the post-task-C pass) is applied, after which it can advance.
+**Baseline:** `73d5b75` (2026-06-28). Fully reconciled — the 2026-06-28 prose
+pass and the 2026-06-28 capture session are both applied. No pending entries.
 
-Reconciled this pass (prose):
+Reconciled (prose, 2026-06-28 pass):
 
 - ✅ **Per-section doorway** (`79191fd`) — `bk-section` message + Section panel
   added to `02-atlas/07-dom-and-events.md`; trace `03-traces/trace-b-owner-edit.md`.
@@ -44,67 +43,54 @@ Reconciled this pass (prose):
   editing" bullet in ch.07; Stops 6–7, Exercise 1, and the mermaid label in
   trace-b now describe the inline review that keeps the editor open.
 
-Still pending:
+Reconciled (counts, 2026-06-28 capture session):
 
-- ⏳ **Proof-count references** — `02-atlas/12-testing-proofs.md` says "25" in
-  ~3 places (narrative + Exercise 1's "25/25"); `01-system-map.md` may reference
-  counts too. The count is now **27** and stable (task C added no proof — see
-  note below); bundled into the capture session purely so the transcripts and the
-  prose number are written in one sitting.
+- ✅ **Proof-count references** — `02-atlas/12-testing-proofs.md` ("25" narrative
+  in 3 places + Exercise 1's "25/25") and `01-system-map.md` now read **27**.
+- ✅ **Block-type count** — `01-system-map.md` said "(21)"; corrected to the
+  current **23** (matches SPEC) while reconciling the same tree block.
 
 ## Developer tutorial (`docs/tutorial/developer/`)
 
-**Baseline:** `e49cbc1` (2026-06-17). Entirely capture/count work → post-task-C.
+**Baseline:** `73d5b75` (2026-06-28). Fully reconciled in the 2026-06-28 capture
+session. No pending entries.
 
-- ⏳ **Proof transcript + count** — `term/01-proofs.txt` and the README excerpt
-  show `20/20`; the suite is 27 now and 28+ after task C. Regenerate
-  `term/01-proofs.txt` via `node scripts/capture-terminal-snippets.js` (also
-  refreshes `02`–`06`) and update the README excerpt's last proof + count.
-- ⏳ **Owner-facing features mention** — section doorway, CTA buttons, image
-  thumbnails, keep-open (and task C's social image) may warrant a line where the
-  tutorial describes what the handed-off editor can do; the developer *workflow*
-  is unchanged, so this is optional.
+- ✅ **Proof transcript + count** — `term/*.txt` regenerated via
+  `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `27/27`,
+  `05-sitemap.txt` refreshed); the README excerpt's last proof is now PROOF 27
+  and the count `27/27` (annotation total `327`).
+- ✅ **Owner-facing features mention** — reviewed and **declined**: the developer
+  *workflow* is unchanged, so no new line was warranted.
 
 ## Owner tutorial (`docs/tutorial/owner/`)
 
-**Baseline:** `3000bc1` (2026-06-11). The most expensive to reconcile — 11 PNG
-screenshots produced by `scripts/flows/owner-editor.js` via
-`scripts/capture-tutorial.js`. Prose §§3–5 are welded to those screenshots, so
-prose and captures must move together → post-task-C.
+**Baseline:** `73d5b75` (2026-06-28). Fully reconciled in the 2026-06-28 capture
+session. No pending entries.
 
-- ⏳ **Keep-open flow** (`f8be338`) — §§3–5 ("Pending change card" / Keep /
-  Discard) and their screenshots show the old standalone-card flow; the editor
-  now stays open with the review inline. The flow spec's steps wait for
-  `#pending-card:not([hidden])` after Save, which **no longer appears on Save**,
-  so `scripts/flows/owner-editor.js` must be updated before any re-capture.
-- ⏳ **Owner-facing features not yet shown** — hero focal/zoom (`ba3e502`,
-  `68d80c7`), reachable section backgrounds (`097e9fe`), section doorway
-  (`79191fd`), CTA buttons (`9d248ac`), image thumbnails (`dc3b9cd`),
-  gallery/photo-strip link labels (`01f77e8`), and task C's social image. Decide
-  which deserve a step.
+- ✅ **Keep-open flow** (`f8be338`) — `scripts/flows/owner-editor.js` updated:
+  the §3 and §5 steps now wait for the in-place `#editor:has-text("Review your
+  change")` review instead of `#pending-card`, and §5 settles on the re-opened
+  editor (the discard toast is cleared by the re-open). The 11 PNGs were
+  regenerated and README §§3–5 rewritten to the inline review flow.
+- ✅ **Owner-facing features not yet shown** — reviewed and **declined** as
+  dedicated steps: the "What else you can change" section already covers the
+  category (photos, lists, repeating items, hiding sections, brand colors), and
+  adding a step per feature would bloat the walkthrough past its purpose.
 
 ---
 
-## Next reconciliation: a single capture session
+## Running a capture session (for the next bundle)
 
-Everything capture- or count-dependent above is bundled into one focused session
-(it regenerates harness-produced artifacts, which is heavy and best done
-deliberately on a clean tree, not piecemeal). **Note:** task C
-(owner-choosable social image) concluded *doc-only* — commit `267d826` documented
-that the site hero is already the default social-card image, with no editor-UI
-change and no new proof — so this session is **no longer blocked on task C**, and
-the proof count is settled at 27. On a **clean working tree**:
+The 2026-06-28 session above cleared all then-pending debt. Keep this procedure
+for the next time capture- or count-dependent debt accumulates — it regenerates
+harness-produced artifacts, which is heavy and best done deliberately on a
+**clean working tree**, not piecemeal:
 
-1. Update `scripts/flows/owner-editor.js` steps for the keep-open inline review
-   (and any social-image step), then re-run `node scripts/capture-tutorial.js
-   scripts/flows/owner-editor.js` to regenerate the owner PNGs; update owner
-   README §§3–5 prose to match.
+1. Update `scripts/flows/owner-editor.js` for any editor-UI change, then re-run
+   `node scripts/capture-tutorial.js scripts/flows/owner-editor.js` to regenerate
+   the owner PNGs; update owner README §§3–5 prose to match.
 2. `node scripts/capture-terminal-snippets.js` to regenerate the developer
-   `term/*.txt`; update the developer README proof excerpt.
-3. Write the final proof count into `02-atlas/12-testing-proofs.md` (+ any in
+   `term/*.txt`; update the developer README proof excerpt (last proof + count).
+3. Write the current proof count into `02-atlas/12-testing-proofs.md` (+ any in
    `01-system-map.md`), then advance the three baselines to the then-current
    commit and clear the entries above.
-4. (Optional) Task C added no feature — it documented the existing hero-as-default
-   social image in the live docs (SPEC/OPERATOR). If the frozen docs discuss
-   `<head>`/SEO/OG tags, a one-line mention of that default could be added; not
-   required.

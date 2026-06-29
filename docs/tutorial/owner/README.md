@@ -56,21 +56,25 @@ whole section there — like hiding it temporarily — more on that later.)
 
 ---
 
-## 3. The "Pending change" card — look before you leap
+## 3. Look before you leap — the review in place
 
-Saving doesn't change your website. Instead, you get a **Pending change**
-card showing exactly what you did, as *Now* (the old text, crossed out)
-and *After* (the new). The preview on the left has already updated, so you
-can see the new headline in place, in your real design:
+Saving doesn't change your website. Instead, the editor shows you a
+**review** of exactly what you did — right there in the panel where you
+were working, as *Now* (the old text, crossed out) and *After* (the new).
+The preview on the left has already updated, so you can see the new
+headline in place, in your real design:
 
-![The pending card: Now and After, with the preview already updated](img/03-pending-card--desktop.png)
+![The review in place: Now and After, the editor still open, preview already updated](img/03-pending-card--desktop.png)
 
-The editor handles **one pending change at a time** — it asks you to make
-up your mind about this one before starting the next. You have two
-buttons:
+The editor handles **one change at a time** — it asks you to make up your
+mind about this one before starting the next. You have two buttons:
 
 - **Keep** — yes, I want this; hold onto it.
 - **Discard** — no, throw it away.
+
+Because the review opens right inside the editor, you never lose your
+place: whichever you press, the editor stays put and is ready for your
+next change.
 
 ---
 
@@ -83,8 +87,8 @@ it as a shopping basket: items in the basket aren't bought yet.
 ![A kept change in the session list — nothing is live yet](img/04-keep--desktop.png)
 
 Note the message at the top: *"Change kept — it goes live when you publish
-this session."* You can keep editing and pile up as many kept changes as
-you like.
+this session."* The editor is ready for your next edit straight away — you
+can keep editing and pile up as many kept changes as you like.
 
 ---
 
@@ -92,15 +96,17 @@ you like.
 
 Suppose you try a second idea — adding "Walk-ins welcome" to the line
 above the headline — then look at the preview and decide against it. Press
-**Discard** and it's gone, instantly and completely:
+**Discard** in the review and it's gone, instantly and completely — and
+the editor simply reopens where you were, ready for another try:
 
-![The experiment is discarded; the kept change is untouched](img/05-discard--desktop.png)
+![The experiment is discarded; the editor stays open and the kept change is untouched](img/05-discard--desktop.png)
 
 Two things worth noticing in that picture:
 
-- *"Pending change discarded — anything you kept is still staged."* —
-  throwing away an experiment never touches the changes you already kept.
-  Your headline edit is still safely in the list.
+- Throwing away an experiment never touches the changes you already kept.
+  Your headline edit is still safely in the **"Kept this session"** list on
+  the right, and the editor has reopened right where you were — ready for
+  another try.
 - There's also a **Discard all** button on the session list, which empties
   the whole basket and puts the preview back to exactly what's live —
   the "forget this whole sitting" button.

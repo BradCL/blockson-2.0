@@ -113,8 +113,8 @@ engine/                      ENGINE — all the code
   sitemap.js / new-client.js   edit-map printer / client scaffolder
   validate-blueprint.js        \ acceptance CLIs for the two
   validate-theme.js            / authoring kits
-  _run-proofs.js               the 20-proof test suite
-  blocks/                      one module per block type (21) + _registry.js
+  _run-proofs.js               the 27-proof test suite
+  blocks/                      one module per block type (23) + _registry.js
   partials/                    head.js, nav.js, footer.js
   lib/                         the core: validate, render, escape, patch,
                                sitemap (edit map), annotate, owner, scaffold

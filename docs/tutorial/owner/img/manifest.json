@@ -1,6 +1,6 @@
 {
   "flow": "owner-editor",
-  "generated": "2026-06-11T05:54:52.705Z",
+  "generated": "2026-06-29T01:13:35.492Z",
   "captures": [
     {
       "file": "01-editor-home--desktop.png",
@@ -18,7 +18,7 @@
       "file": "03-pending-card--desktop.png",
       "step": "pending-card",
       "viewport": "desktop",
-      "description": "Headline edit saved: the pending card shows the change as Now → After, preview already updated"
+      "description": "Headline edit saved: the Now → After review opens inside the editor (it stays in place), preview already updated"
     },
     {
       "file": "04-keep--desktop.png",
@@ -30,7 +30,7 @@
       "file": "05-discard--desktop.png",
       "step": "discard",
       "viewport": "desktop",
-      "description": "A second edit (the hero tag) discarded: the experiment is gone, the kept change survives"
+      "description": "A second edit (the hero tag) discarded from the in-place review: the experiment is gone, the editor stays open, the kept change survives"
     },
     {
       "file": "06-add-page-menu--desktop.png",

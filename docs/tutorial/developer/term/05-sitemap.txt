@@ -27,6 +27,9 @@ PAGE index
     field: headline  = "Hair that still looks good three weeks from now."
     field: subhead  = "We're a six-chair studio that books real consultation time, formulates colour to grow out gracefully, and never rushes a haircut to fit a schedule."
     field: background  = "img/banner.jpg"
+    items in "actions":
+      item "book-an-appointment"  label: "Book an Appointment"  — fields: label
+      item "see-our-work"  label: "See Our Work"  — fields: label
   block "home-welcome" (text)
     field: tag  = "Welcome"
     field: heading  = "A studio, not a conveyor belt"
@@ -74,6 +77,7 @@ PAGE services
     field: tag  = "Services"
     field: heading  = "The service menu"
     field: subhead  = "Every price below is a starting point we confirm together at consultation — never a surprise at the till."
+    field: background
   block "services-cuts" (pricing-table)
     field: tag  = "Cuts & styling"
     field: heading  = "Cutting services"
@@ -123,6 +127,7 @@ PAGE about
     field: heading  = "The studio on 124 Street"
     field: subhead  = "Twelve years, six chairs, and a stubborn belief that listening is half the haircut."
     field: variant  = "light"
+    field: background
   block "about-story" (text)
     field: tag  = "Our story"
     field: heading  = "Started small on purpose, staying that way on purpose"
@@ -173,6 +178,7 @@ PAGE gallery
     field: tag  = "Gallery"
     field: heading  = "Recent work from the chairs"
     field: subhead  = "Every photo here is a real client, posted with permission — no stock, no filters that lie about colour."
+    field: background
   block "gallery-main" (gallery)
     items in "albums":
       item "album-balayage"  title: "Lived-in balayage"  — fields: category, title, meta, images
@@ -192,6 +198,7 @@ PAGE contact
     field: tag  = "Contact"
     field: heading  = "Get in touch"
     field: subhead  = "Call, email, or send us a message — we reply within one business day, usually faster."
+    field: background
   block "contact-info" (contact-info)
     items in "items":
       item "info-phone"  label: "Call"  — fields: icon, label, value, href

@@ -2,7 +2,7 @@ $ node engine/_run-proofs.js
 
 ═══ PROOF 1 — Live build hides ids & annotations; annotated build covers every editable field ═══
 PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every
-       editable field the edit map reports (315 required annotations across
+       editable field the edit map reports (327 required annotations across
        3 clients) and stamp nothing the map does not report.
 
 ═══ PROOF 2 — Real edit: change contact.phone via the resolver + build ═══
@@ -115,7 +115,7 @@ PASS — in a sandbox git repository with a local bare origin: keeping changes
        reverts the whole session as one unit and republishes.
 
 ═══ PROOF 19 — Item blueprints: owners add and remove repeating items through the scaffolder ═══
-PASS — the four shipped item blueprints validate; a valid add lands in the
+PASS — four item blueprints validate (cta-button is proof 27); a valid add lands in the
        NAMED block with a site-wide-unique item id and the full build accepts
        it; bad inputs, unknown/wrong-type targets reject with nothing written;
        remove deletes exactly the addressed item, refuses the last item and
@@ -130,5 +130,69 @@ PASS — a page-header with no background of its own inherits the site hero imag
        background still wins; and a site with no hero at all emits no inline
        background, leaving the theme CSS as the last-ditch fallback.
 
+═══ PROOF 21 — Hero focal-point + zoom: guarded values round-trip; bad values bounce ═══
+PASS — out-of-range and malformed focal/zoom values (raw CSS, url(), zoom
+       9 / 0.5 / non-numeric) are refused with nothing written; a valid pair
+       round-trips through applyPatch (a string zoom normalized to a number)
+       and reaches the built hero as inline background-position + transform:
+       scale, with no ids and no data-bk-* in the live HTML; the fields are
+       optional (absent → default paint); and the edit map reports them as
+       block metadata, never scalars.
+
+═══ PROOF 22 — og:image fallback: per-page image → site hero → logo ═══
+PASS — with no per-page image, every page (home and interior) takes the site
+       hero as its og:image rather than the logo; an explicit per-page
+       meta.ogImage still wins on its page; a non-image hero background is
+       guarded and falls through to the logo; and with no hero at all the
+       logo is the last resort, so the tag is never broken-missing.
+
+═══ PROOF 23 — Unreferenced-image advisory: orphans named, every channel spared, build still succeeds ═══
+PASS — an image reached by nothing (including a nested one) is named on stderr
+       so it can be pruned, while images reached through any channel — content
+       fields, the logo/favicon trio, a per-page og-image, or the theme CSS's
+       hard-coded banner — are spared, and the build still succeeds (exit 0).
+
+═══ PROOF 24 — Reachable section backgrounds: data-bk-bg marks hero/header backgrounds in preview, never live ═══
+PASS — the annotated build marks each behind-content background (hero and
+       explicit page-header) with data-bk-bg, paired with its background-field
+       annotation, as a direct child of its section; the marker rides only
+       background fields; and a live build carries neither the marker nor any
+       data-bk-* — the overlay routes a dead-space click to a target the live
+       site never exposes.
+
+═══ PROOF 25 — Per-page page-header background: owner can set an image where the header inherits the hero ═══
+PASS — a page-header that inherits the site hero exposes its background as
+       editable (mapped + marked in the annotated build); the patch resolver
+       creates it ONLY for a page-header background set to an image path, and
+       refuses a non-image value, an unrelated new field, and a background on
+       a non-header block with nothing written; the editor opens it as an
+       image whose current value is the inherited hero; and a created per-page
+       background publishes to live HTML, overriding the hero, with no
+       annotations or ids.
+
+═══ PROOF 26 — Section doorway: a section can add the optional text it omits (subtitle), guarded ═══
+PASS — a page-header that omits its (optional) subtitle surfaces it as a
+       CREATABLE text field (never a scalar, so the annotation proof is not over-
+       constrained), while a required hero subhead stays an ordinary scalar;
+       the resolver creates it ONLY for a one-line text value on
+       an allowlisted block, refusing an over-long/control-char/non-string
+       value, an unrelated field, and a subtitle on a non-allowlisted block with
+       nothing written; the editor opens the omission as an empty text field and
+       describeSection offers it alongside the section settings; and a created
+       subtitle publishes to live HTML with no annotations or chip leaking in.
+
+═══ PROOF 27 — Editable CTA buttons: id migration, addressable buttons, first-button add, guarded ═══
+PASS — extras/add-action-ids.js seeds a slugified, site-wide-unique id on every
+       hero button (numeric-suffixed on a label collision) and is a no-op on a
+       second run; a migrated hero exposes its actions as an item set whose only
+       click field is label (the annotated build marks each button there, never
+       its href/style), while the live build stays byte-identical and data-bk-
+       free; a button's label/link/style each edit through the item path with the
+       build as the value gate (an unsafe link and an out-of-enum style are
+       rolled back), a button removes via the item path (the last one refused),
+       and the scaffold relaxation adds the FIRST button to an empty actions array
+       through the Section-panel doorway — candidate-only, then live on publish,
+       with no annotations or ids leaking into the live HTML.
+
 ════════════════════════════════════════════════════════════
-20/20 proofs passed.
+27/27 proofs passed.

@@ -1,7 +1,14 @@
 /**
  * Flow spec: the OWNER tutorial's captures — the click-to-edit cycle in
- * the real editor (engine/serve.js): edit → pending card → Keep/Discard,
- * adding a page from a blueprint, Publish, and Restore.
+ * the real editor (engine/serve.js): edit → in-place Now→After review →
+ * Keep/Discard, adding a page from a blueprint, Publish, and Restore.
+ *
+ * Saving a field edit keeps the editor OPEN and shows the review inside it
+ * (the keep-in-place flow); the standalone #pending-card only appears on a
+ * fresh page load with a pending change already present, or after a one-shot
+ * scaffold (Add a page). Each step here opens a fresh page, so the `keep`
+ * and add-page steps legitimately meet the standalone card, while the
+ * save-and-review steps below capture the in-place review.
  *
  *   node scripts/capture-tutorial.js scripts/flows/owner-editor.js
  *
@@ -161,7 +168,7 @@ module.exports = {
 
     {
       slug: 'pending-card',
-      description: 'Headline edit saved: the pending card shows the change as Now → After, preview already updated',
+      description: 'Headline edit saved: the Now → After review opens inside the editor (it stays in place), preview already updated',
       viewports: ['desktop'],
       capture: 'viewport',
       settle: false,
@@ -173,7 +180,9 @@ module.exports = {
         await page.locator('#editor input[type="text"]')
           .fill('Hair that still looks good six weeks from now.');
         await page.locator('#editor button:has-text("Save")').click();
-        await page.waitForSelector('#pending-card:not([hidden])', { timeout: 60000 });
+        // The editor stays open and renders the review in place — not the
+        // standalone #pending-card (that only appears on a fresh reload).
+        await page.waitForSelector('#editor:has-text("Review your change")', { timeout: 60000 });
         await page.waitForTimeout(2500); // preview reloads with the new headline
       },
     },
@@ -196,7 +205,7 @@ module.exports = {
 
     {
       slug: 'discard',
-      description: 'A second edit (the hero tag) discarded: the experiment is gone, the kept change survives',
+      description: 'A second edit (the hero tag) discarded from the in-place review: the experiment is gone, the editor stays open, the kept change survives',
       viewports: ['desktop'],
       capture: 'viewport',
       settle: false,
@@ -208,9 +217,13 @@ module.exports = {
         await page.locator('#editor input[type="text"]')
           .fill('Edmonton · 124 Street · Walk-ins welcome');
         await page.locator('#editor button:has-text("Save")').click();
-        await page.waitForSelector('#pending-card:not([hidden])', { timeout: 60000 });
-        await page.click('#btn-discard');
-        await page.waitForSelector('#message:not([hidden])');
+        // Discard from the in-place review (not the standalone #pending-card);
+        // the editor re-opens on the same field (its original value restored)
+        // and the kept change survives in the session list. The "discarded"
+        // toast is cleared by that re-open, so settle on the re-opened editor.
+        await page.waitForSelector('#editor:has-text("Review your change")', { timeout: 60000 });
+        await page.locator('#editor button:has-text("Discard")').click();
+        await page.locator('#editor input[type="text"]').first().waitFor({ timeout: 60000 });
         await page.waitForTimeout(2500); // preview reloads without the experiment
       },
     },
