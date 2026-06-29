@@ -33,6 +33,17 @@ passes; one prose entry pending below.
 
 Pending:
 
+- ⏳ **Host seam + no-install browser demo** — the owner editor is now
+  storage/environment-agnostic: `engine/lib/owner.js` delegates every side effect
+  to an injected host (`host-node.js` = disk/git default; `host-browser.js` =
+  in-memory peer), and `npm run build:demo <client>` (`engine/build-demo.js`)
+  bundles it over the browser host into a static `dist/demo-<client>/` that runs
+  the click-to-edit editor with no Node and no server (Publish disabled). The
+  system map (`01-system-map.md`) and the owner-editor architecture chapter
+  (`02-atlas/07-dom-and-events.md`) describe owner.js + serve.js as the only
+  editor runtime; add the host seam and the demo build when next reconciling.
+  `git log 73d5b75..HEAD -- engine/lib/host-node.js engine/lib/host-browser.js engine/build-demo.js`
+  is the delta.
 - ⏳ **Focal point + zoom now on the page-header too** — `02-atlas/07-dom-and-events.md`
   (~line 65) says the background-image editor is where "hero focal-point/zoom
   controls open." The same `bgPosition`/`bgZoom` controls now ride the
