@@ -77,15 +77,28 @@ window.addEventListener('message', function (e) {
   if (e.data.type === 'bk-edit') {
     openEditor({ block: e.data.block, item: e.data.item, field: e.data.field, index: e.data.index });
   }
+  if (e.data.type === 'bk-section') {
+    openSectionEditor(e.data.block);   // the per-section "doorway" panel
+  }
 });
 ```
 
 Note the very first line: *check the sender's origin before trusting the
 message.* Any page could call `postMessage` at this window.
 
+The overlay posts a *second* message type, `bk-section`: hovering a hero or
+page-header reveals a small chip, and clicking it opens a **Section panel**
+(`openSectionEditor`) that gathers that section's settings — background, style,
+visibility — plus the fields it *could* have but omits (e.g. a subtitle), each
+routed to the same field editor a click would open. It's a doorway, not a new
+write surface — the same lesson as the background resolution above: give the
+owner a way to reach things that have no obvious element to click.
+
 Then `openEditor` asks the server what kind of field was clicked
 (`GET /api/field`) and dispatches to `renderTextEditor`,
-`renderLineEditor`, `renderImageEditor`, … each of which builds its pane
+`renderLineEditor`, `renderImageEditor` (which shows a thumbnail of the
+current image and previews the chosen file), `renderButtonEditor` (a CTA
+button's text, link, and style on one pane), … each of which builds its pane
 from three tiny helpers:
 
 ```js
@@ -114,6 +127,14 @@ UI's whole XSS defense (more in [atlas 13](13-security-mindset.md)).
   and after every server action `refreshState()` re-fetches and re-renders
   (`renderSession`, `renderPending`, `renderTokens`). That's the core loop
   of every UI framework — data down, events up — hand-rolled in 30 lines.
+- **Keep-in-place editing.** A save (`stage()`) no longer closes the
+  editor; instead `renderPending()` draws the old→new review *inside* the
+  open editor (via a `reopen` thunk the editor sets on render), and Keep /
+  Discard re-open the same editor so the owner can chain related edits — set
+  a hero image, keep, adjust its focus, keep — without re-finding the pane.
+  The one-pending-change rule is untouched; only the *placement* of the
+  review changed. (A one-shot flow that closes itself, or a page reload with
+  a pending change, falls back to the standalone pending card.)
 - **Debouncing.** The color picker fires `input` events continuously;
   `openTokenEditor`'s `check()` wraps the server call in a 200 ms
   `setTimeout` that each keystroke resets (`clearTimeout(tokenCheckTimer)`),

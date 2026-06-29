@@ -26,7 +26,7 @@ sequenceDiagram
     H->>P: applyPatch(candidateContent, patch)
     P-->>H: { ok:true }
     H->>H: write candidate content.json, rebuild annotated
-    H-->>U: pending card (old → new)
+    H-->>U: pending review (old → new, shown in the editor)
     U->>S: POST /api/keep → staged list
     U->>S: POST /api/publish
     S->>H: publish(session)
@@ -170,9 +170,12 @@ never shows a broken page.
 
 On success, `session.pending` is set: patch, old, new, and a summary
 ("edit a line in about-hours.items"). The response reaches `ui.js`, which
-re-fetches `/api/state`, shows the **pending card** ("Now: Office: Tue
-6-8pm / After: Office: Wed 6-8pm"), and reloads the iframe — the owner is
-looking at a real build of their edited site.
+re-fetches `/api/state` and renders the **pending review** ("Now: Office: Tue
+6-8pm / After: Office: Wed 6-8pm") *inside the still-open editor* — the editor
+stays put so the owner can make their next related edit in place — then
+reloads the iframe, so they are looking at a real build of their edited site.
+(On a page reload with a change already pending, or after a one-shot flow,
+the same review shows as a standalone card instead.)
 
 One more thing happened invisibly: `applyEdit` is exported through the
 `logged(...)` wrapper, so one JSONL line — timestamp, the patch, the
@@ -182,11 +185,12 @@ failure there would be deliberately swallowed).
 
 ## Stop 7 — Keep, then Publish
 
-The owner clicks **Keep**: `POST /api/keep` → `owner.keep(session)` moves
-the pending change onto `session.staged` (with a `replay` record — if a
-later pending change is discarded, the candidate is rebuilt from live
-plus a deterministic replay of this list, never by trying to invert a
-patch). Keep touches no files; live is still untouched.
+The owner clicks **Keep** (the button now sits in the editor pane, beside the
+review): `POST /api/keep` → `owner.keep(session)` moves the pending change onto
+`session.staged` (with a `replay` record — if a later pending change is
+discarded, the candidate is rebuilt from live plus a deterministic replay of
+this list, never by trying to invert a patch), and the UI re-opens the same
+editor for the next change. Keep touches no files; live is still untouched.
 
 The owner clicks **Publish 1 change**: `POST /api/publish` →
 `owner.publish(session)`:
@@ -252,9 +256,10 @@ same edit in `clients/learning-lab__candidate/content.json`.
 
 <details><summary>What you should see</summary>
 
-A pending card with Now/After values; the *live* content.json unchanged;
-the *candidate* copy carrying your new headline. Stops 4-6 wrote only to
-the candidate. (Discard the change, or Keep it for Exercise 3.)</details>
+The editor stays open showing a Now/After review (with Keep/Discard right
+there); the *live* content.json unchanged; the *candidate* copy carrying your
+new headline. Stops 4-6 wrote only to the candidate. (Discard the change, or
+Keep it for Exercise 3.)</details>
 
 **Exercise 2 (predict, then verify).** The interlock: with a change
 pending (don't Keep or Discard), click another element and try to edit.

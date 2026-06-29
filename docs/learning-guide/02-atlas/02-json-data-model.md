@@ -45,7 +45,8 @@ Open `clients/example-contractor/content.json`. The shape is:
 Three modelling decisions to notice:
 
 1. **Everything addressable carries an `id`.** Blocks have ids; repeating
-   items inside blocks (cards, FAQ pairs, team members) have ids. Patches
+   items inside blocks (cards, FAQ pairs, team members, hero CTA buttons)
+   have ids. Patches
    say `"block": "home-hero"`, never "the second block on page one."
    `engine/build.js` enforces uniqueness site-wide
    (`checkBlockIdUniqueness`, `checkItemIdUniqueness`) precisely because
