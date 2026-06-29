@@ -424,6 +424,14 @@ developer.
 | Add a new card, FAQ entry, customer quote, or team member — and remove one (the editor always keeps at least one) | Add/remove items in other lists (pricing plans, hours rows, process steps) |
 | Preview every change before it goes anywhere, keep several, publish them together | Publish a change without previewing it first (by design) |
 | Undo the last publish in one click | Recover something from longer ago — we keep the full history |
+| | Change the image Google and social posts show next to your site (it's your hero photo by default) |
 
 Every change is checked before it can go live; if the editor refuses something, the
 refusal explains why in plain language — and "ask us" is always the safe next step.
+
+**The social / Google-result image.** Every page's share card (the image shown when
+the site is Googled or a link is posted) defaults to the **site hero photo** — no
+configuration needed, and a strict improvement over a logo-only card. It is not
+owner-editable from the editor; to use a different image on a page, a developer sets
+that page's `meta.ogImage` to an in-site image path (`img/<file>`) in `content.json`
+and rebuilds. See SPEC.md §5 for the full precedence (`meta.ogImage` → hero → logo).

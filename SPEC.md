@@ -188,6 +188,16 @@ theme name, `baseUrl`, and optional `themeOverrides`. Per-page content lives und
 stable `id`, a `type` (must exist in the block registry), and a `fields` object whose
 shape is defined by that block type in BLOCK_CATALOG.md.
 
+**Social-card image (`og:image`).** A page's share image — what Google and social
+platforms show next to the link — resolves in `head.js` by this precedence
+(proof 22): the page's own `meta.ogImage` if set → otherwise the **site hero photo**
+(the home hero's `background`, derived at build time as `site.heroImage` and reused
+the way page-headers inherit it) → otherwise `logo.black` as a last resort. So a
+site with a hero gets a photographic share card with no per-page configuration; a
+specific card is opted into per page by setting `meta.ogImage` to an in-site image
+path. The `heroImage` tier is `IMG_RE`-guarded, so a non-image hero `background`
+falls through to the logo rather than emitting a broken card.
+
 ---
 
 ## 6. Block Instance IDs
