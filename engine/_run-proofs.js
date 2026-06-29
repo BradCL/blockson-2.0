@@ -262,7 +262,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 28;
+const TOTAL = 29;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3330,6 +3330,100 @@ console.log('\n═══ PROOF 28 — Host seam: owner handlers drive an in-memo
     console.log('       only and survives the replay, the ledger fires one entry per attempt, and');
     console.log('       Publish is a no-op property of the host that leaves the staged session');
     console.log('       intact — the adapter cannot silently diverge from the disk/git host.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 29 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 29 — Heavy-gallery advisory: a photo-laden album gets a soft heads-up, never a cap ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-gallery-weight';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+  // The editor shows the heads-up at this album photo count (mirrors owner.js's
+  // GALLERY_PHOTOS_HEAVY_AFTER — bump both together if the threshold is tuned).
+  const HEAVY_AFTER = 12;
+  const ALBUM = 'album-bathroom';
+  const GALLERY = 'gallery-main';
+  const REF = { block: GALLERY, item: ALBUM, field: 'images' };
+
+  // Throwaway client = example-contractor's content (a gallery with album-bathroom)
+  // with album-bathroom's photo list set to `n` paths. No img/ folder is needed:
+  // the advisory is a count of content paths, not of files on disk.
+  function setupWithPhotos(n) {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const album = base.pages.flatMap(p => p.blocks)
+      .find(b => b.id === GALLERY).fields.albums.find(a => a.id === ALBUM);
+    album.images = Array.from({ length: n }, (_, i) => `img/shot-${i + 1}.jpg`);
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Gallery Weight Proof', publish: 'none' }) + '\n', 'utf8');
+  }
+
+  try {
+    // (a) Just under the threshold: an ordinary image-list editor, no heads-up.
+    setupWithPhotos(HEAVY_AFTER - 1);
+    const sBelow = owner.createSession(CLIENT);
+    const below = owner.describeField(sBelow, REF);
+    if (!below.ok || below.kind !== 'image-list') failures.push(`describeField on the album photos did not open an image list: ${JSON.stringify(below)}`);
+    if (below.lines.length !== HEAVY_AFTER - 1) failures.push(`wrong photo count below the threshold: ${below.lines.length}`);
+    if (below.notice) failures.push(`a below-threshold album wrongly carried the heavy-gallery heads-up: ${below.notice}`);
+
+    // (b) At the threshold: the same image-list editor, now WITH the advisory —
+    //     a plain-language, non-empty notice that names the page-load trade-off.
+    setupWithPhotos(HEAVY_AFTER);
+    const sAt = owner.createSession(CLIENT);
+    const at = owner.describeField(sAt, REF);
+    if (!at.ok || at.kind !== 'image-list') failures.push(`describeField at the threshold did not open an image list: ${JSON.stringify(at)}`);
+    if (at.lines.length !== HEAVY_AFTER) failures.push(`wrong photo count at the threshold: ${at.lines.length}`);
+    if (!at.notice) failures.push('an at-threshold album did not carry the heavy-gallery heads-up');
+    else if (!/slower to load/.test(at.notice)) failures.push(`the heads-up does not mention the page-load cost: ${at.notice}`);
+
+    // (c) Advisory only — it NEVER blocks the edit. Appending one more photo
+    //     past the threshold still succeeds, and the heads-up simply persists.
+    const append = owner.applyEdit(sAt,
+      { action: 'append', block: GALLERY, item: ALBUM, field: 'images' },
+      { name: 'one-more.png', dataBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' });
+    if (!append.ok) failures.push(`appending a photo past the heavy threshold was wrongly blocked: ${append.error}`);
+    const after = owner.describeField(sAt, REF);
+    if (after.ok && after.lines.length !== HEAVY_AFTER + 1) failures.push(`the appended photo did not land: ${after.lines.length}`);
+    if (after.ok && !after.notice) failures.push('the heads-up vanished after going further past the threshold');
+
+    // (d) The advisory is scoped to PHOTOS, not lists in general: a flat text
+    //     list of the same length (a card's bullet items) never gets it.
+    const withList = readContent('example-contractor');
+    const card = withList.pages.flatMap(p => p.blocks)
+      .find(b => b.id === 'home-services').fields.cards.find(c => c.id === 'card-renovations');
+    card.items = Array.from({ length: HEAVY_AFTER + 2 }, (_, i) => `Bullet point ${i + 1}`);
+    writeContent(CLIENT, withList);
+    const sList = owner.createSession(CLIENT);
+    const textList = owner.describeField(sList, { block: 'home-services', item: 'card-renovations', field: 'items' });
+    if (!textList.ok || textList.kind !== 'text-list') failures.push(`describeField on the card bullets did not open a text list: ${JSON.stringify(textList)}`);
+    if (textList.notice) failures.push(`a long TEXT list wrongly got the heavy-gallery heads-up: ${textList.notice}`);
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a gallery album under the photo-count threshold opens an ordinary image');
+    console.log('       list, an album at/over it carries a plain-language heads-up that names the');
+    console.log('       page-load cost, appending one more photo still succeeds (the advisory never');
+    console.log('       caps an edit) with the heads-up persisting, and a same-length flat TEXT');
+    console.log('       list never gets it — the nudge is scoped to photos, computed in owner.js so');
+    console.log('       the Node editor and the browser demo show it identically.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

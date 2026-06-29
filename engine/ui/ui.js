@@ -743,6 +743,10 @@
   // (upload + append).
   function renderImageListEditor(ref, info) {
     var ed = editorShell(fieldTitle(ref));
+    // Soft, non-blocking heads-up when the album is already heavy (the server
+    // sets info.notice past its photo-count threshold). Advisory only — the Add
+    // photo control below is untouched; this just informs.
+    if (info.notice) ed.appendChild(el('p', 'hint', info.notice));
     var list = el('div', 'line-list');
     info.lines.forEach(function (line) {
       var row = el('div', 'line-row');

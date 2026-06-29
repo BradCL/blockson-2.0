@@ -56,6 +56,17 @@ Pending:
   px so a full-bleed hero stays crisp on large/retina displays; `QUALITY` 0.82 is
   unchanged. Update the "1920" mention when next reconciling.
   `git log 73d5b75..HEAD -- engine/ui/ui.js` is the delta.
+- ⏳ **Proof count 27 → 29** — `02-atlas/12-testing-proofs.md` ("27" narrative,
+  three places, + Exercise 1's "27/27") and `01-system-map.md` still read **27**;
+  the suite is now **29** (proof 28 = the host seam, proof 29 = the heavy-gallery
+  editor advisory). Bump to 29 when next reconciling.
+- ⏳ **Heavy-gallery editor advisory** — a new soft, non-blocking heads-up: once a
+  gallery album holds a lot of photos (`GALLERY_PHOTOS_HEAVY_AFTER` in
+  `engine/lib/owner.js`, surfaced by `describeField` as `notice` and rendered as a
+  hint in `renderImageListEditor`), the image-list editor warns that more photos
+  slow the page — it never caps the edit. `02-atlas/09-images.md` (image
+  handling) is the natural home; mention it when next reconciling.
+  `git log 73d5b75..HEAD -- engine/lib/owner.js engine/ui/ui.js` is the delta.
 
 Reconciled (prose, 2026-06-28 pass):
 
@@ -89,6 +100,12 @@ Pending:
   message, since the feature now covers the page-header. Re-capture via
   `node scripts/capture-terminal-snippets.js` in the next capture session.
 
+- ⏳ **Proof count + last proof: 27/27 → 29/29** — `term/01-proofs.txt` and the
+  README's proof excerpt end at PROOF 27 / `27/27`; the suite now ends at PROOF 29
+  ("Heavy-gallery advisory: a photo-laden album gets a soft heads-up, never a
+  cap"), `29/29` (proof 28 = host seam, proof 29 = heavy-gallery advisory).
+  Re-capture via `node scripts/capture-terminal-snippets.js` in the next session.
+
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `27/27`,
   `05-sitemap.txt` refreshed); the README excerpt's last proof is now PROOF 27
@@ -117,6 +134,13 @@ session; one capture entry pending below from a later UI fix.
   dedicated steps: the "What else you can change" section already covers the
   category (photos, lists, repeating items, hiding sections, brand colors), and
   adding a step per feature would bloat the walkthrough past its purpose.
+- ⏳ **Heavy-gallery heads-up in the photo editor** — the README's Photos bullet
+  (§ "What else you can change", ~line 191) says huge phone photos are shrunk
+  automatically. There is now also a soft, never-blocking heads-up when a single
+  gallery album holds a lot of photos: the editor notes that more will slow the
+  page, but still lets the owner add them. A one-clause mention fits the existing
+  Photos bullet; add it when next reconciling (prose only, no re-capture needed).
+  `git log 73d5b75..HEAD -- engine/lib/owner.js engine/ui/ui.js` is the delta.
 
 ---
 

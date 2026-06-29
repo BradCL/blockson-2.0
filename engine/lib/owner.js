@@ -93,6 +93,11 @@ const scaffold = require('./scaffold');
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']);
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const LONG_TEXT_THRESHOLD = 90;
+// A gallery album with this many photos (or more) is heavy enough to slow the
+// page; the editor shows a friendly heads-up at this count. A SOFT nudge, never
+// a cap — there is no upper bound on photos, and the size limit above is the
+// only hard guard (see prepareUpload). Tune the number, not the never-block rule.
+const GALLERY_PHOTOS_HEAVY_AFTER = 12;
 
 // ── Small helpers ──────────────────────────────────────────────
 
@@ -451,7 +456,15 @@ function describeFieldValue(session, ref) {
       return { ok: false, error: `"${ref.field}" is a structured list — its items are edited individually` };
     }
     const kind = v.length && v.every(isImagePath) ? 'image-list' : 'text-list';
-    return { ok: true, kind, field: ref.field, lines: v.slice() };
+    const out = { ok: true, kind, field: ref.field, lines: v.slice() };
+    // A soft, non-blocking heads-up once a gallery album holds a lot of photos:
+    // the owner can keep adding (no cap), but a heavy album makes its page slower
+    // to load. Computed here, beside the size cap, so the same advisory shows on
+    // the Node editor and the browser demo (both read through this seam).
+    if (kind === 'image-list' && v.length >= GALLERY_PHOTOS_HEAVY_AFTER) {
+      out.notice = 'This album has a lot of photos now — more will make the gallery page slower to load. That’s fine, just something to keep in mind.';
+    }
+    return out;
   }
   if (v !== null && typeof v === 'object') {
     return { ok: false, error: `"${ref.field}" is a container; its inner values are edited individually` };
