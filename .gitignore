@@ -16,3 +16,7 @@ clients/*/edits.log*.jsonl
 # Local-only developer working notes and scaffolding — never published.
 _work/
 .local/
+# Testing-only copy of an external tester's site, dropped in to run the editor
+# against. Its canonical home is its own client repo; copy a fresh one in by
+# hand when needed (it is not part of this engine repo's tracked clients).
+clients/hive-contracting/
