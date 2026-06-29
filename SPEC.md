@@ -663,7 +663,18 @@ exercises the handlers directly.
   preview. Only Publish (and Restore) writes inside `clients/<client>/`.
 - **Overlay.** `engine/ui/overlay.js` is injected at serve time into preview HTML (never
   written to disk, never into live builds). It highlights `data-bk-*` elements on hover
-  and posts the clicked (block, item?, field, index?) reference to the editor app.
+  and posts the clicked (block, item?, field, index?) reference to the editor app. A
+  click on an in-site page link (a relative `.html` target — the site nav, footer, or
+  logo) is turned into a page-navigation request (`bk-navigate`, carrying the link's
+  intended page) instead of a native navigation, and the editor switches the preview to
+  that page through the same transport that loads every preview — so every page is
+  reachable. This runs in BOTH modes: in EDIT mode only for a link that resolves to no
+  edit target (an annotated element opens its editor first); in PREVIEW mode for any
+  in-site link (no edit affordances to defer to), which is what "preview behaves like
+  the live site" means when the demo has no server. External, `tel:`/`mailto:`,
+  protocol-relative, and `#hash` links behave natively in both modes. The href travels
+  in the message because the browser demo serves pages from Blob URLs, where the
+  document's own path is meaningless and a native relative navigation would break it.
 - **Editors by field shape** (decided server-side from the candidate's current value):
   short text → input; long text → textarea; text-list line → edit/remove that line
   (match-form patch built from the exact current line) or append a new one; image →

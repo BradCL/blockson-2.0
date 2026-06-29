@@ -162,6 +162,45 @@
     return specific;
   }
 
+  // Classify an href: returns the normalized in-site page file (a relative
+  // ".html" target, with a leading "./" or "/" and any ?query/#hash dropped),
+  // else null for an absolute URL, a tel:/mailto: link, a protocol-relative URL,
+  // or a bare in-page hash — those keep their native behaviour in either mode.
+  // The editor maps the returned file onto its own preview path (see
+  // tryNavigate), so an intercepted click switches pages through the transport
+  // instead of letting the <a> navigate the document — which the browser demo
+  // serves from a Blob URL, where a relative href has no server to resolve
+  // against and a native navigation just breaks the preview.
+  function inSitePageLink(raw) {
+    if (!raw) return null;
+    var href = String(raw).trim();
+    if (/^(?:[a-z][a-z0-9+.\-]*:|\/\/|#)/i.test(href)) return null;  // scheme, protocol-relative, or hash
+    var file = href.replace(/[?#].*$/, '').replace(/^\.?\//, '');    // drop ?query/#hash + a leading ./ or /
+    return /\.html$/i.test(file) ? file : null;
+  }
+
+  // If the click landed on an in-site page link, turn it into a page-navigation
+  // request (and suppress the native navigation), returning true. This runs in
+  // BOTH modes on purpose: the browser demo has no server, so a native relative
+  // navigation in its Blob preview dead-ends, and routing the link through
+  // bk-navigate — the editor loads the page via the same transport that loads
+  // every preview — is exactly what "preview behaves like the live site" means.
+  // It is harmless on the Node editor (the same /preview/<file> a native click
+  // would reach). The inSitePageLink allowlist leaves external, tel:/mailto:,
+  // protocol-relative, and #hash links to behave natively. In PREVIEW mode any
+  // in-site link navigates (no edit affordances to defer to, incl. CTA buttons);
+  // in EDIT mode the caller only reaches here once a click resolved to no edit
+  // target, so an annotated element still opens its editor first.
+  function tryNavigate(e) {
+    var link = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    var dest = link && inSitePageLink(link.getAttribute('href'));
+    if (!dest) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent.postMessage({ type: 'bk-navigate', href: dest }, ORIGIN);
+    return true;
+  }
+
   function setMode(m) {
     mode = (m === 'preview') ? 'preview' : 'edit';
     clearHover();
@@ -200,10 +239,12 @@
   document.addEventListener('mouseleave', clearHover, true);
 
   // Capture-phase click: in EDIT mode editing wins over the page's own
-  // handlers (nav links, gallery lightbox, accordion toggles). In PREVIEW
-  // mode the handler is inert, so every native behaviour runs untouched.
+  // handlers (nav links, gallery lightbox, accordion toggles). In PREVIEW mode
+  // the handler is otherwise inert — every native behaviour runs untouched —
+  // EXCEPT in-site page navigation, which is routed through the transport so the
+  // serverless Blob demo doesn't dead-end on a relative navigation (tryNavigate).
   document.addEventListener('click', function (e) {
-    if (mode !== 'edit') return; // preview: let the page behave like the live site
+    if (mode !== 'edit') { tryNavigate(e); return; } // preview: navigate in-site links, else behave like the live site
     var el = resolveTarget(e.target);
     if (!el) {
       // A click in a HIDDEN section's dead space or on its badge lands here
@@ -213,7 +254,9 @@
       // needs "Discard all" to escape a section they just hid.
       var hiddenEl = e.target && e.target.closest ? e.target.closest('[data-bk-hidden]') : null;
       if (hiddenEl) el = hiddenEl.querySelector('[data-bk-block]');
-      if (!el) return; // otherwise unannotated (e.g. nav) keeps navigating inside the preview
+      // Still no edit target: an in-site page link (nav, footer, logo) navigates
+      // through the transport; any other unannotated click is left alone.
+      if (!el) { tryNavigate(e); return; }
     }
     e.preventDefault();
     e.stopPropagation();

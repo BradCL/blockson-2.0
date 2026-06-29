@@ -217,7 +217,83 @@ async function main() {
     expect(headlineAfterDiscard === originalHeadline,
       `after discard-all the preview shows "${headlineAfterDiscard}", expected the seed "${originalHeadline}"`);
 
-    // (g) A reload is a FRESH session (ephemeral): nothing staged, seed content.
+    // (g) Multi-page reach: clicking an in-site nav link switches the preview to
+    //     that page (the demo serves pages from Blob URLs, so the overlay sends
+    //     the link's intended page and the editor loads it through the transport),
+    //     and a click there opens the editor for THAT page's content — proving
+    //     every page is editable, not just the home page.
+    frame = await previewFrame(page);
+    const navClick = await clickInPreview(frame, 'nav a[href="menu.html"]');
+    expect(!navClick.error, `menu nav click: ${navClick.error || ''}`);
+    // The preview swaps to the menu page: its page-header heading appears and the
+    // home hero is gone (a real navigation, not the same document).
+    await page.waitForFunction(() => {
+      const f = document.getElementById('preview');
+      const d = f && f.contentDocument;
+      return d && d.querySelector('.page-header h1') && !d.querySelector('.hero h1');
+    }, { timeout: 10000 });
+    frame = await (await page.waitForSelector('#preview')).contentFrame();
+    const menuHeading = await frame.evaluate(() => document.querySelector('.page-header h1').textContent.trim());
+    expect(!!menuHeading, 'the menu page-header heading did not render after navigation');
+
+    // Click the menu heading → the editor opens with the menu page's value, not
+    // the home page's; edit + Save → the review and the (menu) preview both show
+    // it, proving the edit landed on the second page.
+    const mc = await clickInPreview(frame, '.page-header h1');
+    expect(!mc.error, `menu heading click: ${mc.error || ''}`);
+    await page.waitForFunction((v) => {
+      const ed = document.getElementById('editor');
+      return ed && !ed.hidden && ed.querySelector('input') && ed.querySelector('input').value === v;
+    }, menuHeading, { timeout: 5000 });
+    const NEW_MENU_HEADING = 'Our seasonal table';
+    await page.$eval('#editor input', (i, v) => { i.value = v; }, NEW_MENU_HEADING);
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('#editor button')];
+      const save = btns.find(b => /save/i.test(b.textContent));
+      if (save) save.click();
+    });
+    await page.waitForFunction((nv) => {
+      const ed = document.getElementById('editor');
+      return ed && ed.textContent.includes(nv);   // inline pending "After" value
+    }, NEW_MENU_HEADING, { timeout: 5000 });
+    frame = await (await page.waitForSelector('#preview')).contentFrame();
+    await page.waitForFunction((nv) => {
+      const f = document.getElementById('preview');
+      const d = f && f.contentDocument;
+      const h = d && d.querySelector('.page-header h1');
+      return h && h.textContent.trim() === nv;
+    }, NEW_MENU_HEADING, { timeout: 5000 });
+    const menuAfter = await frame.evaluate(() => document.querySelector('.page-header h1').textContent.trim());
+    expect(menuAfter === NEW_MENU_HEADING,
+      `the menu preview shows "${menuAfter}", expected the edited "${NEW_MENU_HEADING}" (edit did not land on the second page)`);
+    // Discard the pending menu edit so the final reload check starts clean.
+    await page.evaluate(() => {
+      const ed = document.getElementById('editor');
+      const d = [...ed.querySelectorAll('button')].find(b => /^discard$/i.test(b.textContent.trim()));
+      if (d) d.click();
+    });
+
+    // (g2) Preview-mode reach: flip to the read-only preview and click a nav
+    //      link. With no server behind the demo, "behaves like the live site"
+    //      must include following links, not dead-ending on a Blob navigation —
+    //      so the in-site link is routed through the transport in preview too.
+    await page.click('#btn-mode-preview');
+    frame = await (await page.waitForSelector('#preview')).contentFrame();
+    const previewNav = await clickInPreview(frame, 'nav a[href="index.html"]');
+    expect(!previewNav.error, `preview-mode nav click: ${previewNav.error || ''}`);
+    await page.waitForFunction(() => {
+      const f = document.getElementById('preview');
+      const d = f && f.contentDocument;
+      return d && d.querySelector('.hero h1') && !d.querySelector('.page-header h1');
+    }, { timeout: 10000 }).catch(() => {});
+    const backHome = await page.evaluate(() => {
+      const d = document.getElementById('preview').contentDocument;
+      return !!(d && d.querySelector('.hero h1') && !d.querySelector('.page-header h1'));
+    });
+    expect(backHome, 'a nav click in PREVIEW mode did not switch pages (the serverless Blob dead-end is back)');
+    await page.click('#btn-mode-edit');
+
+    // (h) A reload is a FRESH session (ephemeral): nothing staged, seed content.
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => {
       const n = document.getElementById('client-name');
@@ -242,7 +318,9 @@ async function main() {
     console.log('       click, shows before→after and updates the in-browser preview, stages a');
     console.log('       kept change with PUBLISH VISIBLY DISABLED, accepts an image upload through');
     console.log('       the same guards and assigns an img/ path, returns to the seed on');
-    console.log('       discard-all, and starts a fresh session on reload.');
+    console.log('       discard-all, follows an in-site nav link to a SECOND page and lands an');
+    console.log('       edit there, follows a nav link in PREVIEW mode too (no Blob dead-end),');
+    console.log('       and starts a fresh session on reload.');
     process.exit(0);
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

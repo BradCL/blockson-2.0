@@ -1185,6 +1185,25 @@
       if (!transport) currentPath = e.data.path;
       return;
     }
+    if (e.data.type === 'bk-navigate' && typeof e.data.href === 'string') {
+      // The owner clicked an in-site page link in the preview. Switch the editor
+      // to that page through the SAME transport seam that loads every preview —
+      // /preview/<file> over the iframe on Node, host.previewPage in the demo.
+      // Editing the new page is otherwise identical: clicks resolve against
+      // whatever page is loaded and every edit still flows through applyPatch.
+      // A pending change is page-independent but still owns the editor, so honour
+      // the one-pending-change rule before leaving the page (same guard as
+      // openEditor), rather than stranding the review on a page that's gone.
+      if (state && state.pending) {
+        showMessage('info', 'You already have a pending change — keep or discard it first.');
+        return;
+      }
+      closeEditor();
+      clearMessage();
+      currentPath = '/preview/' + e.data.href.replace(/^\//, '');
+      reloadPreview();
+      return;
+    }
     if (e.data.type === 'bk-edit') {
       openEditor({ block: e.data.block, item: e.data.item, field: e.data.field, index: e.data.index });
     }
