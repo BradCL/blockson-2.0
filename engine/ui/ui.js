@@ -169,8 +169,13 @@
     var go = reopen;
     apiPost('/api/keep').then(function (r) {
       if (!r.ok) { editorError($('editor'), r.error); return; }
-      showMessage('info', 'Change kept — it goes live when you publish this session.');
-      refreshState().then(function () { if (go) go(); });
+      // Show the confirmation AFTER the editor re-opens: go() runs openEditor(),
+      // which clears messages, so confirming first would be wiped by the re-open
+      // and the owner would never see it.
+      refreshState().then(function () {
+        if (go) go();
+        showMessage('info', 'Change kept — it goes live when you publish this session.');
+      });
     });
   }
 
@@ -180,8 +185,13 @@
     var go = reopen;
     apiPost('/api/discard').then(function (r) {
       if (!r.ok) { editorError($('editor'), r.error); return; }
-      showMessage('info', 'Pending change discarded — anything you kept is still staged.');
-      refreshState().then(function () { reloadPreview(); if (go) go(); });
+      // Confirm AFTER the re-open for the same reason as inlineKeep: go() runs
+      // openEditor(), which clears messages.
+      refreshState().then(function () {
+        reloadPreview();
+        if (go) go();
+        showMessage('info', 'Pending change discarded — anything you kept is still staged.');
+      });
     });
   }
 

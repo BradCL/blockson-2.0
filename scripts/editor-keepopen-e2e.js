@@ -92,6 +92,11 @@ async function main() {
     expect(await page.locator('#pending-card').isHidden(), 'pending card showed after Keep');
     expect((await page.locator('#staged-list .staged-row').count()) === 1,
       'Keep did not stage exactly one change');
+    // The confirmation must survive the re-open (it is shown after openEditor,
+    // which clears messages) — otherwise the owner never sees it.
+    expect(!(await page.locator('#message').isHidden())
+      && (await page.locator('#message').textContent()).includes('Change kept'),
+      'the "Change kept" confirmation did not survive the editor re-open');
 
     // (3) A second edit then Discard: editor re-opens, the kept change survives,
     //     no pending remains.
@@ -105,6 +110,9 @@ async function main() {
     expect(await page.locator('#pending-card').isHidden(), 'pending card showed after Discard');
     expect((await page.locator('#staged-list .staged-row').count()) === 1,
       'Discard did not preserve the one kept change');
+    expect(!(await page.locator('#message').isHidden())
+      && (await page.locator('#message').textContent()).includes('discarded'),
+      'the "discarded" confirmation did not survive the editor re-open');
 
     // Tidy the session so the candidate goes back to live (gitignored either way).
     page.on('dialog', (d) => d.accept());

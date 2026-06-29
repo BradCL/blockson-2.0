@@ -64,14 +64,21 @@ session. No pending entries.
 
 ## Owner tutorial (`docs/tutorial/owner/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Fully reconciled in the 2026-06-28 capture
-session. No pending entries.
+**Baseline:** `73d5b75` (2026-06-28). Reconciled in the 2026-06-28 capture
+session; one capture entry pending below from a later UI fix.
 
 - ✅ **Keep-open flow** (`f8be338`) — `scripts/flows/owner-editor.js` updated:
   the §3 and §5 steps now wait for the in-place `#editor:has-text("Review your
   change")` review instead of `#pending-card`, and §5 settles on the re-opened
-  editor (the discard toast is cleared by the re-open). The 11 PNGs were
-  regenerated and README §§3–5 rewritten to the inline review flow.
+  editor. The 11 PNGs were regenerated and README §§3–5 rewritten to the inline
+  review flow.
+- ⏳ **Keep/Discard confirmation now persists** — the inline Keep/Discard
+  confirmation ("Change kept …" / "Pending change discarded …") used to be wiped
+  by the editor re-open and is now shown after it. §5's screenshot was captured
+  before that fix, so a re-capture would now show the discard toast above the
+  re-opened editor. The §§3–5 prose stays accurate (it no longer leans on the
+  toast); re-capture in the next session. `git log 73d5b75..HEAD -- engine/ui/`
+  is the delta.
 - ✅ **Owner-facing features not yet shown** — reviewed and **declined** as
   dedicated steps: the "What else you can change" section already covers the
   category (photos, lists, repeating items, hiding sections, brand colors), and
