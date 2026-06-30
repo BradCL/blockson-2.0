@@ -178,9 +178,21 @@ function createNodeHost(client, overrides) {
     }
     const push = git(['push']);
     if (push.status !== 0) {
-      return { ok: false, message: `The change was saved and recorded, but sending it to the host failed (it will go out with the next successful publish):\n${((push.stdout || '') + (push.stderr || '')).trim()}` };
+      return { ok: false, retryable: true, message: `The change was saved locally, but sending it to the host failed. Use Retry publish after the connection or host is fixed:\n${((push.stdout || '') + (push.stderr || '')).trim()}` };
     }
     return { ok: true, message: 'Published — the change is on its way to the live site.' };
+  }
+
+  function retryPublish(summary) {
+    const mode = publishModeOf(config);
+    if (mode === 'git') {
+      const push = git(['push']);
+      return push.status === 0
+        ? { ok: true, message: 'Published — the waiting local change was sent to the host.' }
+        : { ok: false, retryable: true, message: `Still could not send the waiting local change:\n${((push.stdout || '') + (push.stderr || '')).trim()}` };
+    }
+    if (mode === 'custom') return runPublish(summary || 'content update');
+    return { ok: true, skipped: true, message: 'Publishing is turned off for this client.' };
   }
 
   /* Ship the whole staged session to live in one step: candidate content
@@ -283,6 +295,7 @@ function createNodeHost(client, overrides) {
     ledgerAppend,
     // Whole-session operations
     shipSession,
+    retryPublish,
     restore,
     // Path accessors used by engine/serve.js
     candDistDir,

@@ -31,6 +31,7 @@
      POST /api/keep              pending change → the session's staged list
      POST /api/discard           drop the pending change (staged list survives)
      POST /api/publish           the whole staged session → live, one publish
+     POST /api/retry-publish     retry a failed outward publish step
      POST /api/discard-all | /api/restore
 
    SECURITY
@@ -320,6 +321,7 @@ async function handle(req, res) {
     else if (pathname === '/api/token-check') r = owner.checkToken(session, body.token, body.value);
     else if (pathname === '/api/keep')        r = owner.keep(session);
     else if (pathname === '/api/publish')     r = owner.publish(session);
+    else if (pathname === '/api/retry-publish') r = owner.retryPublish(session);
     else if (pathname === '/api/discard')     r = owner.discard(session);
     else if (pathname === '/api/discard-all') r = owner.discardAll(session);
     else if (pathname === '/api/restore')     r = owner.restore(session);

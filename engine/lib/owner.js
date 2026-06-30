@@ -903,8 +903,33 @@ function publish(session) {
   if (!result.ok) return result;     // build-failed (rolled back) or refused — session intact
   if (!result.live) return result;   // demo host: nothing shipped, staged session preserved
   session.staged = [];
-  session.lastPublish = { at: new Date().toISOString(), ok: result.publish.ok, message: result.publish.message };
+  session.lastPublish = {
+    at: new Date().toISOString(),
+    ok: result.publish.ok,
+    message: result.publish.message,
+    retryable: !!result.publish.retryable,
+    summary,
+  };
   return { ok: true, publish: result.publish };
+}
+
+/* Retry the outward publish step after live content was already saved locally
+   but the host push/deploy failed. The staged session is already consumed in
+   that state; this only resends the waiting local change. */
+function retryPublish(session) {
+  if (!session.lastPublish || !session.lastPublish.retryable) {
+    return { ok: false, error: 'There is no waiting local publish to retry.' };
+  }
+  const summary = session.lastPublish.summary;
+  const result = session.host.retryPublish(summary);
+  session.lastPublish = {
+    at: new Date().toISOString(),
+    ok: result.ok,
+    message: result.message,
+    retryable: !!result.retryable,
+    summary,
+  };
+  return { ok: true, publish: result };
 }
 
 /* Restore: revert the last publish (one publish = one commit = the whole
@@ -936,6 +961,7 @@ module.exports = {
   discard: logged('discard', discard, describePendingRequest),
   discardAll: logged('discard-all', discardAll, describeSessionRequest),
   publish: logged('publish', publish, describeSessionRequest),
+  retryPublish: logged('retry-publish', retryPublish, null),
   restore: logged('restore', restore, null),
   // Node convenience re-exports. loadConfig is lazily required so owner.js
   // carries no static dependency on the Node host (the browser bundle injects

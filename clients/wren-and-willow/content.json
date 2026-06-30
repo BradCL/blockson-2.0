@@ -789,7 +789,10 @@
           "fields": {
             "tag": "Send a message",
             "heading": "How can we help?",
-            "formAction": "https://UNCONFIGURED",
+            "delivery": {
+              "mode": "netlify",
+              "formName": "wren-and-willow-contact"
+            },
             "subjectLine": "Website enquiry — Wren & Willow Hair Studio",
             "fields": [
               {

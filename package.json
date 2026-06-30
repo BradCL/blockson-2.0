@@ -12,10 +12,12 @@
     "build:restaurant": "node engine/build.js example-restaurant",
     "build:all": "node engine/build.js example-contractor && node engine/build.js example-league && node engine/build.js example-restaurant",
     "serve": "node engine/serve.js",
+    "doctor": "node engine/doctor.js",
     "build:demo": "node engine/build-demo.js",
     "blueprints:check": "node engine/blueprints-check.js",
     "proofs": "node engine/_run-proofs.js",
     "test": "node engine/_run-proofs.js",
+    "test:all": "npm test && npm run test:overlay && npm run test:editor && npm run test:demo",
     "test:overlay": "node scripts/overlay-e2e.js",
     "test:editor": "node scripts/editor-keepopen-e2e.js",
     "test:demo": "node scripts/demo-e2e.js"

@@ -77,6 +77,8 @@ engine/
   serve.js              Owner-editor server (localhost; HTTP plumbing over lib/owner.js)
   build-demo.js         Browser-demo builder: bundles lib/owner.js over the in-memory
                         host into a static dist/demo-<client>/ (npm run build:demo; §13)
+  doctor.js             Client launch-readiness check: runs the real build and
+                        reports soft advisories as a pre-handoff checklist
   sitemap.js            Edit-map inspection CLI
   new-client.js         Client scaffolder
   validate-blueprint.js Blueprint acceptance CLI (schema → sample instantiation →

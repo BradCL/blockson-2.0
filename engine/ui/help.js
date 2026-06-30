@@ -45,7 +45,7 @@
     'WHAT YOU CAN CHANGE',
     '- Text: headlines, paragraphs, captions, button labels — click and type.',
     '- Photos: click a photo to swap it. Big phone photos are shrunk for you automatically. For the main banner photo you can also drag to set the focal point and zoom.',
-    '- Lists and repeating items: services, gallery photos, team members, FAQs and the like — add, edit, remove, reorder.',
+    '- Lists and repeating items: services, gallery photos, team members, FAQs and the like — add, edit, and remove where the editor offers those buttons. Reordering is a developer change.',
     '- Sections: hover a section to reach its settings; you can hide a section or edit its subtitle.',
     '- Brand colors: under "Brand colors" change your main color, button color, menu and footer backgrounds. Experiment freely — any combination that would be hard to read is rejected before it can reach the site.',
     '- Pages: "Add a page…" builds a new page from a ready-made layout; you preview it before anything is kept.',

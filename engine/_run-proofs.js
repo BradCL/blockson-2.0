@@ -69,7 +69,8 @@
 //             session makes exactly ONE pushed commit carrying the
 //             [blockson-publish <client>] marker; restore refuses while
 //             changes are staged and, once clear, reverts the whole
-//             session as one unit.
+//             session as one unit; a failed outward push leaves a retryable
+//             waiting publish that succeeds once the remote is fixed.
 // Proof 19:   item blueprints + removeItem (v4.2 Task 4): four item
 //             blueprints validate (cta-button is proof 27); a valid add lands in the named
 //             block with a site-wide-unique item id and builds clean;
@@ -1905,6 +1906,33 @@ console.log('\n═══ PROOF 18 — One session, one commit: publish batches t
       if (commitCount() !== baseCount + 2) {
         failures.push(`restore should add exactly one revert commit (have ${commitCount() - baseCount - 1})`);
       }
+
+      // (d) If the local save/commit succeeds but the outward push fails, the
+      //     editor keeps a retryable "waiting publish" state. Retrying should
+      //     only push the already-created local commit, not recreate the
+      //     session.
+      const e4 = owner.applyEdit(session, { action: 'set', block: 'home-hero', field: 'headline', value: 'Retry headline.' });
+      if (!e4.ok) failures.push(`edit 4 failed: ${e4.error}`);
+      owner.keep(session);
+      sgit(['remote', 'set-url', 'origin', path.join(ROOT, 'dist', '__proof-missing-origin.git')]);
+      const failedPush = owner.publish(session);
+      if (!failedPush.ok) failures.push(`publish-with-broken-remote failed before local save: ${failedPush.error}`);
+      else if (failedPush.publish.ok) failures.push('publish unexpectedly pushed through a broken remote');
+      else if (!failedPush.publish.retryable) failures.push('push failure did not mark the publish retryable');
+      const waiting = owner.getState(session).lastPublish;
+      if (!waiting || !waiting.retryable) failures.push('state does not expose the waiting publish retry affordance');
+      if (session.staged.length !== 0) failures.push('retryable publish left the staged session unconsumed after live save');
+      if (commitCount() !== baseCount + 3) failures.push(`retryable publish should create one local commit (have ${commitCount() - baseCount})`);
+
+      sgit(['remote', 'set-url', 'origin', ORIGIN]);
+      const retry = owner.retryPublish(session);
+      if (!retry.ok || !retry.publish.ok) failures.push(`retry publish failed after restoring origin: ${retry.ok ? retry.publish.message : retry.error}`);
+      const afterRetry = owner.getState(session).lastPublish;
+      if (!afterRetry || afterRetry.retryable) failures.push('successful retry left the retry affordance visible');
+      const retryOrigin = spawnSync('git', ['--git-dir', ORIGIN, 'show', `main:clients/${CLIENT}/content.json`], { encoding: 'utf8' });
+      if (!(retryOrigin.stdout || '').includes('Retry headline.')) {
+        failures.push('retry publish did not push the waiting local commit to origin');
+      }
     }
   } catch (e) {
     failures.push(`exception: ${e.message}`);
@@ -1918,7 +1946,8 @@ console.log('\n═══ PROOF 18 — One session, one commit: publish batches t
     console.log('       never touches git; publishing a two-change session makes exactly ONE');
     console.log('       pushed commit carrying the [blockson-publish] marker and the session');
     console.log('       summary; restore refuses while changes are staged and, once clear,');
-    console.log('       reverts the whole session as one unit and republishes.');
+    console.log('       reverts the whole session as one unit and republishes; a failed outward');
+    console.log('       push leaves a retryable waiting publish that succeeds once origin works.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
@@ -2132,6 +2161,16 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
     if (badRun.status === 0) failures.push('validate-blueprint PASSED a known-bad item blueprint');
     for (const named of ['unknown block type "carousel"', 'unknown key "extra"', '"type"/"fields" wrapper']) {
       if (!badOut.includes(named)) failures.push(`bad-item-blueprint output does not name the reason: ${named}`);
+    }
+
+    // Owner-facing help must not promise structural powers the maintenance tier
+    // deliberately withholds. Reordering remains developer work.
+    const helpText = fs.readFileSync(path.join(ROOT, 'engine', 'ui', 'help.js'), 'utf8');
+    if (/add,\s*edit,\s*remove,\s*reorder/i.test(helpText)) {
+      failures.push('help assistant promises owner-side item reordering');
+    }
+    if (!/Reordering is a developer change/.test(helpText)) {
+      failures.push('help assistant does not name reordering as developer work');
     }
   } catch (e) {
     failures.push(`exception: ${e.message}`);

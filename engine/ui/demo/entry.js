@@ -76,6 +76,7 @@ function routePost(reqPath, body) {
     case '/api/token-check': return owner.checkToken(session, body.token, body.value);
     case '/api/keep':        return owner.keep(session);
     case '/api/publish':     return owner.publish(session);
+    case '/api/retry-publish': return owner.retryPublish(session);
     case '/api/discard':     return owner.discard(session);
     case '/api/discard-all': return owner.discardAll(session);
     case '/api/restore':     return owner.restore(session);

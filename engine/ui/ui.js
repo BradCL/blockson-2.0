@@ -118,6 +118,7 @@
       renderPending();
       renderTokens();
       $('publish-status').textContent = s.lastPublish ? s.lastPublish.message : '';
+      $('btn-retry-publish').hidden = !(s.lastPublish && s.lastPublish.retryable);
       // Demo build: publishing is disabled BY THE HOST, so remove the control
       // that reverts a publish (there is none). The Publish button itself is
       // disabled in renderSession, and a static banner in the demo shell says
@@ -1124,6 +1125,16 @@
       if (!r.ok) { showMessage('error', r.error); return; }
       showMessage(r.publish.ok ? 'ok' : 'error', r.publish.message);
       refreshState().then(reloadPreview);
+    });
+  });
+
+  $('btn-retry-publish').addEventListener('click', function () {
+    $('btn-retry-publish').disabled = true;
+    apiPost('/api/retry-publish').then(function (r) {
+      $('btn-retry-publish').disabled = false;
+      if (!r.ok) { showMessage('error', r.error); return; }
+      showMessage(r.publish.ok ? 'ok' : 'error', r.publish.message);
+      refreshState();
     });
   });
 

@@ -363,6 +363,8 @@ remain available as a reference for any future integration.
 
 ```
 node engine/_run-proofs.js     # or: npm test
+npm run test:all               # proofs + the three Playwright browser smokes
+npm run doctor <client-name>   # build + pre-launch advisory checklist
 ```
 
 Runs 29 end-to-end proofs against the example clients and the full contribution
@@ -478,6 +480,7 @@ engine/
   apply-patch.js        Patch CLI (content + token patches)
   serve.js              Owner-editor server — click-to-edit UI (localhost)
   build-demo.js         Browser-demo builder — static no-Node editor demo
+  doctor.js             Client launch-readiness check (build + advisories)
   sitemap.js            Prints the edit map for a client to stdout
   new-client.js         Scaffolds a new client folder
   validate-blueprint.js Blueprint acceptance CLI

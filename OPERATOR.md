@@ -30,6 +30,7 @@ git clone <your fork/repo>
 cd blockson
 npm install            # installs ajv + ajv-formats — required for full validation
 node engine/_run-proofs.js   # optional: confirms the engine is healthy (npm test)
+npm run test:all       # optional full gate: proofs + browser smokes
 ```
 
 ---
@@ -271,11 +272,13 @@ pending card's assigned `img/` path and the candidate preview):
       the file input, so it should behave like the JPEG case — confirm the upload is
       accepted and upright.
 
-**Remote access (`--allow-remote` + `accessToken`).** By default the editor answers
-loopback only. If the owner edits from another machine (their laptop on the office
-LAN, say), set `allowRemote: true` — and an access token with it, because
-allow-remote disables the locality check and the token is what replaces it. The
-server **refuses to start** remote-open without one, naming the fix:
+**Remote access (`--allow-remote` + `accessToken`).** This is a trusted-network/demo
+escape hatch, not the normal production handoff. By default the editor answers
+loopback only. If you temporarily need to show or use the editor from another
+machine (a laptop on the office LAN, say), set `allowRemote: true` — and an access
+token with it, because allow-remote disables the locality check and the token is
+what replaces it. The server **refuses to start** remote-open without one, naming
+the fix:
 
 ```json
 { "allowRemote": true, "accessToken": "a-long-random-string" }
@@ -411,8 +414,13 @@ when" without a git log.
   again after a restart.
 - **git errors during Publish/Restore**: the message names the failing git step
   (stage/commit/push/revert) verbatim. The candidate and live `content.json` are
-  already saved and rebuilt at that point — only publishing needs retrying (e.g.
-  `git push` by hand once the underlying issue, like a rejected push, is resolved).
+  already saved and rebuilt at that point. If the live local save/commit succeeded
+  but the outward push/deploy failed, the editor shows **Retry publish** until the
+  waiting local change is sent; `git push` by hand is still fine if you prefer the
+  terminal.
+- **Launch-readiness warnings**: run `npm run doctor <client-name>` before handoff.
+  It runs the real build and turns soft advisories (placeholder forms,
+  unreferenced images, heavy `img/` folders) into an explicit checklist.
 - **A scaffolded page or edit doesn't appear**: check `node engine/sitemap.js
   <client-name>` — it prints the full edit map the editor and patch resolver agree
   on, which is useful for confirming a field or block id exists as expected.
