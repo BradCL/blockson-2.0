@@ -25,16 +25,22 @@ That last clause is *structurally true* here in a way it can never be on Wix or
 Squarespace, because the engine is MIT-licensed and public. Say it out loud in the
 pitch — it's the one thing the subscription platforms can't offer.
 
-## The three steps
+## The steps
+
+Step 0 goes to the **owner**, sent ahead of the visit; steps 1–3 are yours — in order
+on the day, and just after.
 
 | Step | Doc | What it secures |
 |---|---|---|
+| 0. Pre-visit (send to the owner) | [`0-owner-pre-visit.md`](0-owner-pre-visit.md) | The owner shows up ready — a keystone email they control, a phone for 2FA, a card only if buying a domain, and the long pole: **where their current domain lives, found before you arrive** |
 | 1. Accounts first | [`1-account-setup.md`](1-account-setup.md) | Domain, repo, and host all in the **client's** name before you touch a file |
 | 2. On-site install | [`2-install-runbook.md`](2-install-runbook.md) | The editor on their machine, a scoped push credential, a one-click launcher, a verified live Publish |
 | 3. Break-glass sheet | [`3-owner-break-glass-sheet.md`](3-owner-break-glass-sheet.md) | A plain-language page the owner keeps, so a dead PC or a future developer never means "call the person who built it" |
 
-Work them in order. Step 1 is the one people skip and the one that quietly turns
-"walk away" into "on call forever." Don't skip it.
+Work them in order. Send Step 0 about a week ahead, so the one thing you *can't* do for
+the owner — freeing up their existing domain — has slack to move before you arrive.
+Step 1 is the one people skip and the one that quietly turns "walk away" into "on call
+forever." Don't skip either.
 
 The owner's one-click editor is the [`owner-launcher`](../../extras/owner-launcher/README.md)
 (a clean app window, no console, installed in step 2). A later, optional stage —
