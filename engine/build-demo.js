@@ -142,6 +142,7 @@ require('esbuild').build({
   fs.mkdirSync(outDir, { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'engine', 'ui', 'demo', 'index.html'), path.join(outDir, 'index.html'));
   fs.copyFileSync(path.join(ROOT, 'engine', 'ui', 'ui.js'),  path.join(outDir, 'ui.js'));
+  fs.copyFileSync(path.join(ROOT, 'engine', 'ui', 'help.js'), path.join(outDir, 'help.js'));
   fs.copyFileSync(path.join(ROOT, 'engine', 'ui', 'ui.css'), path.join(outDir, 'ui.css'));
   const pageCount = (content.pages || []).length;
   console.log(`Built browser demo → dist/demo-${client}/  (${pageCount} page(s), ${Object.keys(images).length} image(s))`);

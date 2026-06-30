@@ -253,3 +253,80 @@ input[type="file"] { margin: 4px 0 10px; font-size: 13px; }
 .hero-zoom-readout { flex: none; font-size: 13px; color: #5b6372; min-width: 34px; }
 
 .panel-foot { margin-top: auto; padding: 4px 2px; }
+
+/* ── Help assistant (optional; on-device Q&A) ── */
+.help-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+  z-index: 2147483000;
+}
+.help-launcher:hover { background: #1d4fd1; }
+.help-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 340px;
+  max-width: calc(100vw - 36px);
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #d4d8e0;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .22);
+  z-index: 2147483000;
+  padding: 12px 14px;
+}
+.help-panel[hidden] { display: none; }
+.help-head { display: flex; align-items: baseline; justify-content: space-between; }
+.help-head h2 { margin: 0; font-size: 15px; }
+.help-status { margin: 4px 0; }
+.help-transcript {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+.help-msg {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 90%;
+}
+.help-msg.user { align-self: flex-end; background: #e9f0fd; color: #274f9e; }
+.help-msg.bot { align-self: flex-start; background: #f3f5f9; color: #1f2430; }
+.help-guide {
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #3a414f;
+  background: #f6f7fa;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.help-input-row { display: flex; gap: 6px; }
+.help-input-row input[type="text"] { margin: 0; }
+.help-input-row .btn { flex: none; }
+.help-disclaimer {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #eceef3;
+  font-size: 12px;
+  color: #8a93a5;
+}

@@ -177,6 +177,14 @@ never silently included). Nothing the owner does can write outside
 `clients/<client-name>/`, only Publish and Restore write the live copy, and a
 failed candidate build can never become a pending change (§8 of SPEC.md).
 
+**Help assistant (optional).** A "?" button in the corner opens an on-device
+help chat that answers the owner's how-to questions about the editor. It runs
+entirely in the browser through Chrome's built-in Prompt API (Gemini Nano) — no
+API key, no server, no network, and nothing to configure. It's purely additive:
+on a desktop Chrome that supports it the owner gets live Q&A grounded in a short
+built-in guide; on any other browser (or mobile) the same button just shows that
+written guide. It never blocks editing and is independent of Publish/Restore.
+
 **Hiding a section.** Every block carries an owner-togglable visibility flag
 (`"hidden": false` inside the block's fields). In the editor, clicking anything
 in a section offers "Hide this section" / "Show this section again" next to the

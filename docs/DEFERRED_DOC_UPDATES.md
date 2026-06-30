@@ -134,6 +134,13 @@ session; one capture entry pending below from a later UI fix.
   dedicated steps: the "What else you can change" section already covers the
   category (photos, lists, repeating items, hiding sections, brand colors), and
   adding a step per feature would bloat the walkthrough past its purpose.
+- ⏳ **Optional Help assistant** — the owner editor now shows a "?" launcher
+  (bottom-right) that opens an on-device help chat (Chrome Prompt API / Gemini
+  Nano), grounded in a short built-in guide, with a written-guide fallback when
+  the API is absent. `engine/ui/help.js` + the `.help-*` styles in
+  `engine/ui/ui.css`. The walkthrough doesn't mention it; add a one-line note (and
+  optionally a capture of the launcher) when next reconciling — prose is enough.
+  `git log <baseline>..HEAD -- engine/ui/help.js engine/ui/ui.css` is the delta.
 - ⏳ **Heavy-gallery heads-up in the photo editor** — the README's Photos bullet
   (§ "What else you can change", ~line 191) says huge phone photos are shrunk
   automatically. There is now also a soft, never-blocking heads-up when a single

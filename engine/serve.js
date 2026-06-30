@@ -71,7 +71,7 @@ const crypto = require('crypto');
 const owner = require('./lib/owner');
 
 const UI_DIR = path.join(__dirname, 'ui');
-const UI_FILES = new Set(['ui.js', 'ui.css', 'overlay.js']);
+const UI_FILES = new Set(['ui.js', 'help.js', 'ui.css', 'overlay.js']);
 const MAX_BODY_BYTES = 12 * 1024 * 1024; // image uploads travel base64-encoded in JSON
 
 const MIME = {
