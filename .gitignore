@@ -13,6 +13,9 @@ themes/__theme-validate/
 clients/*/edits.log*.jsonl
 *.bak
 .DS_Store
+# Per-developer editor config (e.g. VS Code Live Server port) — machine-local
+# tooling state, not project source.
+.vscode/
 # Per-client seed inlined by engine/build-demo.js for the browser demo bundle —
 # regenerated on every build:demo, never source.
 engine/ui/demo/seed.generated.js
