@@ -85,7 +85,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (28 proofs)
+  _run-proofs.js        Proof suite (29 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -297,7 +297,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Nineteen proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Twenty-nine proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -372,7 +372,18 @@ that omits its own `background` inherits the site hero image (the home page's
 hero background, derived at build time) even when that hero is not named
 `banner.jpg`, an explicit page-header background still wins, and a site with
 no hero at all emits no inline background so the theme CSS stays the
-last-ditch fallback. All twenty must pass on a clean tree.
+last-ditch fallback, (21) header background focal-point + zoom values are
+guarded and round-trip for heroes and page headers, (22) `og:image` falls back
+from per-page image to site hero to logo, (23) unreferenced images are named by
+a build advisory without failing, (24) annotated previews mark behind-content
+section backgrounds while live builds carry no marker, (25) owners can create a
+page-header background only through the narrow image-path allowlist, (26) the
+Section panel can create omitted optional text only where the resolver allows
+it, (27) hero CTA buttons are id-addressable, guarded, removable except for the
+last item, and addable from an empty state, (28) the same owner handlers drive
+an in-memory browser host for the no-install demo, and (29) photo-heavy gallery
+albums show a soft page-weight advisory without capping the edit. All 29 must
+pass on a clean tree.
 
 ---
 

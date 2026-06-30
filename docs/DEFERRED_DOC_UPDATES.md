@@ -28,45 +28,25 @@ is the raw delta if an entry was ever missed.
 
 ## Learning guide (`docs/learning-guide/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Prose + counts reconciled in the 2026-06-28
-passes; one prose entry pending below.
+**Baseline:** 2026-06-30 reconciliation pass. Prose + counts reconciled through
+proof 29 and the browser-demo host seam.
 
 Pending:
 
-- ⏳ **Host seam + no-install browser demo** — the owner editor is now
-  storage/environment-agnostic: `engine/lib/owner.js` delegates every side effect
-  to an injected host (`host-node.js` = disk/git default; `host-browser.js` =
-  in-memory peer), and `npm run build:demo <client>` (`engine/build-demo.js`)
-  bundles it over the browser host into a static `dist/demo-<client>/` that runs
-  the click-to-edit editor with no Node and no server (Publish disabled). The
-  system map (`01-system-map.md`) and the owner-editor architecture chapter
-  (`02-atlas/07-dom-and-events.md`) describe owner.js + serve.js as the only
-  editor runtime; add the host seam and the demo build when next reconciling.
-  `git log 73d5b75..HEAD -- engine/lib/host-node.js engine/lib/host-browser.js engine/build-demo.js`
-  is the delta.
-- ⏳ **Focal point + zoom now on the page-header too** — `02-atlas/07-dom-and-events.md`
-  (~line 65) says the background-image editor is where "hero focal-point/zoom
-  controls open." The same `bgPosition`/`bgZoom` controls now ride the
-  page-header's background editor as well; the path is keyed on the `background`
-  field, not the block type. Reword "hero" → "hero/page-header" when next
-  reconciling. `git log 73d5b75..HEAD -- engine/blocks/page-header.js` is the delta.
-- ⏳ **Image compression `MAX_EDGE` raised 1920 → 2400** — `02-atlas/09-images.md`
-  (~lines 34–35) cites the longest-edge cap as `MAX_EDGE` 1920 (the inline code
-  comment near line 27 just says "never upscale", no number). The cap is now 2400
-  px so a full-bleed hero stays crisp on large/retina displays; `QUALITY` 0.82 is
-  unchanged. Update the "1920" mention when next reconciling.
-  `git log 73d5b75..HEAD -- engine/ui/ui.js` is the delta.
-- ⏳ **Proof count 27 → 29** — `02-atlas/12-testing-proofs.md` ("27" narrative,
-  three places, + Exercise 1's "27/27") and `01-system-map.md` still read **27**;
-  the suite is now **29** (proof 28 = the host seam, proof 29 = the heavy-gallery
-  editor advisory). Bump to 29 when next reconciling.
-- ⏳ **Heavy-gallery editor advisory** — a new soft, non-blocking heads-up: once a
-  gallery album holds a lot of photos (`GALLERY_PHOTOS_HEAVY_AFTER` in
-  `engine/lib/owner.js`, surfaced by `describeField` as `notice` and rendered as a
-  hint in `renderImageListEditor`), the image-list editor warns that more photos
-  slow the page — it never caps the edit. `02-atlas/09-images.md` (image
-  handling) is the natural home; mention it when next reconciling.
-  `git log 73d5b75..HEAD -- engine/lib/owner.js engine/ui/ui.js` is the delta.
+None.
+
+Reconciled (prose/counts, 2026-06-30 pass):
+
+- ✅ **Host seam + no-install browser demo** — `01-system-map.md` now names
+  `host-node.js` / `host-browser.js`, `build-demo.js`, and the shared UI transport.
+- ✅ **Focal point + zoom now on the page-header too** — `02-atlas/07-dom-and-events.md`
+  now describes hero/page-header background controls.
+- ✅ **Image compression `MAX_EDGE` raised 1920 → 2400** — `02-atlas/09-images.md`
+  now cites 2400 px.
+- ✅ **Proof count 27 → 29** — `01-system-map.md` and
+  `02-atlas/12-testing-proofs.md` now read 29.
+- ✅ **Heavy-gallery editor advisory** — `02-atlas/09-images.md` now documents the
+  soft owner nudge.
 
 Reconciled (prose, 2026-06-28 pass):
 
@@ -89,71 +69,52 @@ Reconciled (counts, 2026-06-28 capture session):
 
 ## Developer tutorial (`docs/tutorial/developer/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Reconciled in the 2026-06-28 capture
-session; one capture entry pending below.
+**Baseline:** 2026-06-30 reconciliation pass. Captures and README excerpt
+reconciled through proof 29.
 
 Pending:
 
-- ⏳ **Proof 21 retitled for the page-header** — `term/01-proofs.txt` (and the
-  README's proof excerpt) capture PROOF 21 as "Hero focal-point + zoom"; it is
-  now "Header focal-point + zoom (hero + page-header)" with a broadened PASS
-  message, since the feature now covers the page-header. Re-capture via
-  `node scripts/capture-terminal-snippets.js` in the next capture session.
-
-- ⏳ **Proof count + last proof: 27/27 → 29/29** — `term/01-proofs.txt` and the
-  README's proof excerpt end at PROOF 27 / `27/27`; the suite now ends at PROOF 29
-  ("Heavy-gallery advisory: a photo-laden album gets a soft heads-up, never a
-  cap"), `29/29` (proof 28 = host seam, proof 29 = heavy-gallery advisory).
-  Re-capture via `node scripts/capture-terminal-snippets.js` in the next session.
+None.
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
-  `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `27/27`,
-  `05-sitemap.txt` refreshed); the README excerpt's last proof is now PROOF 27
-  and the count `27/27` (annotation total `327`).
+  `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,
+  `02-new-client.txt` now reports 23 block types, `05-sitemap.txt` refreshed);
+  the README excerpt's last proof is now PROOF 29 and the count `29/29`.
+- ✅ **Proof 21 retitled for the page-header** — the transcript and README excerpt
+  now reflect the broadened proof output.
 - ✅ **Owner-facing features mention** — reviewed and **declined**: the developer
   *workflow* is unchanged, so no new line was warranted.
 
 ## Owner tutorial (`docs/tutorial/owner/`)
 
-**Baseline:** `73d5b75` (2026-06-28). Reconciled in the 2026-06-28 capture
-session; one capture entry pending below from a later UI fix.
+**Baseline:** 2026-06-30 reconciliation pass. Screenshots and owner README
+reconciled through the help assistant and heavy-gallery advisory.
+
+Pending:
+
+None.
 
 - ✅ **Keep-open flow** (`f8be338`) — `scripts/flows/owner-editor.js` updated:
   the §3 and §5 steps now wait for the in-place `#editor:has-text("Review your
   change")` review instead of `#pending-card`, and §5 settles on the re-opened
   editor. The 11 PNGs were regenerated and README §§3–5 rewritten to the inline
   review flow.
-- ⏳ **Keep/Discard confirmation now persists** — the inline Keep/Discard
-  confirmation ("Change kept …" / "Pending change discarded …") used to be wiped
-  by the editor re-open and is now shown after it. §5's screenshot was captured
-  before that fix, so a re-capture would now show the discard toast above the
-  re-opened editor. The §§3–5 prose stays accurate (it no longer leans on the
-  toast); re-capture in the next session. `git log 73d5b75..HEAD -- engine/ui/`
-  is the delta.
+- ✅ **Keep/Discard confirmation now persists** — the 11 owner PNGs were
+  regenerated via `node scripts/capture-tutorial.js scripts/flows/owner-editor.js`.
 - ✅ **Owner-facing features not yet shown** — reviewed and **declined** as
   dedicated steps: the "What else you can change" section already covers the
   category (photos, lists, repeating items, hiding sections, brand colors), and
   adding a step per feature would bloat the walkthrough past its purpose.
-- ⏳ **Optional Help assistant** — the owner editor now shows a "?" launcher
-  (bottom-right) that opens an on-device help chat (Chrome Prompt API / Gemini
-  Nano), grounded in a short built-in guide, with a written-guide fallback when
-  the API is absent. `engine/ui/help.js` + the `.help-*` styles in
-  `engine/ui/ui.css`. The walkthrough doesn't mention it; add a one-line note (and
-  optionally a capture of the launcher) when next reconciling — prose is enough.
-  `git log <baseline>..HEAD -- engine/ui/help.js engine/ui/ui.css` is the delta.
-- ⏳ **Heavy-gallery heads-up in the photo editor** — the README's Photos bullet
-  (§ "What else you can change", ~line 191) says huge phone photos are shrunk
-  automatically. There is now also a soft, never-blocking heads-up when a single
-  gallery album holds a lot of photos: the editor notes that more will slow the
-  page, but still lets the owner add them. A one-clause mention fits the existing
-  Photos bullet; add it when next reconciling (prose only, no re-capture needed).
-  `git log 73d5b75..HEAD -- engine/lib/owner.js engine/ui/ui.js` is the delta.
+- ✅ **Optional Help assistant** — `docs/tutorial/owner/README.md` now mentions the
+  `?` help button in the owner-facing feature list.
+- ✅ **Heavy-gallery heads-up in the photo editor** — the Photos bullet now
+  mentions the soft, never-blocking page-weight warning.
 
 ---
 
 ## Running a capture session (for the next bundle)
 
-The 2026-06-28 session above cleared all then-pending debt. Keep this procedure
+The 2026-06-30 session above cleared all then-pending debt. Keep this procedure
 for the next time capture- or count-dependent debt accumulates — it regenerates
 harness-produced artifacts, which is heavy and best done deliberately on a
 **clean working tree**, not piecemeal:

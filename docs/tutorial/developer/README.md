@@ -44,13 +44,12 @@ PASS — live HTML carries no ids and no data-bk-*; annotated builds stamp every
        editable field the edit map reports (327 required annotations across
        3 clients) and stamp nothing the map does not report.
    …
-═══ PROOF 27 — Editable CTA buttons: id migration, addressable buttons, first-button add, guarded ═══
-PASS — a button's label/link/style each edit through the item path with the build
-       as the value gate, the first button adds to an empty actions array, and no
-       ids or annotations leak into the live HTML …
+═══ PROOF 29 — Heavy-gallery advisory: a photo-laden album gets a soft heads-up, never a cap ═══
+PASS — a gallery album under the photo-count threshold opens an ordinary image
+       list, an album at/over it carries a plain-language heads-up …
 
 ════════════════════════════════════════════════════════════
-27/27 proofs passed.
+29/29 proofs passed.
 ```
 
 *(Full transcript: [term/01-proofs.txt](term/01-proofs.txt).)*
@@ -75,7 +74,7 @@ $ node engine/new-client.js demo-scratch trades
 Created clients/demo-scratch/ on theme "trades".
 Next steps:
   1. Add images to clients/demo-scratch/img/ (logo-white.png, logo-black.png, favicon.png, banner.jpg)
-  2. Edit clients/demo-scratch/content.json (see BLOCK_CATALOG.md for all 21 block types)
+  2. Edit clients/demo-scratch/content.json (see BLOCK_CATALOG.md for all 23 block types)
   3. node engine/build.js demo-scratch
 ```
 
@@ -103,13 +102,13 @@ remote anything** — local-first is an invariant, not a preference.
 
 This is the real work. `content.json` is the whole site as data: a `site`
 object (name, contact, nav, footer) and a `pages` array, each page a list
-of **blocks** chosen from the [21-type catalog](../../../BLOCK_CATALOG.md).
+of **blocks** chosen from the [23-type catalog](../../../BLOCK_CATALOG.md).
 A hero block from the salon's homepage:
 
 ```jsonc
 {
   "id": "home-hero",            // ← stable handle; never rendered into HTML
-  "type": "hero",               // ← one of the 21 registered block types
+  "type": "hero",               // ← one of the 23 registered block types
   "fields": {
     "tag": "Edmonton · 124 Street",
     "headline": "Hair that still looks good three weeks from now.",

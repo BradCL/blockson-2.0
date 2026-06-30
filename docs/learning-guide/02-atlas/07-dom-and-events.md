@@ -62,9 +62,10 @@ Six classroom ideas, all load-bearing:
    background with `data-bk-bg` as a direct child of its section, and when
    a click finds no more-specific annotated element inside that section,
    the overlay routes it to the marked background — which is also where the
-   hero focal-point/zoom controls open. The marker lives in the annotated
-   preview only, so it can never reach a live build. This resolution is DOM
-   logic the Node proof suite can't reach, so it has its own browser test:
+   hero/page-header focal-point and zoom controls open. The marker lives in
+   the annotated preview only, so it can never reach a live build. This
+   resolution is DOM logic the Node proof suite can't reach, so it has its
+   own browser test:
    `npm run test:overlay` (`scripts/overlay-e2e.js`) drives real clicks and
    asserts the reference the overlay posts.
 
@@ -146,6 +147,12 @@ UI's whole XSS defense (more in [atlas 13](13-security-mindset.md)).
 - **Optimistic nothing.** The UI never updates itself first and syncs
   later; every change round-trips through the server and comes back as
   fresh state. Slower in theory; impossible to de-sync in practice.
+- **One UI, two transports.** On localhost, `ui.js` talks to `serve.js`
+  with `fetch` and loads preview pages from `/preview/`. In the static
+  browser demo, `window.__blocksonTransport` answers the same `/api/*`
+  contract from an in-memory host and loads preview pages as Blob URLs.
+  The owner-facing UI is shared; Publish is disabled by the host, not by a
+  forked editor.
 
 ## Why here, why this way
 

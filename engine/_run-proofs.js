@@ -1046,7 +1046,7 @@ console.log('\n═══ PROOF 12 — Theme validator: every shipped theme passe
   if (failures.length === 0) {
     console.log('PASS — all shipped themes clear the pipeline (token completeness, injection +');
     console.log('       format guards on values, no JS / no external resources, tiered contrast');
-    console.log('       pairs, demo-client coverage build of all 21 block types); a known-bad');
+    console.log(`       pairs, demo-client coverage build of all ${Object.keys(BLOCKS).length} block types); a known-bad`);
     console.log('       theme fails the CLI with every reason named.');
     passed++;
   } else {

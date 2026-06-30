@@ -65,7 +65,7 @@ PASS — every shipped blueprint clears the acceptance pipeline (schema → samp
 ═══ PROOF 12 — Theme validator: every shipped theme passes; a bad theme fails with named reasons ═══
 PASS — all shipped themes clear the pipeline (token completeness, injection +
        format guards on values, no JS / no external resources, tiered contrast
-       pairs, demo-client coverage build of all 21 block types); a known-bad
+       pairs, demo-client coverage build of all 23 block types); a known-bad
        theme fails the CLI with every reason named.
 
 ═══ PROOF 13 — Editor server request guards, exercised over real HTTP ═══
@@ -130,14 +130,17 @@ PASS — a page-header with no background of its own inherits the site hero imag
        background still wins; and a site with no hero at all emits no inline
        background, leaving the theme CSS as the last-ditch fallback.
 
-═══ PROOF 21 — Hero focal-point + zoom: guarded values round-trip; bad values bounce ═══
+═══ PROOF 21 — Header focal-point + zoom (hero + page-header): guarded values round-trip; bad values bounce ═══
 PASS — out-of-range and malformed focal/zoom values (raw CSS, url(), zoom
        9 / 0.5 / non-numeric) are refused with nothing written; a valid pair
        round-trips through applyPatch (a string zoom normalized to a number)
        and reaches the built hero as inline background-position + transform:
        scale, with no ids and no data-bk-* in the live HTML; the fields are
        optional (absent → default paint); and the edit map reports them as
-       block metadata, never scalars.
+       block metadata, never scalars. The page-header shares the SAME guarded
+       path (keyed on the background field, not the block type): a valid pair
+       reaches its .page-header-bg as the same inline style, while absent fields
+       leave the build byte-identical to before the feature.
 
 ═══ PROOF 22 — og:image fallback: per-page image → site hero → logo ═══
 PASS — with no per-page image, every page (home and interior) takes the site
@@ -194,5 +197,25 @@ PASS — extras/add-action-ids.js seeds a slugified, site-wide-unique id on ever
        through the Section-panel doorway — candidate-only, then live on publish,
        with no annotations or ids leaking into the live HTML.
 
+═══ PROOF 28 — Host seam: owner handlers drive an in-memory (non-Node) host through edit → keep → discard ═══
+PASS — the same owner.js handlers drive a fully in-memory host (content in JS
+       strings, images in a Map, the acceptance build = validate() with the
+       schema + blueprint registry pre-seeded so NO filesystem is touched)
+       through the same edit → keep → second edit → keep → pending-discard
+       (replay) → discard-all cycle as the Node path: one pending change at a
+       time, kept changes survive the replay, the resolver guards still bounce a
+       forbidden field and an unsafe token, an upload rides the candidate Map
+       only and survives the replay, the ledger fires one entry per attempt, and
+       Publish is a no-op property of the host that leaves the staged session
+       intact — the adapter cannot silently diverge from the disk/git host.
+
+═══ PROOF 29 — Heavy-gallery advisory: a photo-laden album gets a soft heads-up, never a cap ═══
+PASS — a gallery album under the photo-count threshold opens an ordinary image
+       list, an album at/over it carries a plain-language heads-up that names the
+       page-load cost, appending one more photo still succeeds (the advisory never
+       caps an edit) with the heads-up persisting, and a same-length flat TEXT
+       list never gets it — the nudge is scoped to photos, computed in owner.js so
+       the Node editor and the browser demo show it identically.
+
 ════════════════════════════════════════════════════════════
-27/27 proofs passed.
+29/29 proofs passed.

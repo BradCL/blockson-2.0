@@ -100,6 +100,14 @@ The key vocabulary, used everywhere in this guide:
 | **live** | `clients/<name>/` — the real site source. Only Publish (and Restore) ever writes here. |
 | **annotated build** | A preview-only build where every editable element is stamped with `data-bk-*` attributes so the editor knows what's clickable. Live builds never contain these. |
 
+`owner.js` itself does not know whether content lives on disk or in a
+browser tab. It talks to an injected **host**: `host-node.js` is the normal
+disk/git host used by `serve.js`, while `host-browser.js` keeps content and
+images in memory for the no-install browser demo. That means the static
+demo (`node engine/build-demo.js <client>`) exercises the same owner
+handlers and guards; its host simply disables Publish instead of writing
+live files.
+
 ## Map 3 — Directory anatomy
 
 Who owns what. **Engine** = code the developer maintains; **client** =
@@ -111,15 +119,18 @@ engine/                      ENGINE — all the code
   serve.js                     owner-editor HTTP server (localhost)
   apply-patch.js               patch CLI (backup → patch → rebuild → rollback)
   sitemap.js / new-client.js   edit-map printer / client scaffolder
+  build-demo.js                static no-Node owner-editor demo builder
   validate-blueprint.js        \ acceptance CLIs for the two
   validate-theme.js            / authoring kits
-  _run-proofs.js               the 27-proof test suite
+  _run-proofs.js               the 29-proof test suite
   blocks/                      one module per block type (23) + _registry.js
   partials/                    head.js, nav.js, footer.js
   lib/                         the core: validate, render, escape, patch,
-                               sitemap (edit map), annotate, owner, scaffold
+                               sitemap (edit map), annotate, owner, scaffold,
+                               host-node, host-browser
   schema/content.schema.json   the contract between data and engine
   ui/                          the editor app (index.html, ui.js, overlay.js)
+                               plus ui/demo/ for the browser-demo bundle
 
 blueprints/                  ENGINE-ADJACENT — developer-authored JSON layouts
                              owners may instantiate (pages, sections, items)

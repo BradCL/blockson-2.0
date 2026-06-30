@@ -31,7 +31,7 @@ return createImageBitmap(file, { imageOrientation: 'from-image' }).then(function
   var wantType = file.type === 'image/png' ? 'image/webp' : 'image/jpeg';
 ```
 
-Decode → draw onto a canvas at reduced size → re-encode (`MAX_EDGE` 1920,
+Decode → draw onto a canvas at reduced size → re-encode (`MAX_EDGE` 2400,
 `QUALITY` 0.82). Three details repay study:
 
 - `imageOrientation: 'from-image'` bakes the EXIF rotation into the
@@ -99,6 +99,11 @@ suffix rather than overwriting.
   and per-page `meta.ogImage`) plus a scan of the shipped theme CSS for the
   assets it hard-codes (e.g. `url('../img/banner.jpg')`), which never appear
   in content.
+- **Gallery size gets a soft owner nudge.** The editor allows a gallery
+  album to keep growing, but once it gets photo-heavy it shows a
+  plain-language heads-up that more photos slow the page. It is advice,
+  not a cap: appending another real image still goes through the normal
+  upload guards and succeeds.
 - **Uploads stay in the candidate until publish.** Bytes land in the
   candidate's `img/`; only `publish()` copies them to live, and a
   discarded session deletes them with the candidate. Even file writes

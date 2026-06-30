@@ -14,6 +14,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const BLOCKS = require('./blocks/_registry');
 
 const ROOT   = path.resolve(__dirname, '..');
 const name   = process.argv[2];
@@ -113,5 +114,5 @@ fs.writeFileSync(path.join(clientDir, 'content.json'), JSON.stringify(starter, n
 console.log(`Created clients/${name}/ on theme "${theme}".`);
 console.log('Next steps:');
 console.log(`  1. Add images to clients/${name}/img/ (logo-white.png, logo-black.png, favicon.png, banner.jpg)`);
-console.log(`  2. Edit clients/${name}/content.json (see BLOCK_CATALOG.md for all 21 block types)`);
+console.log(`  2. Edit clients/${name}/content.json (see BLOCK_CATALOG.md for all ${Object.keys(BLOCKS).length} block types)`);
 console.log(`  3. node engine/build.js ${name}`);

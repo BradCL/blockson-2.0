@@ -191,7 +191,9 @@ The same click-and-look rhythm covers more than text:
 - **Photos.** Click any photo, choose a new one from your computer or
   phone. Huge phone photos are shrunk to web size automatically — and the
   hidden location information phones embed in photos is stripped out
-  before the picture goes anywhere.
+  before the picture goes anywhere. If one gallery album gets photo-heavy,
+  the editor warns that more photos can slow the page, but still lets you
+  add them.
 - **Lines in lists.** Opening hours, service areas, "what's included"
   lists — click a line to rewrite or remove it, or add a new one.
 - **Repeating items.** Add a new service card, FAQ entry, customer quote,
@@ -204,6 +206,9 @@ The same click-and-look rhythm covers more than text:
 - **Brand colors.** The panel lists your site's colors with a picker. It's
   safe to play: any combination that would be hard to read is refused
   before it can reach the site, with an explanation.
+- **Help.** The `?` button opens a short guide, and on supported desktop
+  Chrome it can also answer how-to questions right in the browser. It does
+  not publish anything or change what you can edit.
 
 Every one of these goes through the same pending → Keep → Publish cycle.
 No exceptions — which is exactly why none of them can hurt you.

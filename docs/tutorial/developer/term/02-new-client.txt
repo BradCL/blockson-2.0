@@ -2,5 +2,5 @@ $ node engine/new-client.js demo-scratch trades
 Created clients/demo-scratch/ on theme "trades".
 Next steps:
   1. Add images to clients/demo-scratch/img/ (logo-white.png, logo-black.png, favicon.png, banner.jpg)
-  2. Edit clients/demo-scratch/content.json (see BLOCK_CATALOG.md for all 21 block types)
+  2. Edit clients/demo-scratch/content.json (see BLOCK_CATALOG.md for all 23 block types)
   3. node engine/build.js demo-scratch

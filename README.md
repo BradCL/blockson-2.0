@@ -128,7 +128,7 @@ Design intent and full token reference: [themes/README.md](themes/README.md).
 
 ---
 
-## Block types (22)
+## Block types (23)
 
 Core: `hero`, `page-header`, `text`, `card-grid`, `gallery`, `testimonials`,
 `list-panel`, `service-area`, `contact-cards`, `contact-info`, `contact-form`, `cta`
@@ -138,6 +138,9 @@ v2: `pricing-table`, `team-grid`, `faq`, `hours-table`, `before-after`, `stats-b
 
 Later: `photo-strip` — a full-bleed banner of finished-work photos (the home-page
 strip of the contractor site that inspired Blockson; companion to `gallery`)
+
+Social proof: `reviews-link` — a compact external-review callout for Google,
+Facebook, or another review platform
 
 `contact-form` has a selectable, subscription-free delivery mode: the default
 endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
@@ -362,7 +365,7 @@ remain available as a reference for any future integration.
 node engine/_run-proofs.js     # or: npm test
 ```
 
-Runs 25 end-to-end proofs against the example clients and the full contribution
+Runs 29 end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -444,8 +447,26 @@ pipeline:
     `banner.jpg`; an explicit page-header background still wins; and a site
     with no hero at all emits no inline background, leaving the theme CSS as
     the last-ditch fallback
+21. header background focal-point + zoom: guarded `bgPosition` / `bgZoom`
+    values round-trip for heroes and page headers; malformed values bounce
+22. social-card image fallback: per-page `meta.ogImage` wins, then the site
+    hero photo, then the logo
+23. unreferenced-image advisory: orphaned files under `img/` are named without
+    failing the build
+24. reachable section backgrounds: annotated preview builds mark hero/header
+    backgrounds for dead-space clicks, while live builds stay marker-free
+25. per-page page-header backgrounds: owners can set an image where a header
+    inherited the site hero, through the narrow creatable-field path
+26. section doorway: omitted optional section text can be created only where
+    the resolver allowlist permits it
+27. editable CTA buttons: migrated hero buttons are id-addressable, guarded,
+    removable except for the last one, and addable from an empty state
+28. host seam: the same owner handlers run against an in-memory browser host,
+    proving the no-install demo is not a parallel editor
+29. heavy-gallery advisory: photo-heavy albums show a soft page-weight warning
+    without capping the edit
 
-All twenty must pass on a clean tree (`exit 0`).
+All 29 must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -456,20 +477,23 @@ engine/
   build.js              Entry point — run this to build (--annotate for preview)
   apply-patch.js        Patch CLI (content + token patches)
   serve.js              Owner-editor server — click-to-edit UI (localhost)
+  build-demo.js         Browser-demo builder — static no-Node editor demo
   sitemap.js            Prints the edit map for a client to stdout
   new-client.js         Scaffolds a new client folder
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (20 proofs)
+  _run-proofs.js        End-to-end proof suite (29 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
-                        (overlay injected at serve time into preview pages only)
-  blocks/               One module per block type (22 total)
+                        (overlay injected at serve time into preview pages only);
+                        ui/demo/ is the static browser-demo bootstrap
+  blocks/               One module per block type (23 total)
   partials/             head, nav, footer
   lib/                  render, validate, escape, icons, patch (allowlist + token
                         guards), sitemap (edit map), annotate (preview-build
                         data-bk-* stamping), owner (editor request handlers),
-                        scaffold (blueprint instantiation), bpcheck/themecheck
+                        host-node/host-browser (storage adapters), scaffold
+                        (blueprint instantiation), bpcheck/themecheck
                         (authoring-kit pipelines)
   schema/               content.schema.json (JSON Schema draft 2020-12)
 

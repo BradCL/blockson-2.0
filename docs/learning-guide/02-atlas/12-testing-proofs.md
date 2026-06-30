@@ -8,7 +8,7 @@ percentages as the measure of done.
 
 ## In Blockson it lives at…
 
-`engine/_run-proofs.js` — one file, 27 "proofs," run by `npm test`.
+`engine/_run-proofs.js` — one file, 29 "proofs," run by `npm test`.
 No test framework: plain Node, a `passed` counter with per-proof
 `failures` arrays, and a final
 `process.exit(passed === TOTAL ? 0 : 1)`. The file's 90-line header
@@ -71,7 +71,8 @@ error path is specified behaviour, so it's tested like one.
   *on a clean tree*, and leave one). Test hygiene is part of the test.
 - **The suite as a regression ratchet.** Each new feature in the repo's
   history (visibility flag → proof 17, ledger → proof 16, item
-  blueprints → proof 19) landed *with* its proof — and so does each fix
+  blueprints → proof 19, the browser host seam → proof 28, heavy-gallery
+  advisory → proof 29) landed *with* its proof — and so does each fix
   driven by real use: the first live site exposed a page-header whose
   background silently fell back to a hard-coded `banner.jpg`, and the
   engine fix landed with proof 20. The suite only grows, and the old
@@ -89,7 +90,7 @@ unit test on `applyPatch` can't notice that `serve.js` forgot to call it,
 or that a renderer leaks an annotation into live HTML. The system's
 promises are end-to-end ("a bad patch can never leave a site broken"), so
 only end-to-end checks can certify them — and the engine's speed makes
-this affordable: 27 full-system proofs, including real builds, real
+this affordable: 29 full-system proofs, including real builds, real
 HTTP, and real git, in well under a minute.
 
 The transferable rule: **write your tests at the level of the sentence
@@ -108,7 +109,7 @@ chapters left it.
 
 <details><summary>What you should see</summary>
 
-`27/27 proofs passed.` The suite exercises the example clients, the
+`29/29 proofs passed.` The suite exercises the example clients, the
 shipped blueprints/themes, and throwaway sandboxes it creates itself -
 your scratch client isn't part of the contract, so it can't break the
 contract. (This is also why the guide had you experiment there.)</details>
