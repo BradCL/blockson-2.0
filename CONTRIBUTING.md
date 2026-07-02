@@ -60,7 +60,7 @@ gallery are happy, the contribution is presumed good.
 
 ## Ground rules (all lanes)
 
-- Node.js 18+, `'use strict'`, Node stdlib only. The single sanctioned exception is
+- Node.js 20+, `'use strict'`, Node stdlib only. The single sanctioned exception is
   AJV (`ajv`, `ajv-formats`) for JSON-schema validation at build time — the build
   degrades gracefully without it. Do not add dependencies.
 - Local-first: nothing in themes, blueprints, the UI, or build output may reference

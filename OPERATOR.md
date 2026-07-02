@@ -14,7 +14,7 @@ the [handover kit](docs/handover/README.md), which builds on this guide.
 
 ## 1. Prerequisites
 
-- **Node.js 18 or later** (the engine and editor are stdlib-only beyond the schema
+- **Node.js 20 or later** (the engine and editor are stdlib-only beyond the schema
   validator — no build tooling, no framework). For an owner machine you'd rather not
   install Node on, `npm run build:exe` produces a single-file runtime the owner
   launcher picks up automatically — see

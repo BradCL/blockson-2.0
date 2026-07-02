@@ -3,8 +3,28 @@
   "version": "2.0.0",
   "description": "Reusable static-site engine for small local businesses, with a safe click-to-edit owner maintenance tier",
   "license": "MIT",
+  "author": "Brad L",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BradCL/blockson-2.0.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BradCL/blockson-2.0/issues"
+  },
+  "keywords": [
+    "static-site-generator",
+    "ssg",
+    "small-business",
+    "json-cms",
+    "cms-alternative",
+    "click-to-edit",
+    "local-llm",
+    "ai-agents",
+    "seo",
+    "nodejs"
+  ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "build:contractor": "node engine/build.js example-contractor",

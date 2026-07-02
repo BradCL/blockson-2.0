@@ -22,7 +22,8 @@ the validators and the proof suite, not by how any part was authored.
 
 ## Quick start
 
-**Prerequisites:** Node.js 18 or later. AJV is required for full field-level schema
+**Prerequisites:** Node.js 20 or later (CI tests 20/22/24; Node 18 is past
+end-of-life and no longer tested). AJV is required for full field-level schema
 validation and should be installed before building (without it the build still runs,
 with a reduced structural validator and a loud warning).
 
