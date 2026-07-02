@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (29 proofs)
+  _run-proofs.js        Proof suite (31 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)

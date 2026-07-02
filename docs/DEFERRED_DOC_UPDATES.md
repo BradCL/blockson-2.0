@@ -33,7 +33,9 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-None.
+- **Proof count 29 → 31** (2026-07-02) — proof 30 (hostile content values render
+  inert in every block type) and proof 31 (no-AJV fallback exercised) added;
+  `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
 
 Reconciled (prose/counts, 2026-06-30 pass):
 
@@ -78,6 +80,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
+- **Proof count 29 → 31** (2026-07-02) — `term/01-proofs.txt` and the README's
+  proof excerpt still show `29/29` with proof 29 as the last; regenerate with
+  the next capture session (new last proof: 31, no-AJV fallback).
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,

@@ -385,7 +385,7 @@ npm run test:all               # proofs + the three Playwright browser smokes
 npm run doctor <client-name>   # build + pre-launch advisory checklist
 ```
 
-Runs 29 end-to-end proofs against the example clients and the full contribution
+Runs 31 end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -485,8 +485,18 @@ pipeline:
     proving the no-install demo is not a parallel editor
 29. heavy-gallery advisory: photo-heavy albums show a soft page-weight warning
     without capping the edit
+30. hostile content values render inert: a payload carrying an
+    unquoted-attribute breakout, a backtick, both quote kinds, and a full
+    `<img onerror>` element is accepted into a free-text field of every block
+    type via `applyPatch`, and the built HTML gains no event-handler
+    attribute and no injected markup — the payload survives only as escaped
+    visible text
+31. no-AJV fallback: with `ajv`/`ajv-formats` unresolvable, a valid client
+    still builds (exit 0) with a loud warning naming the fix, while the
+    reduced validator still refuses a `javascript:` href and
+    structurally-empty content with nothing written
 
-All 29 must pass on a clean tree (`exit 0`).
+All 31 must pass on a clean tree (`exit 0`).
 
 ---
 
@@ -504,7 +514,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (29 proofs)
+  _run-proofs.js        End-to-end proof suite (31 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only);
                         ui/demo/ is the static browser-demo bootstrap

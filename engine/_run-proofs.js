@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 'use strict';
-// Runs all twenty-seven end-to-end proofs in sequence and prints results.
+// Runs the end-to-end proof suite in sequence and prints results.
 // Proofs 1–4: the original patch/rebuild/rollback path.
 //   Proof 1 also guards the v4 annotated preview build: live HTML carries no
 //   ids and no data-bk-* attributes; an annotated build carries a data-bk
@@ -170,6 +170,24 @@
 //             HOST (shipSession reports nothing shipped) that leaves the staged
 //             session intact — proving the adapter can't silently diverge from
 //             the disk/git host without owner.js itself changing.
+// Proof 29:   heavy-gallery advisory: a photo-laden album gets a soft,
+//             plain-language page-weight heads-up in the editor — computed in
+//             owner.js so Node and browser hosts show it identically — and the
+//             advisory never caps an edit; flat text lists never get it.
+// Proof 30:   hostile content values render inert: a payload carrying an
+//             unquoted-attribute breakout, a backtick, both quote kinds, and a
+//             full <img onerror> element is written through applyPatch into
+//             every free-text field of a corpus covering all 23 block types;
+//             the live build succeeds and no built tag gains an event-handler
+//             attribute, no raw payload markup appears, and the payload
+//             survives only as escaped visible text — the esc()/quoted-
+//             attribute discipline proven at the rendered surface.
+// Proof 31:   no-AJV fallback: with the ajv/ajv-formats packages made
+//             unresolvable, a valid client still builds (exit 0) with a loud
+//             warning naming the fix; the same build with AJV present emits no
+//             warning; and the reduced validator still refuses a javascript:
+//             href and structurally-empty content with nothing written — the
+//             degraded path is exercised, not just promised.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -263,7 +281,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 29;
+const TOTAL = 31;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3463,6 +3481,237 @@ console.log('\n═══ PROOF 29 — Heavy-gallery advisory: a photo-laden albu
     console.log('       caps an edit) with the heads-up persisting, and a same-length flat TEXT');
     console.log('       list never gets it — the nudge is scoped to photos, computed in owner.js so');
     console.log('       the Node editor and the browser demo show it identically.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 30 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 30 — Hostile content values render inert in every block type ═══');
+{
+  const CLIENT  = '__proof-xss';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // One string carrying every breakout an attribute context fears: a bare
+  // word + `=` (unquoted-attribute injection), a backtick (legacy unquoted
+  // breakout), both quote kinds (quoted-attribute breakout), and a complete
+  // element (markup injection). With every interpolation quoted and esc()'d,
+  // ALL of it survives only as visible text; any escaping gap surfaces below
+  // as a forged attribute or a live <img> probe in the built HTML.
+  const PAYLOAD = 'x onmouseover=alert(1) `"\'<img src=x onerror=alert(2)>';
+
+  // Link/path/enum-shaped fields are constrained by the resolver or the
+  // schema — a hostile value there is REFUSED, which is its own kind of safe
+  // (and proofs 5–7/27 already pin the refusals). This proof targets the
+  // fields that ACCEPT free text, because accepted text is what must render
+  // inert.
+  const SKIP_FIELD = /(^|\.)(href|url|videoUrl|mapEmbedUrl|formAction|successPath|background|image|logo|favicon|ogImage|icon|style|theme|mode|bgPosition|bgZoom|platform|variant|columns|stars)$/i;
+  const SKIP_VALUE = /^(img\/|https?:|mailto:|tel:|sms:|#)/i;
+
+  // Attribute NAMES of one opening tag, respecting quoted values (an escaped
+  // payload inside quotes is safe text, not an attribute). A forged
+  // `onmouseover=alert(1)` that broke out of its context parses as a name
+  // here — exactly the failure being hunted.
+  const attrNames = (tag) => {
+    const names = [];
+    const inner = tag.replace(/^<\/?[a-zA-Z][^\s/>]*/, '').replace(/\/?>$/, '');
+    const re = /([^\s=/'"`]+)\s*(?:=\s*("[^"]*"|'[^']*'|[^\s>]*))?/g;
+    let m;
+    while ((m = re.exec(inner))) {
+      if (m[1]) names.push(m[1]);
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+    return names;
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    // The blueprint gallery is the committed corpus that instantiates every
+    // registered block type — inject through the same edit map + applyPatch
+    // path an owner or a model uses, so the proof covers the writable surface
+    // as the maintenance tier actually reaches it.
+    const content = readContent('blueprint-gallery');
+    const map = buildEditMap(content, loadTokens(content));
+    const blockById = new Map();
+    for (const page of content.pages) for (const b of page.blocks) blockById.set(b.id, b);
+
+    const injectedTypes = new Set();
+    let accepted = 0;
+    const tryPatch = (blockId, patch) => {
+      const r = applyPatch(content, patch);
+      if (r.ok) { accepted++; injectedTypes.add(blockById.get(blockId).type); }
+    };
+
+    for (const page of map.pages) {
+      for (const b of page.blocks) {
+        for (const s of b.scalars || []) {
+          if (SKIP_FIELD.test(s.field)) continue;
+          if (s.preview != null && SKIP_VALUE.test(String(s.preview))) continue;
+          tryPatch(b.id, { action: 'set', block: b.id, field: s.field, value: PAYLOAD });
+        }
+        for (const is of b.itemSets || []) {
+          for (const it of is.items || []) {
+            for (const f of it.fields || []) {
+              if (SKIP_FIELD.test(f)) continue;
+              const cur = blockById.get(b.id) && blockById.get(b.id).fields[is.field];
+              const item = Array.isArray(cur) && cur.find(x => x.id === it.id);
+              if (item && typeof item[f] === 'string' && SKIP_VALUE.test(item[f])) continue;
+              tryPatch(b.id, { action: 'set', block: b.id, item: it.id, field: f, value: PAYLOAD });
+            }
+          }
+        }
+        for (const tl of b.textLists || []) {
+          const arr = blockById.get(b.id) && blockById.get(b.id).fields[tl.field];
+          if (!Array.isArray(arr) || !arr.length || typeof arr[0] !== 'string') continue;
+          if (SKIP_VALUE.test(arr[0])) continue;
+          tryPatch(b.id, { action: 'set', block: b.id, field: tl.field, match: arr[0], value: PAYLOAD });
+        }
+      }
+    }
+
+    writeContent(CLIENT, content);
+    const b = build(CLIENT);
+    if (!b.ok) failures.push(`the live build refused hostile-but-accepted content — resolver and schema disagree:\n${b.out}`);
+
+    // Coverage: every registered block type must have taken at least one
+    // accepted hostile write, or the proof has silently narrowed.
+    const registry = Object.keys(require('./blocks/_registry'));
+    for (const t of registry) {
+      if (!injectedTypes.has(t)) failures.push(`no hostile value was accepted into any "${t}" text field — that block type is no longer covered`);
+    }
+    if (accepted < registry.length) failures.push(`only ${accepted} hostile writes were accepted — expected at least one per block type`);
+
+    if (b.ok) {
+      const files = fs.readdirSync(distDir).filter(f => f.endsWith('.html'));
+      if (!files.length) failures.push('the hostile build produced no pages');
+      let sawEscaped = false;
+      for (const f of files) {
+        const html = fs.readFileSync(path.join(distDir, f), 'utf8');
+        if (html.includes('<img src=x')) failures.push(`${f}: the payload's <img> probe landed as real markup`);
+        if (html.includes('&lt;img src=x onerror=alert(2)&gt;')) sawEscaped = true;
+        for (const tag of html.match(/<[a-zA-Z!/][^>]*>/g) || []) {
+          for (const name of attrNames(tag)) {
+            if (/^on/i.test(name)) failures.push(`${f}: forged event-handler attribute "${name}" in: ${tag.slice(0, 90)}`);
+          }
+        }
+      }
+      if (!sawEscaped) failures.push('the escaped payload never appeared in any built page — the injections did not reach rendered output');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a payload carrying an unquoted-attribute breakout, a backtick, both');
+    console.log('       quote kinds, and a full <img onerror> element was accepted into at least');
+    console.log('       one free-text field of every registered block type via applyPatch; the');
+    console.log('       live build succeeds, no built tag gains an event-handler attribute, the');
+    console.log('       <img> probe never lands as markup, and the payload survives only as');
+    console.log('       escaped visible text — quoted-and-escaped interpolation, proven at the');
+    console.log('       rendered surface rather than by reading the renderers.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.slice(0, 25).forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 31 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 31 — No-AJV fallback: the build still ships, warns loudly, and still guards ═══');
+{
+  const CLIENT  = '__proof-noajv';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const stubPath = path.join(liveDir, 'no-ajv-stub.js');
+  const failures = [];
+
+  const buildNoAjv = () => {
+    const r = spawnSync(process.execPath,
+      ['--require', stubPath, path.join(__dirname, 'build.js'), CLIENT],
+      { cwd: ROOT, encoding: 'utf8' });
+    return { status: r.status, out: (r.stdout + r.stderr).trim() };
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    // Make require('ajv'), require('ajv/dist/2020'), and require('ajv-formats')
+    // fail exactly as if the packages were never installed — the README's
+    // "reduced validator, loud warning" promise, exercised for real.
+    fs.writeFileSync(stubPath, [
+      "'use strict';",
+      "const M = require('module');",
+      "const orig = M._load;",
+      "M._load = function (request) {",
+      "  if (/^ajv(\\/|$)|^ajv-formats(\\/|$)/.test(request)) {",
+      "    const e = new Error(\"Cannot find module '\" + request + \"'\");",
+      "    e.code = 'MODULE_NOT_FOUND';",
+      "    throw e;",
+      "  }",
+      "  return orig.apply(this, arguments);",
+      "};",
+    ].join('\n') + '\n', 'utf8');
+
+    const base = readContent('example-contractor');
+    writeContent(CLIENT, base);
+
+    // (a) Valid content: the degraded build SUCCEEDS (exit 0), warns loudly
+    //     with the fix named, and writes real HTML.
+    let r = buildNoAjv();
+    if (r.status !== 0) failures.push(`no-AJV build of valid content failed (exit ${r.status}):\n${r.out}`);
+    if (!/AJV not installed/.test(r.out)) failures.push(`the no-AJV build did not emit the loud warning (output starts: ${r.out.slice(0, 160)})`);
+    if (!/npm install/.test(r.out)) failures.push('the warning does not tell the operator the fix (npm install)');
+    const indexPath = path.join(distDir, 'index.html');
+    if (!fs.existsSync(indexPath)) failures.push('the no-AJV build wrote no index.html');
+    else if (!fs.readFileSync(indexPath, 'utf8').includes('<h1')) failures.push('the no-AJV index.html carries no rendered content');
+
+    // Control: the same content with AJV present builds with NO warning — the
+    // degraded path never fires when the real validator is available.
+    const withAjv = build(CLIENT);
+    if (!withAjv.ok) failures.push(`control build with AJV failed:\n${withAjv.out}`);
+    else if (/AJV not installed/.test(withAjv.out)) failures.push('the AJV-present build warns as if AJV were missing');
+
+    // (b) The reduced validator still guards. A javascript: href must be
+    //     refused with a non-zero exit and NOTHING written (the scheme guard
+    //     validate.js keeps a fallback copy of).
+    fs.rmSync(distDir, { recursive: true, force: true });
+    const badHref = JSON.parse(JSON.stringify(base));
+    const heroAction = badHref.pages.find(p => p.slug === 'index')
+      .blocks.find(bl => bl.type === 'hero').fields.actions[0];
+    heroAction.href = 'javascript:alert(1)';
+    writeContent(CLIENT, badHref);
+    r = buildNoAjv();
+    if (r.status === 0) failures.push('a javascript: href passed the fallback validator');
+    if (fs.existsSync(path.join(distDir, 'index.html'))) failures.push('the refused javascript:-href build still wrote output');
+
+    // (c) Structural floor: content with no pages is refused too.
+    writeContent(CLIENT, { site: base.site, pages: [] });
+    r = buildNoAjv();
+    if (r.status === 0) failures.push('structurally-empty content (no pages) passed the fallback validator');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — with ajv/ajv-formats unresolvable, a valid client still builds (exit 0)');
+    console.log('       with a loud warning naming the fix, and the output is real HTML; the same');
+    console.log('       build with AJV present emits no warning; and the reduced validator still');
+    console.log('       refuses a javascript: href and structurally-empty content with nothing');
+    console.log('       written — the dependency-free fallback is exercised, not just promised.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
