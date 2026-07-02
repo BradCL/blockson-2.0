@@ -328,6 +328,11 @@ Per-client config (publish command, display name, contact, host/port) lives in
 `clients/<client>/owner-config.json` — see [OPERATOR.md](OPERATOR.md) for the full
 field reference, hosting setup, and the publish/rollback story.
 
+For an owner machine with no Node install, `npm run build:exe` bundles the Node
+runtime and this server into one file (`build/sea/blockson-editor.exe`) that the
+owner launcher (`extras/owner-launcher/`) uses automatically — see
+[docs/handover/4-sea-build.md](docs/handover/4-sea-build.md).
+
 ---
 
 ## Optional model seam

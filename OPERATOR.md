@@ -15,7 +15,10 @@ the [handover kit](docs/handover/README.md), which builds on this guide.
 ## 1. Prerequisites
 
 - **Node.js 18 or later** (the engine and editor are stdlib-only beyond the schema
-  validator — no build tooling, no framework).
+  validator — no build tooling, no framework). For an owner machine you'd rather not
+  install Node on, `npm run build:exe` produces a single-file runtime the owner
+  launcher picks up automatically — see
+  [docs/handover/4-sea-build.md](docs/handover/4-sea-build.md).
 - **git**, if you want the default publish/rollback flow (§5). Not required for
   `publish: "none"` or a custom publish command.
 - A **static host** that can build from a git repo (Netlify, Cloudflare Pages, GitHub
