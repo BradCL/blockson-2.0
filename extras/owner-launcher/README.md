@@ -21,7 +21,12 @@ Two files, both copied to the **repo root** (next to `engine/`) at install time:
   `--user-data-dir` makes it a fresh, owned instance), then stops the Node server, so
   no orphaned `node` process is left behind. If the owner relaunches while the server
   is already up, it just opens another window and leaves the running server alone.
-- **Friendly failures** — missing Node, or a server that won't start, shows a plain
+- **Runs on the bundled runtime when present** — if `blockson-editor.exe` (the
+  single-exe runtime from `npm run build:exe`, see
+  [`docs/handover/4-sea-build.md`](../../docs/handover/4-sea-build.md)) sits at the
+  repo root, the launcher uses it and the machine needs **no Node install at all**;
+  otherwise it falls back to an installed `node`.
+- **Friendly failures** — a missing runtime (no exe, no Node), or a server that won't start, shows a plain
   dialog (with the startup error to hand to a developer), never a stack trace. Startup
   output is logged to `.editor-out.log` / `.editor-err.log` at the repo root.
 - **Graceful fallback** — if neither Edge nor Chrome is found, it opens the default
@@ -48,6 +53,8 @@ Two files, both copied to the **repo root** (next to `engine/`) at install time:
 - **git still required for Publish/Restore.** This launcher only starts the editor; the
   editor's publish path shells out to `git` (OPERATOR.md §7), so git must be installed
   and the push credential set up per the runbook.
-- This is the lightweight, no-extra-binary stage. The next stage — folding the Node
-  runtime into a single signed `.exe` so the machine needs no Node install at all — is
-  specified in [`docs/handover/4-sea-build.md`](../../docs/handover/4-sea-build.md).
+- **Node-less machines:** build the single-exe runtime with `npm run build:exe` and
+  copy `build/sea/blockson-editor.exe` to the repo root beside these files — the
+  launcher picks it up automatically (see
+  [`docs/handover/4-sea-build.md`](../../docs/handover/4-sea-build.md), including the
+  code-signing caveat for exes you didn't install in person).

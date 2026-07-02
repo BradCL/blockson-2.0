@@ -6,7 +6,9 @@
   it fully hidden. See README.md in this folder.
 
   Flow:
-    1. Make sure Node is present (friendly dialog if not).
+    1. Pick the runtime: blockson-editor.exe beside this script if present
+       (the bundled single-exe runtime, npm run build:exe), otherwise an
+       installed Node (friendly dialog if neither).
     2. Start `engine/serve.js <client>` in a hidden window, logging to .editor-*.log.
     3. Wait for the port to come up (or report the startup error from the log).
     4. Open the editor in Edge/Chrome *app mode* (a clean window, no tabs/address
@@ -70,9 +72,15 @@ if ($Port -eq 0) {
   if ($Port -eq 0) { $Port = 4173 }
 }
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  Show-Dialog "Node.js isn't installed on this computer, so the site editor can't start.`n`nAsk your web developer to install it." "Site editor" 16
-  return
+# --- pick the runtime: bundled exe first, then an installed Node -------------
+$runtime = Join-Path $root "blockson-editor.exe"
+if (-not (Test-Path $runtime)) {
+  if (Get-Command node -ErrorAction SilentlyContinue) {
+    $runtime = "node"
+  } else {
+    Show-Dialog "This computer is missing the program the site editor runs on (no Node.js install and no blockson-editor.exe next to the launcher).`n`nAsk your web developer to set it up." "Site editor" 16
+    return
+  }
 }
 
 # --- start the server (unless it is already running) -------------------------
@@ -81,7 +89,7 @@ $startedNode = $false
 if (-not (Test-PortOpen $BindHost $Port)) {
   $outLog = Join-Path $root ".editor-out.log"
   $errLog = Join-Path $root ".editor-err.log"
-  $node = Start-Process -FilePath "node" `
+  $node = Start-Process -FilePath $runtime `
     -ArgumentList "engine\serve.js", $Client, "--port", $Port, "--host", $BindHost `
     -WorkingDirectory $root -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput $outLog -RedirectStandardError $errLog

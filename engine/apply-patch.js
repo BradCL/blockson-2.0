@@ -69,7 +69,10 @@ if (!result.ok) {
 const newText = JSON.stringify(content, null, 2) + '\n';
 fs.writeFileSync(contentPath, newText, 'utf8');
 
-const buildResult = spawnSync('node', [path.join(__dirname, 'build.js'), clientName], {
+// process.execPath, not 'node': identical under a normal Node install, and it
+// keeps this CLI working inside the single-exe runtime (scripts/sea-entry.js),
+// where the exe itself is the interpreter that must run the child build.
+const buildResult = spawnSync(process.execPath, [path.join(__dirname, 'build.js'), clientName], {
   cwd: ROOT,
   stdio: 'pipe',
 });
