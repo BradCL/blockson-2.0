@@ -117,7 +117,7 @@ build prefers a theme's own CSS when present. The full authoring contract is
 which the developer can write directly — and which the maintenance tier can reach
 through the `set-token` patch.
 
-### Theme presets (12)
+### Theme presets (13)
 
 | Preset | Vertical | Identity |
 |--------|----------|----------|
