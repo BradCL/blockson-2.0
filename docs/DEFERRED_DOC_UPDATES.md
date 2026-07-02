@@ -74,7 +74,10 @@ reconciled through proof 29.
 
 Pending:
 
-None.
+- **Wren & Willow domains moved to the reserved `.example` TLD** (2026-07-02
+  fictional-client scrub) — the README's `content.json` excerpts and
+  `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
+  capture session.
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,

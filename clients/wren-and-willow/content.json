@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "Wren & Willow Hair Studio",
-    "baseUrl": "https://www.wrenandwillow.ca",
+    "baseUrl": "https://www.wrenandwillow.example",
     "theme": "salon",
     "logo": {
       "white": "img/logo-white.png",
@@ -10,7 +10,7 @@
     },
     "contact": {
       "phone": "780-555-0164",
-      "email": "hello@wrenandwillow.ca"
+      "email": "hello@wrenandwillow.example"
     },
     "nav": {
       "links": [
@@ -37,7 +37,7 @@
       ],
       "cta": {
         "label": "Book Now",
-        "href": "https://book.wrenandwillow.ca"
+        "href": "https://book.wrenandwillow.example"
       }
     },
     "footer": {
@@ -79,7 +79,7 @@
             },
             {
               "label": "Book online",
-              "href": "https://book.wrenandwillow.ca"
+              "href": "https://book.wrenandwillow.example"
             }
           ]
         },
@@ -91,8 +91,8 @@
               "href": "tel:7805550164"
             },
             {
-              "label": "hello@wrenandwillow.ca",
-              "href": "mailto:hello@wrenandwillow.ca"
+              "label": "hello@wrenandwillow.example",
+              "href": "mailto:hello@wrenandwillow.example"
             }
           ]
         }
@@ -119,7 +119,7 @@
             "actions": [
               {
                 "label": "Book an Appointment",
-                "href": "https://book.wrenandwillow.ca",
+                "href": "https://book.wrenandwillow.example",
                 "style": "primary",
                 "id": "book-an-appointment"
               },
@@ -284,7 +284,7 @@
             "provider": "Fresha",
             "button": {
               "label": "Book Online",
-              "href": "https://book.wrenandwillow.ca"
+              "href": "https://book.wrenandwillow.example"
             },
             "note": "New colour clients: please book a free 15-minute consultation first so we can plan your session length honestly.",
             "hidden": false
@@ -628,7 +628,7 @@
             "subtext": "First visit? Book a Signature Cut and we'll take it from there.",
             "button": {
               "label": "Book a First Visit",
-              "href": "https://book.wrenandwillow.ca",
+              "href": "https://book.wrenandwillow.example",
               "style": "primary"
             },
             "hidden": false
@@ -729,7 +729,7 @@
             "subtext": "Screenshots welcome — they're how half our best work starts.",
             "button": {
               "label": "Book a Consultation",
-              "href": "https://book.wrenandwillow.ca",
+              "href": "https://book.wrenandwillow.example",
               "style": "primary"
             },
             "hidden": false
@@ -770,8 +770,8 @@
                 "id": "info-email",
                 "icon": "mail",
                 "label": "Email",
-                "value": "hello@wrenandwillow.ca",
-                "href": "mailto:hello@wrenandwillow.ca"
+                "value": "hello@wrenandwillow.example",
+                "href": "mailto:hello@wrenandwillow.example"
               },
               {
                 "id": "info-address",

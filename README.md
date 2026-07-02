@@ -181,7 +181,9 @@ node engine/build.js <client-name>
 The build **validates first**. It will not write a single file if `content.json` fails
 the schema. The error message names the exact field path that failed.
 (The `clients/example-*` folders are the canonical references — contractor for the core
-blocks, restaurant for the v2 blocks.)
+blocks, restaurant for the v2 blocks. `clients/wren-and-willow/` is the fictional salon
+built during the [developer tutorial](docs/tutorial/developer/README.md); every name,
+contact detail, and photo in it is invented or AI-generated.)
 
 ---
 
