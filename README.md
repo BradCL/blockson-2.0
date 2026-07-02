@@ -453,7 +453,7 @@ pipeline:
     multi-change session makes exactly one pushed commit carrying the
     `[blockson-publish <client>]` marker; restore refuses while changes are
     staged and, once clear, reverts the whole session as one unit
-19. item blueprints and item removal: the four shipped item blueprints
+19. item blueprints and item removal: the five shipped item blueprints
     validate; a valid add lands in the named block with a site-wide-unique
     item id and builds clean; bad inputs and unknown/wrong-type targets are
     rejected with nothing written; remove deletes exactly the addressed

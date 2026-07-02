@@ -529,6 +529,15 @@
                   "img/sample-2.jpg",
                   "img/sample-3.jpg"
                 ]
+              },
+              {
+                "id": "album",
+                "category": "bathroom",
+                "title": "Bathroom Remodel",
+                "meta": "Edmonton, AB",
+                "images": [
+                  "img/sample-1.jpg"
+                ]
               }
             ],
             "hidden": false

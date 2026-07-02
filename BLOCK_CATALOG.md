@@ -137,7 +137,10 @@ CSS: `.gallery`, `.filter-bar`, `.filter-btn`, `.album-grid`, `.album-card` (+ `
 `data-images`, `data-title`), `.album-link`, `.gallery-empty`. JS reads the `data-*` attributes.
 **Maintenance:** album titles/meta editable; the per-album `href` is click-to-edit so an
 owner can repoint it if the host changes; image lists support append/delete by filename.
-Filters and album add/remove: developer.
+Owners add albums through the shipped `gallery-album` item blueprint (tailor its
+`category` select options to this block's `filters[].value` set per client — an album
+whose category matches no filter only appears under "All") and remove any but the last.
+Filters themselves: developer.
 
 ### `testimonials`
 Two-column quote cards with a star row.

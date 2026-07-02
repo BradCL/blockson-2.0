@@ -71,7 +71,7 @@
 //             changes are staged and, once clear, reverts the whole
 //             session as one unit; a failed outward push leaves a retryable
 //             waiting publish that succeeds once the remote is fixed.
-// Proof 19:   item blueprints + removeItem (v4.2 Task 4): four item
+// Proof 19:   item blueprints + removeItem (v4.2 Task 4): five item
 //             blueprints validate (cta-button is proof 27); a valid add lands in the named
 //             block with a site-wide-unique item id and builds clean;
 //             invalid inputs/targets rejected with nothing written; remove
@@ -1987,11 +1987,11 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
   const failures = [];
 
   try {
-    // (a) Registry: these four item blueprints load and validate (the fifth,
+    // (a) Registry: these five item blueprints load and validate (the sixth,
     //     cta-button, is covered in full by proof 27).
     const reg = scaffold.loadBlueprints();
     const bp = key => (reg.blueprints.find(b => b.key === key) || {}).blueprint;
-    for (const want of ['card-grid-card', 'faq-pair', 'testimonial-quote', 'team-member']) {
+    for (const want of ['card-grid-card', 'faq-pair', 'testimonial-quote', 'team-member', 'gallery-album']) {
       if (!bp(want)) failures.push(`registry is missing item blueprint "${want}"`);
       else if (bp(want).kind !== 'item') failures.push(`"${want}" is not kind "item"`);
     }
@@ -2202,7 +2202,7 @@ console.log('\n═══ PROOF 19 — Item blueprints: owners add and remove rep
   }
 
   if (failures.length === 0) {
-    console.log('PASS — four item blueprints validate (cta-button is proof 27); a valid add lands in the');
+    console.log('PASS — five item blueprints validate (cta-button is proof 27); a valid add lands in the');
     console.log('       NAMED block with a site-wide-unique item id and the full build accepts');
     console.log('       it; bad inputs, unknown/wrong-type targets reject with nothing written;');
     console.log('       remove deletes exactly the addressed item, refuses the last item and');

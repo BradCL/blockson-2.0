@@ -1,0 +1,36 @@
+{
+  "name": "Album",
+  "purpose": "One more project album in the gallery — a name, an optional location, a category, and a first photo; add more photos to it any time. (If you skip the location now there is nothing on the album to click to add one later, so add it here if you have it.)",
+  "kind": "item",
+  "target": { "blockType": "gallery", "field": "albums" },
+  "variants": [
+    { "key": "standard", "label": "A new project album" }
+  ],
+  "inputs": [
+    { "key": "title", "label": "Project name", "type": "text", "required": true, "maxLength": 60,
+      "example": "Bathroom Remodel" },
+    { "key": "category", "label": "Category", "type": "select", "required": true,
+      "options": [
+        { "value": "bathroom",  "label": "Bathroom" },
+        { "value": "exterior",  "label": "Exterior" },
+        { "value": "framing",   "label": "Framing" },
+        { "value": "general",   "label": "General" },
+        { "value": "landscape", "label": "Landscape" },
+        { "value": "other",     "label": "Other" }
+      ],
+      "example": "bathroom" },
+    { "key": "location", "label": "Location", "type": "text", "required": false, "maxLength": 60,
+      "example": "Edmonton, AB" },
+    { "key": "photo", "label": "First photo", "type": "image", "required": true,
+      "example": "img/sample-1.jpg" }
+  ],
+  "template": {
+    "standard": {
+      "id": "album",
+      "category": "{{category}}",
+      "title": "{{title}}",
+      "meta": "{{location}}",
+      "images": ["{{photo}}"]
+    }
+  }
+}
