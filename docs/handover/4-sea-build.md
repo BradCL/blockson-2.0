@@ -121,7 +121,7 @@ The runbook's install-the-runtime step becomes:
 
 > **1. Install the runtime (your job, once)**
 >
-> Either: install **Node.js 18 LTS or later** from nodejs.org, **or** copy a
+> Either: install **Node.js 20 LTS or later** from nodejs.org, **or** copy a
 > pre-built `blockson-editor.exe` (`npm run build:exe` on your machine) into
 > the repo root next to `engine\` — then no Node install is needed on this
 > machine at all. The launcher uses the exe automatically when present.

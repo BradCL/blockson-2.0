@@ -8,9 +8,14 @@ they don't type.
 Prerequisites from [Step 1](1-account-setup.md) must be done: repo, host, domain, and
 form delivery all in the client's name.
 
+> **Running it for real?** [`2b-install-field-card.md`](2b-install-field-card.md) is this
+> runbook as an exact, copy-paste command sheet (Netlify + PowerShell, deploy-key
+> sequence filled in) — rehearse it once on a throwaway repo so nothing gets googled on
+> the day.
+
 ## 1. Install the runtime (your job, once)
 
-- Install **Node.js 18 LTS or later** from nodejs.org (the Windows `.msi` is a
+- Install **Node.js 20 LTS or later** from nodejs.org (the Windows `.msi` is a
   next-next-finish install). This is the only runtime the engine needs.
 - Install **git** if it isn't already present.
 

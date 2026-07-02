@@ -34,7 +34,7 @@ on the day, and just after.
 |---|---|---|
 | 0. Pre-visit (send to the owner) | [`0-owner-pre-visit.md`](0-owner-pre-visit.md) | The owner shows up ready — a keystone email they control, a phone for 2FA, a card only if buying a domain, and the long pole: **where their current domain lives, found before you arrive** |
 | 1. Accounts first | [`1-account-setup.md`](1-account-setup.md) | Domain, repo, and host all in the **client's** name before you touch a file |
-| 2. On-site install | [`2-install-runbook.md`](2-install-runbook.md) | The editor on their machine, a scoped push credential, a one-click launcher, a verified live Publish |
+| 2. On-site install | [`2-install-runbook.md`](2-install-runbook.md) (+ [`2b-install-field-card.md`](2b-install-field-card.md), the copy-paste command sheet) | The editor on their machine, a scoped push credential, a one-click launcher, a verified live Publish |
 | 3. Break-glass sheet | [`3-owner-break-glass-sheet.md`](3-owner-break-glass-sheet.md) | A plain-language page the owner keeps, so a dead PC or a future developer never means "call the person who built it" |
 
 Work them in order. Send Step 0 about a week ahead, so the one thing you *can't* do for
