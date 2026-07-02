@@ -11,6 +11,7 @@
   "bugs": {
     "url": "https://github.com/BradCL/blockson-2.0/issues"
   },
+  "homepage": "https://bradcl.github.io/blockson-2.0/",
   "keywords": [
     "static-site-generator",
     "ssg",
