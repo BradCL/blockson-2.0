@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockson — live demo</title>
+<meta name="description" content="Try Blockson's click-to-edit owner editor and browse the example sites it builds — no install, runs entirely in your browser.">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 4rem;
+    color: #1a1d21; background: #fdfdfc;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e4df; background: #17191c; }
+    a.card { border-color: #3a3d42; }
+    .muted { color: #9aa0a6; }
+  }
+  h1 { font-size: 2rem; line-height: 1.2; margin-bottom: .5rem; }
+  p.lede { font-size: 1.1rem; margin-bottom: 2rem; }
+  .muted { color: #5c6167; font-size: .9rem; }
+  a.cta {
+    display: inline-block; margin: 0 0 2.5rem; padding: .8rem 1.4rem;
+    background: #2456d6; color: #fff; text-decoration: none;
+    border-radius: .5rem; font-weight: 600;
+  }
+  a.cta:hover { background: #1c46b4; }
+  h2 { font-size: 1.15rem; margin: 2rem 0 .75rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .75rem; }
+  a.card {
+    display: block; padding: .9rem 1rem; border: 1px solid #d8d6d0;
+    border-radius: .5rem; text-decoration: none; color: inherit;
+  }
+  a.card:hover { border-color: #2456d6; }
+  a.card strong { display: block; color: #2456d6; }
+  footer { margin-top: 3rem; }
+</style>
+</head>
+<body>
+  <h1>Blockson</h1>
+  <p class="lede">One engine, many client sites. A whole site is one
+  <code>content.json</code> plus an image folder; the engine validates it and emits
+  SEO-ready static HTML. Owners maintain their site through a click-to-edit editor
+  whose every write passes a deterministic patch allowlist — unsafe edits are
+  unrepresentable.</p>
+
+  <a class="cta" href="demo/">Try the click-to-edit editor →</a>
+  <p class="muted">The demo is the real editor running against the fictional
+  Wren&nbsp;&amp;&nbsp;Willow salon, entirely in your browser — no install, no server.
+  Every edit flows through the same validation and patch gate as production;
+  only Publish is disabled.</p>
+
+  <h2>Example sites built by the engine</h2>
+  <div class="grid">
+    <a class="card" href="wren-and-willow/"><strong>Wren &amp; Willow</strong>
+      Hair studio (fictional) — salon theme, full block set</a>
+    <a class="card" href="example-contractor/"><strong>Contractor</strong>
+      Core blocks reference</a>
+    <a class="card" href="example-restaurant/"><strong>Restaurant</strong>
+      v2 blocks reference</a>
+    <a class="card" href="example-league/"><strong>Sports league</strong>
+      Schedules and standings</a>
+  </div>
+
+  <footer class="muted">
+    All businesses shown are fictional; photos are AI-generated.
+    Source, docs, and the proof suite:
+    <a href="https://github.com/BradCL/blockson-2.0">github.com/BradCL/blockson-2.0</a>
+  </footer>
+</body>
+</html>

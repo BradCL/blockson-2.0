@@ -1,0 +1,55 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Build the example sites and the browser demo
+        run: |
+          node engine/build.js wren-and-willow
+          node engine/build.js example-contractor
+          node engine/build.js example-league
+          node engine/build.js example-restaurant
+          node engine/build-demo.js wren-and-willow
+      - name: Assemble the Pages tree
+        run: |
+          mkdir -p _site
+          cp .github/pages/index.html _site/
+          cp -r dist/demo-wren-and-willow _site/demo
+          cp -r dist/wren-and-willow _site/wren-and-willow
+          cp -r dist/example-contractor _site/example-contractor
+          cp -r dist/example-league _site/example-league
+          cp -r dist/example-restaurant _site/example-restaurant
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
