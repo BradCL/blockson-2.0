@@ -14,6 +14,7 @@
     "serve": "node engine/serve.js",
     "doctor": "node engine/doctor.js",
     "build:demo": "node engine/build-demo.js",
+    "build:exe": "node scripts/build-sea.js",
     "blueprints:check": "node engine/blueprints-check.js",
     "proofs": "node engine/_run-proofs.js",
     "test": "node engine/_run-proofs.js",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "esbuild": "^0.28.1",
     "playwright": "^1.60.0",
+    "postject": "^1.0.0-alpha.6",
     "sharp": "^0.35.0"
   }
 }

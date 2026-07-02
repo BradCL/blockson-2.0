@@ -29,6 +29,11 @@ engine/ui/demo/seed.generated.js
 # throwaway test drops and must never be committed from here.
 /Edit My Site.vbs
 /editor-launcher.ps1
+# Single-exe editor runtime (npm run build:exe → build/sea/): generated
+# binaries, never source. A copy dropped at the repo root is the install
+# artifact the owner launcher auto-detects (docs/handover/4-sea-build.md).
+/build/
+/blockson-editor.exe
 # Local-only developer working notes and scaffolding — never published.
 _work/
 .local/
