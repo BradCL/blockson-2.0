@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (36 proofs)
+  _run-proofs.js        Proof suite (37 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -299,7 +299,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Thirty-six proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-seven proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -398,8 +398,9 @@ both validators when hostile, and (35) a nav link can carry one level of
 children with the parent still a real link to its hub and active whenever a
 child is current, a childless link byte-identical to before, and a second level
 refused, and (36) the footer grid follows its column count, emitting it only
-when it is not three so an existing footer is untouched. All 36 must pass on a
-clean tree.
+when it is not three so an existing footer is untouched, and (37) the
+building-trade icons render and match the catalog's published list in both
+directions. All 37 must pass on a clean tree.
 
 ---
 

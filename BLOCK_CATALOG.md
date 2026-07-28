@@ -468,8 +468,20 @@ Several blocks accept an optional `icon` name. The named SVG set lives in
 existing `.card-icon` / `.contact-card-icon` / `.contact-info-icon` / `.step-icon`
 wrappers. Current set: `hammer`, `wrench`, `home`, `paint`, `leaf`, `people`, `phone`,
 `mail`, `pin`, `clock`, `star`, `check`, `calendar`, `dollar`, `heart`, `paw`, `car`,
-`scissors`, `facebook`. The maintenance tier may only reference an icon name that already exists in
+`scissors`, `facebook`, `stairs`, `brick`, `roof`, `fence`, `ruler`, `hardhat`, `bolt`,
+`droplet`. The maintenance tier may only reference an icon name that already exists in
 the set; it never adds SVGs.
+
+The last eight are **building trades**, added because the general-business set thins
+out exactly where a contractor's service pages get specific — a real eight-page build
+shipped `check` for basement development and `pin` for hardscaping, approximations that
+read as arbitrary next to `car` for garages. Intended use: `stairs` basement
+development/renovations · `brick` hardscaping/masonry/paving · `roof` roofing ·
+`fence` fencing/decks · `ruler` framing/carpentry/estimating · `hardhat` general
+contracting/site work · `bolt` electrical · `droplet` plumbing. The set stays curated
+rather than exhaustive; additions are purely additive, so no existing content changes.
+Proof 37 checks this list against `icons.js` in both directions, so the two cannot
+drift.
 
 ---
 

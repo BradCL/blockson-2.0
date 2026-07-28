@@ -224,6 +224,11 @@
 //             count the partial emits ONLY when it is not three, so an existing
 //             three-column footer is byte-identical and still resolves to the
 //             historical template, while a fourth column gets its own track.
+// Proof 37:   the eight building-trade glyphs resolve to real SVG and reach a
+//             built page through the ordinary card `icon` field, and
+//             BLOCK_CATALOG's published list matches the set in BOTH
+//             directions — that list is the contract the maintenance tier
+//             reads, and an unknown name renders as nothing at all.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -317,7 +322,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 36;
+const TOTAL = 37;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4292,6 +4297,84 @@ console.log('\n═══ PROOF 36 — The footer grid follows its column count; 
     console.log('       byte-identical and still resolves to the historical 2fr 1fr 1fr 1fr,');
     console.log('       while a fourth column finally gets its own track instead of wrapping');
     console.log('       into a lopsided row — and the responsive steps still override it.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 37 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 37 — The building-trade glyphs render, and the published icon list matches the set ═══');
+{
+  const CLIENT  = '__proof-icons';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+  const { ICONS, getIcon } = require('./lib/icons');
+  const TRADES = ['stairs', 'brick', 'roof', 'fence', 'ruler', 'hardhat', 'bolt', 'droplet'];
+
+  try {
+    // (a) Every trade glyph resolves to real SVG markup — not an empty string,
+    //     which is what iconSvg() silently renders for an unknown name.
+    for (const name of TRADES) {
+      const svg = getIcon(name);
+      if (!svg || !/^<(path|polyline|polygon|rect|circle|line)/.test(svg)) {
+        failures.push(`the "${name}" icon is missing or is not SVG markup`);
+      }
+    }
+
+    // (b) They reach a built page through the ordinary card `icon` field, one
+    //     <svg> per card — the additions are useless if the renderer can't
+    //     resolve them.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const content = readContent('example-contractor');
+    content.pages.find(p => p.slug === 'index').blocks.push({
+      id: 'trades-grid', type: 'card-grid',
+      fields: {
+        heading: 'Trades',
+        cards: TRADES.map((icon, i) => ({ id: `trade-${i}`, icon, title: `Trade ${i}` })),
+      },
+    });
+    writeContent(CLIENT, content);
+    const r = build(CLIENT);
+    if (!r.ok) failures.push(`the trade-icon build failed:\n${r.out}`);
+    else {
+      const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      const icons = html.match(/<div class="card-icon"><svg viewBox="0 0 24 24">/g) || [];
+      if (icons.length < TRADES.length) {
+        failures.push(`only ${icons.length} of ${TRADES.length} trade icons rendered — an unknown name renders as nothing at all`);
+      }
+    }
+
+    // (c) BLOCK_CATALOG's published list is the contract the maintenance tier
+    //     reads ("may only reference a name that already exists"), so drift in
+    //     EITHER direction is a defect: an icon nobody knows about, or a
+    //     documented name that renders empty.
+    const catalog = fs.readFileSync(path.join(ROOT, 'BLOCK_CATALOG.md'), 'utf8');
+    const from    = catalog.indexOf('## Icons');
+    const listed  = catalog.slice(catalog.indexOf('Current set:', from), catalog.indexOf('The maintenance tier', from));
+    const documented = new Set((listed.match(/`([a-z]+)`/g) || []).map(s => s.slice(1, -1)));
+    for (const name of Object.keys(ICONS)) {
+      if (!documented.has(name)) failures.push(`icon "${name}" exists but is not listed in BLOCK_CATALOG.md § Icons`);
+    }
+    for (const name of documented) {
+      if (!ICONS[name]) failures.push(`BLOCK_CATALOG.md § Icons lists "${name}", which does not exist in the set`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the eight building-trade glyphs (stairs, brick, roof, fence, ruler,');
+    console.log('       hardhat, bolt, droplet) resolve to real SVG and reach a built page');
+    console.log('       through the ordinary card `icon` field; and BLOCK_CATALOG\'s published');
+    console.log('       list matches the set in both directions, so the contract the');
+    console.log('       maintenance tier reads can never drift from what actually renders.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

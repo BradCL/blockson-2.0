@@ -5,6 +5,25 @@
 // The maintenance tier may only reference names that already exist here;
 // it never adds SVGs. Extended (v2) with six names that serve the new
 // business verticals: calendar, dollar, heart, paw, car, scissors.
+//
+// Extended again with eight BUILDING-TRADE glyphs. The general-business set
+// covers a contractor's site until the service pages start naming trades, at
+// which point the nearest available name stops being a metaphor and starts
+// being a shrug — a real eight-page build shipped `check` for basement
+// development and `pin` for hardscaping, approximations that read as arbitrary
+// next to `car` for garages. Each addition below is a trade a small contractor
+// actually sells a page of:
+//   stairs   basement development, renovations
+//   brick    hardscaping, masonry, paving
+//   roof     roofing, re-shingling
+//   fence    fencing, decks
+//   ruler    framing, carpentry, estimating
+//   hardhat  general contracting, site work
+//   bolt     electrical
+//   droplet  plumbing
+// The set stays CURATED, not exhaustive: an approximate icon is better than a
+// sprawling set nobody can hold in their head. Additions are purely additive —
+// no existing content changes, no existing name moves.
 const ICONS = {
   hammer:  '<path d="M15 3l6 6-9.5 9.5-6-6L15 3z"/><path d="M9.5 6.5l4 4"/><path d="M3 21l4-4"/>',
   wrench:  '<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>',
@@ -25,6 +44,14 @@ const ICONS = {
   car:     '<path d="M5 17H3v-5l2-5h12l2 5v5h-2"/><path d="M5 12h14"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/>',
   scissors:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
   facebook:'<path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>',
+  stairs:  '<polyline points="3 21 3 17 8 17 8 13 13 13 13 9 18 9 18 5 21 5"/>',
+  brick:   '<rect x="3" y="5" width="18" height="14" rx="1"/><line x1="3" y1="9.7" x2="21" y2="9.7"/><line x1="3" y1="14.3" x2="21" y2="14.3"/><line x1="12" y1="5" x2="12" y2="9.7"/><line x1="7.5" y1="9.7" x2="7.5" y2="14.3"/><line x1="16.5" y1="9.7" x2="16.5" y2="14.3"/><line x1="12" y1="14.3" x2="12" y2="19"/>',
+  roof:    '<path d="M2 20L12 5l10 15z"/><line x1="6" y1="14" x2="18" y2="14"/><line x1="4" y1="17" x2="20" y2="17"/>',
+  fence:   '<path d="M5 21V8l2.5-3L10 8v13"/><path d="M14 21V8l2.5-3L19 8v13"/><line x1="2" y1="11" x2="22" y2="11"/><line x1="2" y1="16" x2="22" y2="16"/>',
+  ruler:   '<rect x="2" y="8" width="20" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="12"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="17" y1="8" x2="17" y2="12"/>',
+  hardhat: '<path d="M3 17a9 9 0 0118 0"/><line x1="2" y1="17" x2="22" y2="17"/><path d="M9 8.4V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5v2.9"/>',
+  bolt:    '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  droplet: '<path d="M12 2.7l5.3 5.3a7.5 7.5 0 11-10.6 0z"/>',
 };
 
 function getIcon(name) {

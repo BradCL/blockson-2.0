@@ -394,7 +394,13 @@ names the provider).
 accept an optional `icon` name from the engine's built-in inline-SVG set:
 
 `hammer` `wrench` `home` `paint` `leaf` `people` `phone` `mail` `pin` `clock`
-`star` `check` `calendar` `dollar` `heart` `paw` `car` `scissors`
+`star` `check` `calendar` `dollar` `heart` `paw` `car` `scissors` `facebook`
+`stairs` `brick` `roof` `fence` `ruler` `hardhat` `bolt` `droplet`
+
+The last eight are building trades: `stairs` basement development/renovations,
+`brick` hardscaping/masonry/paving, `roof` roofing, `fence` fencing/decks,
+`ruler` framing/carpentry/estimating, `hardhat` general contracting/site work,
+`bolt` electrical, `droplet` plumbing.
 
 Blueprints may only reference these names — there is no way to add an SVG from a
 blueprint.
