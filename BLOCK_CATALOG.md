@@ -68,6 +68,14 @@ Reads `site.logo.white`, `site.footer.blurb`, `site.footer.columns[]` (each
 `{heading, items[]}` where an item is `{label, href?}` — no href renders as plain text),
 and `site.copyright`. CSS: `.footer`, `.footer-grid`, `.footer-col`, `.footer-bottom`.
 
+**Column count.** `footer.columns` is an unbounded array, and the grid now follows it:
+`grid-template-columns: 2fr repeat(var(--footer-cols, 3), 1fr)` — the brand column plus
+one track per column. The partial emits `--footer-cols` **only when the count is not
+three**, so the common three-column footer is byte-identical to the pre-feature output
+and still resolves to the historical `2fr 1fr 1fr 1fr`. A fourth column (say Services
+alongside Pages / Contact / Service Area) now gets its own track instead of wrapping into
+a lopsided row. Below 900px the responsive rules take over as before.
+
 ---
 
 ## Core Content Blocks

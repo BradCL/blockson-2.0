@@ -769,9 +769,13 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
   color: var(--footer-text, #9aa1ab);
   padding: 4rem 0 2rem;
 }
+/* Brand column plus one track per footer column. The partial emits
+   --footer-cols only when the count is not three, so the historical
+   `2fr 1fr 1fr 1fr` is exactly what an unchanged three-column footer resolves
+   to — and a fourth column now gets its own track instead of wrapping. */
 .footer-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr repeat(var(--footer-cols, 3), 1fr);
   gap: 2.5rem;
   margin-bottom: 2.5rem;
 }

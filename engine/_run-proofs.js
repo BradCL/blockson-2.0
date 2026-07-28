@@ -219,6 +219,11 @@
 //             the same scheme guard, a second level of nesting is refused, and
 //             the stylesheet keeps :focus-within ungated while :hover is gated
 //             behind a pointer that can actually hover.
+// Proof 36:   footer column count: `footer.columns` has always been unbounded
+//             while the CSS was `2fr 1fr 1fr 1fr`. The grid now reads a track
+//             count the partial emits ONLY when it is not three, so an existing
+//             three-column footer is byte-identical and still resolves to the
+//             historical template, while a fourth column gets its own track.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -312,7 +317,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 35;
+const TOTAL = 36;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4223,6 +4228,70 @@ console.log('\n═══ PROOF 35 — Nav submenus: children reachable, the hub 
     console.log('       ride the same scheme guard and a second level is refused; and disclosure');
     console.log('       is CSS — :focus-within ungated so keyboard and AT users can open it,');
     console.log('       :hover gated so sticky-hover on touch cannot pin it open over the page.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 36 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 36 — The footer grid follows its column count; three columns stay untouched ═══');
+{
+  const failures = [];
+  const footerPartial = require('./partials/footer');
+  const bk = { f: () => '' };
+
+  try {
+    const base = readContent('example-contractor');
+    const footerWith = (n) => {
+      const site = JSON.parse(JSON.stringify(base.site));
+      const one = site.footer.columns[0];
+      site.footer.columns = Array.from({ length: n }, (_, i) => ({ ...one, heading: `Col ${i + 1}` }));
+      return footerPartial(site, bk);
+    };
+
+    // (a) Three columns emit NOTHING. `footer.columns` has always been an
+    //     unbounded array while the CSS was `2fr 1fr 1fr 1fr` — brand plus
+    //     exactly three — so the overwhelmingly common case must stay
+    //     byte-identical to the pre-feature output.
+    if (!footerWith(3).includes('<div class="footer-grid">')) {
+      failures.push('a three-column footer emitted a column-count style — the common case must stay byte-identical');
+    }
+
+    // (b) Any other count emits the track count the stylesheet reads, so the
+    //     schema and the layout finally agree about how many columns exist.
+    for (const n of [2, 4, 5]) {
+      if (!footerWith(n).includes(`<div class="footer-grid" style="--footer-cols:${n}">`)) {
+        failures.push(`a ${n}-column footer did not emit --footer-cols:${n}`);
+      }
+    }
+
+    // Every column still renders whatever the count.
+    const four = footerWith(4);
+    for (let i = 1; i <= 4; i++) {
+      if (!four.includes(`<h4>Col ${i}</h4>`)) failures.push(`the 4-column footer dropped column ${i}`);
+    }
+
+    // (c) The stylesheet resolves an unset footer to the historical template,
+    //     and the property lands where the responsive rules can still win.
+    const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+    if (!/\.footer-grid\s*\{[^}]*grid-template-columns:\s*2fr repeat\(var\(--footer-cols,\s*3\),\s*1fr\)/.test(css)) {
+      failures.push('the stylesheet no longer resolves an unset footer to the historical 2fr 1fr 1fr 1fr');
+    }
+    if (!/\.footer-grid \{ grid-template-columns: 1fr 1fr; \}/.test(css)) {
+      failures.push('the 900px footer step is gone — a wide column count would never narrow');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the footer grid is 2fr plus one track per column, with the count emitted');
+    console.log('       ONLY when it is not three: an existing three-column footer is');
+    console.log('       byte-identical and still resolves to the historical 2fr 1fr 1fr 1fr,');
+    console.log('       while a fourth column finally gets its own track instead of wrapping');
+    console.log('       into a lopsided row — and the responsive steps still override it.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
