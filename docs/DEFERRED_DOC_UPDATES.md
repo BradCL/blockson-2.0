@@ -33,11 +33,17 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Proof count 29 → 34** (2026-07-28) — proofs 30 (hostile content values
+- **Proof count 29 → 35** (2026-07-28) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
-  (card-grid card links) added; `01-system-map.md` and
+  (card-grid card links) and 35 (nav submenus) added; `01-system-map.md` and
   `02-atlas/12-testing-proofs.md` still read 29.
+- **Optional link/submenu surfaces on existing blocks** (2026-07-28) — a
+  `card-grid` card can carry `link`/`linkLabel`, a `photo-strip` can carry
+  `columns`, and a `site.nav.links[]` entry can carry one level of `children`
+  (CSS-only disclosure, parent stays a real link). The block-type count is
+  unchanged at 23; `02-atlas/03-blocks-and-render.md` and the DOM/events chapter
+  should pick up the new fields and the nav submenu's `:focus-within` model.
 - **Accessible-name discipline for repeated links** (2026-07-28) — the
   photo-strip cue is no longer `aria-hidden` and its image is decorative inside
   the link. Worth a paragraph wherever the atlas teaches how renderers emit
@@ -86,9 +92,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 34** (2026-07-28) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 35** (2026-07-28) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 34, card-grid card links).
+  the next capture session (new last proof: 35, nav submenus).
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,

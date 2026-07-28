@@ -211,6 +211,14 @@
 //             javascript: target is refused by BOTH validators — including the
 //             no-AJV fallback, which previously scanned only keys named `href`
 //             and would have waved a `link` straight through.
+// Proof 35:   nav submenus: a nav link may carry one level of children. The
+//             parent STAYS A REAL LINK to its hub page (the only way in where
+//             hover does not exist), reads as active whenever any child is the
+//             current page, and keeps its decorative caret out of the link
+//             name; a childless link renders byte-identically; child hrefs ride
+//             the same scheme guard, a second level of nesting is refused, and
+//             the stylesheet keeps :focus-within ungated while :hover is gated
+//             behind a pointer that can actually hover.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -304,7 +312,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 34;
+const TOTAL = 35;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4094,6 +4102,127 @@ console.log('\n═══ PROOF 34 — card-grid cards can point at their own pag
     console.log('       click-to-editable and owner-repointable through the ordinary item path;');
     console.log('       and a javascript: target is refused by BOTH validators — including the');
     console.log('       no-AJV fallback, which only ever scanned keys named "href".');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 35 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 35 — Nav submenus: children reachable, the hub link kept, a flat nav unchanged ═══');
+{
+  const CLIENT  = '__proof-navsub';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+  const navPartial = require('./partials/nav');
+  // Anchor a rendered <a> by its exact href (hrefs here are literal page names).
+  const linkRe = (href, extra = '') => new RegExp(`<a href="${href.replace(/\./g, '\\.')}"${extra}`);
+
+  try {
+    const base = readContent('example-contractor');
+
+    // (a) A link with NO children renders byte-identically: a bare anchor, no
+    //     wrapper, no caret. The submenu surface is purely additive.
+    const flatSite = JSON.parse(JSON.stringify(base.site));
+    const flatNav = navPartial(flatSite, 'index');
+    if (/nav-item|nav-sub|nav-caret/.test(flatNav)) failures.push('a flat nav grew submenu markup');
+    for (const l of flatSite.nav.links) {
+      if (!flatNav.includes(`<a href="${l.href}"`)) failures.push(`the flat nav lost its "${l.label}" link`);
+    }
+
+    // (b) Children render inside one .nav-item > .nav-sub, and the PARENT STAYS
+    //     A REAL LINK to its hub page — on a device with no hover that link is
+    //     the only way in, so it is never traded for a pure toggle.
+    const subSite = JSON.parse(JSON.stringify(base.site));
+    const parentIdx = Math.max(0, subSite.nav.links.findIndex(l => /services/i.test(l.href)));
+    const parent = subSite.nav.links[parentIdx];
+    const parentHref = parent.href;
+    parent.children = [
+      { label: 'Basement Development', href: 'basement.html' },
+      { label: 'Hardscaping', href: 'hardscaping.html' },
+    ];
+    const subNav = navPartial(subSite, 'index');
+    if (!subNav.includes('<span class="nav-item">')) failures.push('a nav link with children did not render its wrapper');
+    if (!subNav.includes('<span class="nav-sub">')) failures.push('the submenu panel did not render');
+    if (!linkRe(parentHref, '[^>]*>[^<]*<span class="nav-caret"').test(subNav)) {
+      failures.push('the parent is no longer a real link carrying its own href — the hub page would become unreachable wherever hover does not exist');
+    }
+    for (const c of parent.children) {
+      if (!subNav.includes(`<a href="${c.href}">${c.label}</a>`)) failures.push(`the child link "${c.label}" did not render`);
+    }
+    if (!/<span class="nav-caret" aria-hidden="true">/.test(subNav)) failures.push('the caret is not aria-hidden — pure decoration must stay out of the link name');
+
+    // (c) The parent reads as ACTIVE when the current page is one of its
+    //     children. Exact-slug matching alone left a parent with eight children
+    //     looking inactive on nearly every page of the site.
+    const onChild = navPartial(subSite, 'hardscaping');
+    if (!linkRe(parentHref, ' class="active"').test(onChild)) {
+      failures.push('the parent does not read as active while one of its children is the current page');
+    }
+    if (!onChild.includes('<a href="hardscaping.html" class="active">')) failures.push('the current child is not marked active');
+    if (onChild.includes('<a href="basement.html" class="active">')) failures.push('a non-current child was marked active');
+    if (linkRe(parentHref, ' class="active"').test(navPartial(subSite, 'contact'))) {
+      failures.push('the parent reads as active on a page that is neither it nor one of its children');
+    }
+
+    // (d) Child hrefs ride the same scheme guard as every other link, and a
+    //     second level of nesting is refused — one level is the contract.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const good = JSON.parse(JSON.stringify(base));
+    good.site = JSON.parse(JSON.stringify(subSite));
+    writeContent(CLIENT, good);
+    const r = build(CLIENT);
+    if (!r.ok) failures.push(`a site with a nav submenu failed to build:\n${r.out}`);
+    else {
+      const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      if (!html.includes('class="nav-sub"')) failures.push('the submenu did not reach the built page');
+      if (/data-bk-/.test(html)) failures.push('the live nav-submenu build carries data-bk-* attributes');
+    }
+
+    const bad = JSON.parse(JSON.stringify(good));
+    bad.site.nav.links[parentIdx].children[0].href = 'javascript:alert(1)';
+    fs.rmSync(distDir, { recursive: true, force: true });
+    writeContent(CLIENT, bad);
+    if (build(CLIENT).ok) failures.push('a javascript: child href passed validation');
+    if (fs.existsSync(path.join(distDir, 'index.html'))) failures.push('the refused javascript: child href still wrote output');
+
+    const deep = JSON.parse(JSON.stringify(good));
+    deep.site.nav.links[parentIdx].children[0].children = [{ label: 'Deeper', href: 'x.html' }];
+    fs.rmSync(distDir, { recursive: true, force: true });
+    writeContent(CLIENT, deep);
+    if (build(CLIENT).ok) failures.push('a second level of nav nesting passed validation');
+
+    // (e) The stylesheet holds up its half. :focus-within must be UNGATED —
+    //     it is the whole reason a keyboard or screen-reader user can reach the
+    //     children. :hover must be gated on a pointer that can hover, so
+    //     sticky-hover on a touch screen cannot pin a menu open over the page.
+    const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+    const HOVER_QUERY = /@media \(hover: hover\) \{[\s\S]*?\n\}/g;
+    const hoverBlocks = css.match(HOVER_QUERY) || [];
+    if (!hoverBlocks.some(b => /\.nav-item:hover \.nav-sub/.test(b))) {
+      failures.push('the submenu hover rule is not gated on @media (hover: hover) — sticky-hover on touch could pin a menu open over the page');
+    }
+    if (!/\.nav-item:focus-within \.nav-sub \{ display: flex; \}/.test(css.replace(HOVER_QUERY, ''))) {
+      failures.push('the :focus-within reveal is missing or gated — keyboard and screen-reader users could never reach the children');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a nav link can carry one level of children: the parent stays a real link');
+    console.log('       to its hub page (the only way in where hover does not exist), reads as');
+    console.log('       active while any child is the current page, and its caret stays out of');
+    console.log('       the link name; a childless link is byte-identical to before; child hrefs');
+    console.log('       ride the same scheme guard and a second level is refused; and disclosure');
+    console.log('       is CSS — :focus-within ungated so keyboard and AT users can open it,');
+    console.log('       :hover gated so sticky-hover on touch cannot pin it open over the page.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

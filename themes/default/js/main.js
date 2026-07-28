@@ -22,6 +22,27 @@
     });
   }
 
+  /* ── Nav submenu: Escape closes ─────────────────────────────
+     Pure enhancement. The submenu itself is CSS (:hover / :focus-within), so
+     with JS off it still opens, still closes, and is still keyboard-reachable.
+     What CSS cannot express is "I'm done with this menu but I want to stay on
+     the parent link", because focus-within keeps it open — that is all this
+     does. The flag clears the moment focus or the pointer leaves. */
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      item.classList.add('nav-item--closed');
+      var parentLink = item.querySelector('a');
+      if (parentLink) parentLink.focus();
+    });
+    item.addEventListener('focusout', function (e) {
+      if (!item.contains(e.relatedTarget)) item.classList.remove('nav-item--closed');
+    });
+    item.addEventListener('mouseleave', function () {
+      item.classList.remove('nav-item--closed');
+    });
+  });
+
   /* ── Fade-in on scroll ──────────────────────────────────── */
   var faders = document.querySelectorAll('.fade-in');
   if ('IntersectionObserver' in window && faders.length) {

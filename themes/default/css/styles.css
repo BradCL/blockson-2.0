@@ -203,6 +203,48 @@ section + section { border-top: var(--section-divider, none); }
   opacity: 1;
   color: var(--color-primary, #ffb703);
 }
+/* ── Nav submenu (a nav link with `children`) ───────────────
+   Disclosure is CSS: :focus-within for keyboard/AT, :hover only where a
+   pointer can actually hover. The vertical padding/negative-margin pair grows
+   the parent's hit box down to the panel WITHOUT moving anything in the bar,
+   so there is no dead gap for the pointer to fall through on the way down. */
+.nav-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 1.2rem 0;
+  margin: -1.2rem 0;
+}
+.nav-caret {
+  display: inline-block;
+  margin-left: 0.34rem;
+  font-size: 0.7em;
+  vertical-align: middle;
+}
+.nav-sub {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: -1.2rem;
+  z-index: 1;
+  min-width: 200px;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.1rem 1.4rem 1.2rem;
+  background: var(--nav-bg, #0f1115);
+  border: 1px solid rgba(127, 127, 127, 0.18);
+  border-top: 0;
+  border-radius: 0 0 var(--radius, 10px) var(--radius, 10px);
+}
+.nav-sub a { white-space: nowrap; }
+.nav-item:focus-within .nav-sub { display: flex; }
+@media (hover: hover) {
+  .nav-item:hover .nav-sub { display: flex; }
+}
+/* Escape (main.js) force-closes a submenu the parent link still has focus in.
+   Placed after the reveal rules so the equal-specificity tie resolves to
+   closed; the class is cleared as soon as focus or the pointer leaves. */
+.nav-item.nav-item--closed .nav-sub { display: none; }
 .nav-cta {
   background: var(--btn-primary-bg, #ffb703);
   color: var(--btn-primary-text, #14161a) !important;
@@ -1069,6 +1111,31 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
     display: none;
   }
   .nav-links.open { display: flex; }
+  /* Collapsed nav: children become a plain indented list, always visible. A
+     hover menu means nothing here, and sticky-hover on touch could pin one
+     open over the page and strand the user — so there is nothing to hover and
+     nothing to disclose. The overlay is already a deliberate, dismissible
+     surface; showing a parent's children inside it is just more list. */
+  .nav-item {
+    display: block;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+  .nav-caret { display: none; }
+  .nav-sub {
+    display: flex;
+    position: static;
+    min-width: 0;
+    gap: 0.9rem;
+    margin: 0.9rem 0 0 0.2rem;
+    padding: 0 0 0 0.9rem;
+    background: none;
+    border: 0;
+    border-left: 1px solid rgba(127, 127, 127, 0.28);
+    border-radius: 0;
+  }
+  .nav-item.nav-item--closed .nav-sub { display: flex; }
   .services-grid, .album-grid { grid-template-columns: 1fr; }
   .mission-list { grid-template-columns: 1fr; }
   .area-list { columns: 1; }

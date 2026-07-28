@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (34 proofs)
+  _run-proofs.js        Proof suite (35 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -299,7 +299,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Thirty-four proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-five proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -394,7 +394,10 @@ as a token the responsive steps can still override, absent meaning the
 historical 4-wide grid and nothing emitted, and (34) a card-grid card can carry
 a scheme-guarded link to its own page — one always-visible anchor, an accessible
 name no two cards share, a link-less card byte-identical to before — refused by
-both validators when hostile. All 34 must pass on a clean tree.
+both validators when hostile, and (35) a nav link can carry one level of
+children with the parent still a real link to its hub and active whenever a
+child is current, a childless link byte-identical to before, and a second level
+refused. All 35 must pass on a clean tree.
 
 ---
 

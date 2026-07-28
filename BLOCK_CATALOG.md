@@ -33,9 +33,35 @@ HTML string. Modules must HTML-escape all string/richtext values.
 ## Global (partials, not blocks) — driven by `site`
 
 ### nav  (`partials/nav.js`)
-Fixed top navigation. Reads `site.logo.white`, `site.nav.links[]` (each `{label, href}`),
-and an optional `site.nav.cta` (`{label, href}`). Marks the link matching the current
-page slug as `.active`. CSS: `.nav`, `.nav-links`, `.nav-cta`, `.nav-toggle`.
+Fixed top navigation. Reads `site.logo.white`, `site.nav.links[]` (each
+`{label, href, children?}`), and an optional `site.nav.cta` (`{label, href}`). Marks the
+link matching the current page slug as `.active`.
+CSS: `.nav`, `.nav-links`, `.nav-cta`, `.nav-toggle`, `.nav-item`, `.nav-sub`, `.nav-caret`.
+
+**Submenus.** A nav link may carry `children[]` (each `{label, href}`) — **one level, no
+deeper** (a second level fails validation). For sites that outgrow a flat nav: eight
+local-SEO service pages otherwise reach the visitor only from the footer or a hub page,
+while the nav is the one element on every page. Behaviour, and why:
+
+- **The parent stays a real link to its own page.** It is never converted into a pure
+  toggle. A hub page is valuable in its own right, and where a pointer cannot hover it
+  is the *only* way into the children (see below).
+- **The parent reads as `.active` when the current page is any of its children.** Exact
+  slug matching alone left a parent with eight children looking inactive nearly
+  everywhere on the site.
+- **Disclosure is CSS, not JavaScript** — `:hover` plus `:focus-within`, the same
+  zero-JS spirit as the `faq` block's `<details>`. `:focus-within` is what makes it
+  keyboard- and screen-reader-workable: focusing the parent reveals the children, so the
+  next Tab reaches them. The hover half sits behind `@media (hover: hover)` so
+  sticky-hover on a touch screen cannot pin a menu open over the page. On a touch device
+  wide enough to show the horizontal bar, the parent link simply navigates to its hub.
+- **Below the 640px collapse breakpoint** the children render as a plain indented list
+  inside the existing overlay, always visible — nothing to hover, nothing to trap.
+- `main.js` adds Escape-to-close as a progressive enhancement; with JS off the menu
+  still opens, closes and is reachable.
+- **A link with no `children` renders byte-identically to before** — a bare `<a>`, no
+  wrapper, no caret. The caret on a parent is `aria-hidden` (decoration, never part of
+  the link's accessible name).
 
 ### footer  (`partials/footer.js`)
 Reads `site.logo.white`, `site.footer.blurb`, `site.footer.columns[]` (each
