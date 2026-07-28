@@ -75,6 +75,10 @@ function validate(content) {
 // known-safe scheme or carries no scheme at all (relative path / anchor).
 // Keeping a copy here means the scheme guard holds even when AJV is absent.
 const SAFE_HREF_RE = /^(?:(?:https?:\/\/|mailto:|tel:|sms:|#).*|[^:]*)$/;
+// Keys that carry a $defs/safeHref link target. `href` covers nav, footer,
+// buttons and album links; `link` is the photo-strip / card-grid doorway,
+// which the AJV path has always scheme-checked and this fallback used to miss.
+const SAFE_HREF_KEYS = new Set(['href', 'link']);
 // Keys whose values become iframe/form/network targets: https only.
 // `url` is the reviews-link outbound profile link — an external listing must
 // be https (the schema enforces the same pattern on the AJV path).
@@ -86,7 +90,7 @@ function scanLinkTargets(node, where, errors) {
   } else if (node && typeof node === 'object') {
     for (const k of Object.keys(node)) {
       const v = node[k];
-      if (k === 'href' && typeof v === 'string' && !SAFE_HREF_RE.test(v)) {
+      if (SAFE_HREF_KEYS.has(k) && typeof v === 'string' && !SAFE_HREF_RE.test(v)) {
         errors.push(`${where}.${k}: "${v}" uses a disallowed URL scheme (allowed: https, http, mailto, tel, sms, or a relative path)`);
       } else if (HTTPS_ONLY_KEYS.has(k) && typeof v === 'string' && !/^https:\/\//.test(v)) {
         errors.push(`${where}.${k}: "${v}" must be an https:// URL`);
@@ -132,4 +136,7 @@ function fallbackValidate(content) {
   return errors.length ? { ok: false, errors } : { ok: true, errors: [] };
 }
 
-module.exports = { validate, setSchema };
+// fallbackValidate is exported so the reduced, AJV-free guard can be probed
+// directly (proof 33) instead of only through a build with the packages made
+// unresolvable — its scheme checks are the last line when AJV is absent.
+module.exports = { validate, setSchema, fallbackValidate };

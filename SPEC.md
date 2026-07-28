@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (33 proofs)
+  _run-proofs.js        Proof suite (34 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -299,7 +299,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Thirty-three proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-four proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -391,7 +391,10 @@ takes its accessible name from its owner-editable cue — image decorative insid
 the link, only the arrow hidden — with the cue visible by default off
 hover-capable pointers, and (33) a photo strip's column count rides the section
 as a token the responsive steps can still override, absent meaning the
-historical 4-wide grid and nothing emitted. All 33 must pass on a clean tree.
+historical 4-wide grid and nothing emitted, and (34) a card-grid card can carry
+a scheme-guarded link to its own page — one always-visible anchor, an accessible
+name no two cards share, a link-less card byte-identical to before — refused by
+both validators when hostile. All 34 must pass on a clean tree.
 
 ---
 

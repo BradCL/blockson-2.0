@@ -328,6 +328,8 @@
               "icon":  { "type": "string" },
               "title": { "type": "string" },
               "body":  { "type": "string" },
+              "link":  { "$ref": "#/$defs/safeHref" },
+              "linkLabel": { "type": "string" },
               "items": {
                 "type": "array",
                 "items": { "type": "string" }

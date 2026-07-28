@@ -33,10 +33,11 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Proof count 29 → 33** (2026-07-28) — proofs 30 (hostile content values
+- **Proof count 29 → 34** (2026-07-28) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
-  (photo-strip doorway accessible name) and 33 (photo-strip column count)
-  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+  (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
+  (card-grid card links) added; `01-system-map.md` and
+  `02-atlas/12-testing-proofs.md` still read 29.
 - **Accessible-name discipline for repeated links** (2026-07-28) — the
   photo-strip cue is no longer `aria-hidden` and its image is decorative inside
   the link. Worth a paragraph wherever the atlas teaches how renderers emit
@@ -85,9 +86,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 33** (2026-07-28) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 34** (2026-07-28) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 33, photo-strip column count).
+  the next capture session (new last proof: 34, card-grid card links).
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,
@@ -105,7 +106,11 @@ reconciled through the help assistant and heavy-gallery advisory.
 
 Pending:
 
-None.
+- **Card links are owner-editable** (2026-07-28) — where a developer has seeded a
+  `card-grid` card's `link`, clicking the card's "Learn more" opens the link
+  editor and clicking the words opens the label editor (the same pattern as a
+  photo-strip doorway). One line in "What else you can change"; no new
+  screenshot needed — it reuses the existing text/link editors.
 
 - ✅ **Keep-open flow** (`f8be338`) — `scripts/flows/owner-editor.js` updated:
   the §3 and §5 steps now wait for the in-place `#editor:has-text("Review your

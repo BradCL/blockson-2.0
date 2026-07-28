@@ -201,6 +201,16 @@
 //             the historical 4-wide grid; present → the responsive steps can
 //             still override it, which an inline grid-template-columns would
 //             forbid), and the schema enum refuses anything out of range.
+// Proof 34:   card-grid card links: a services overview becomes a real
+//             directory (a card per service, pointing at that service's page).
+//             A link-less card is byte-identical to before; a linked card
+//             carries exactly one always-visible anchor whose accessible name
+//             is the cue text plus a screen-reader-only card title, so no two
+//             cards announce alike; link and linkLabel are click-to-editable
+//             and owner-repointable through the ordinary item path; and a
+//             javascript: target is refused by BOTH validators — including the
+//             no-AJV fallback, which previously scanned only keys named `href`
+//             and would have waved a `link` straight through.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -294,7 +304,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 33;
+const TOTAL = 34;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3924,6 +3934,166 @@ console.log('\n═══ PROOF 33 — A photo strip fills its row at any photo c
     console.log('       every media query and freeze the count at all widths) and the narrower');
     console.log('       steps divide it rather than stranding the last photo; and a count outside');
     console.log('       the schema enum is refused with nothing written.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 34 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 34 — card-grid cards can point at their own page, with a name that says which ═══');
+{
+  const CLIENT  = '__proof-cardlink';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const base = readContent('example-contractor');
+    const grid = {
+      id: 'svc-directory', type: 'card-grid',
+      fields: {
+        heading: 'What we do',
+        cards: [
+          { id: 'c-basement', title: 'Basement Development', body: 'Finished living space.', link: 'basement.html' },
+          { id: 'c-hardscape', title: 'Hardscaping', body: 'Patios and walkways.', link: 'hardscaping.html', linkLabel: 'See our work' },
+          { id: 'c-plain', title: 'General Repairs', body: 'Everything else.' },
+        ],
+      },
+    };
+    const withGrid = () => {
+      const c = JSON.parse(JSON.stringify(base));
+      c.pages.find(p => p.slug === 'index').blocks.push(JSON.parse(JSON.stringify(grid)));
+      return c;
+    };
+
+    writeContent(CLIENT, withGrid());
+    let r = build(CLIENT);
+    if (!r.ok) failures.push(`the card-link build failed:\n${r.out}`);
+    let html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+
+    const cardOf = (title) => {
+      const i = html.indexOf(`>${title}<`);
+      if (i < 0) return null;
+      const start = html.lastIndexOf('<div class="service-card', i);
+      const end   = html.indexOf('</div>', html.indexOf('</h3>', i));
+      return start < 0 ? null : html.slice(start, end);
+    };
+
+    // (a) A LINK-LESS card is byte-identical to the pre-feature markup: same
+    //     opening tag, no cue, no modifier class. The link surface is additive.
+    const plain = cardOf('General Repairs');
+    if (!plain) failures.push('the link-less card did not render');
+    else {
+      if (!plain.startsWith('<div class="service-card fade-in">')) failures.push(`a link-less card's opening tag changed: ${plain.slice(0, 80)}`);
+      if (plain.includes('service-card-cue')) failures.push('a link-less card grew a link cue');
+    }
+
+    // (b) A LINKED card carries exactly ONE anchor, and its accessible name is
+    //     the visible cue text plus a screen-reader-only card title — so three
+    //     cards do not announce as three identical "Learn more"s. The visible
+    //     label is a prefix of the accessible name (WCAG 2.5.3).
+    const linked = cardOf('Basement Development');
+    if (!linked) failures.push('the linked card did not render');
+    else {
+      const anchors = linked.match(/<a\s/g) || [];
+      if (anchors.length !== 1) failures.push(`a linked card should carry exactly one anchor, found ${anchors.length}`);
+      if (!linked.includes('<div class="service-card service-card--link fade-in">')) failures.push('the linked card is missing its --link modifier class');
+      if (!/href="basement\.html"/.test(linked)) failures.push('the card link href did not render');
+      if (!linked.includes('>Learn more<')) failures.push('the default cue label did not render');
+      if (!linked.includes('<span class="sr-only"> · Basement Development</span>')) {
+        failures.push('the linked card has no screen-reader-only title suffix — every card would announce as a bare "Learn more"');
+      }
+      if (!/class="service-card-cue-arrow" aria-hidden="true"/.test(linked)) failures.push('the decorative arrow is not aria-hidden');
+    }
+
+    // Accessible names must be DISTINCT across the grid.
+    const names = (html.match(/<span class="sr-only">([^<]*)<\/span>/g) || []);
+    if (new Set(names).size !== names.length) failures.push('two linked cards resolved to the same accessible name');
+
+    // linkLabel overrides the default.
+    const labelled = cardOf('Hardscaping');
+    if (!labelled || !labelled.includes('>See our work<')) failures.push('linkLabel did not override the default cue text');
+
+    // (c) Live build carries no annotations and no ids.
+    if (/data-bk-/.test(html)) failures.push('the live card-link build carries data-bk-* attributes');
+    for (const c of grid.fields.cards) {
+      if (html.includes(`"${c.id}"`)) failures.push(`live HTML leaks the item id "${c.id}"`);
+    }
+
+    // (d) The ANNOTATED build makes link and linkLabel click-to-editable, and
+    //     the edit map agrees (the annotator is gated against it).
+    r = build(CLIENT, ['--annotate']);
+    if (!r.ok) failures.push(`the annotated card-link build failed:\n${r.out}`);
+    else {
+      const ann = fs.readFileSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`, 'index.html'), 'utf8');
+      for (const [item, field] of [['c-basement', 'link'], ['c-hardscape', 'linkLabel'], ['c-basement', 'title']]) {
+        if (!ann.includes(`data-bk-item="${item}" data-bk-field="${field}"`)) {
+          failures.push(`the annotated build does not mark ${item}.${field} as editable`);
+        }
+      }
+      const desc = buildEditMap(readContent(CLIENT)).pages
+        .flatMap(p => p.blocks).find(b => b.id === 'svc-directory');
+      const linkFields = desc.itemSets[0].items.find(i => i.id === 'c-basement').fields;
+      if (!linkFields.includes('link')) failures.push('the edit map does not report the card link as editable');
+      if (desc.itemSets[0].items.find(i => i.id === 'c-plain').fields.includes('link')) {
+        failures.push('the edit map offers a link on a card that has none — it would open an editor for a field the resolver refuses to create');
+      }
+    }
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+
+    // (e) The owner can REPOINT an existing link through the ordinary item
+    //     path, and the site rebuilds.
+    const repointed = readContent(CLIENT);
+    const pr = applyPatch(repointed, { action: 'set', block: 'svc-directory', item: 'c-basement', field: 'link', value: 'basements-and-more.html' });
+    if (!pr.ok) failures.push(`repointing a card link was refused: ${pr.error}`);
+    else {
+      writeContent(CLIENT, repointed);
+      if (!build(CLIENT).ok) failures.push('the site did not rebuild after a card link was repointed');
+      else if (!fs.readFileSync(path.join(distDir, 'index.html'), 'utf8').includes('href="basements-and-more.html"')) {
+        failures.push('the repointed card link did not reach the built page');
+      }
+    }
+
+    // (f) The scheme guard holds on BOTH validators — AJV via $defs/safeHref,
+    //     and the no-AJV fallback, which used to scan only keys named `href`
+    //     and would have waved a javascript: card link straight through.
+    const hostile = withGrid();
+    hostile.pages.find(p => p.slug === 'index').blocks
+      .find(b => b.id === 'svc-directory').fields.cards[0].link = 'javascript:alert(1)';
+    fs.rmSync(distDir, { recursive: true, force: true });
+    writeContent(CLIENT, hostile);
+    if (build(CLIENT).ok) failures.push('a javascript: card link passed validation');
+    if (fs.existsSync(path.join(distDir, 'index.html'))) failures.push('the refused javascript: card link still wrote output');
+
+    const { fallbackValidate } = require('./lib/validate');
+    if (typeof fallbackValidate === 'function') {
+      if (fallbackValidate(hostile).ok) failures.push('the no-AJV fallback validator accepted a javascript: card link');
+      if (!fallbackValidate(withGrid()).ok) failures.push('the no-AJV fallback validator rejected a legitimate card link');
+    } else {
+      failures.push('validate.js no longer exports fallbackValidate — the degraded path cannot be probed');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a card can carry an optional link, so a services overview becomes a real');
+    console.log('       directory (one card per service, pointing at that service\'s page); the');
+    console.log('       link is one always-visible anchor whose accessible name is the cue text');
+    console.log('       plus a screen-reader-only card title, so no two cards announce alike; a');
+    console.log('       link-less card is byte-identical to before; link and linkLabel are');
+    console.log('       click-to-editable and owner-repointable through the ordinary item path;');
+    console.log('       and a javascript: target is refused by BOTH validators — including the');
+    console.log('       no-AJV fallback, which only ever scanned keys named "href".');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

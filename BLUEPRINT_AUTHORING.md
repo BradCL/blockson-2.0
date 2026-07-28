@@ -297,7 +297,10 @@ hosts listed under `video-embed` below.
 
 **`card-grid`** — the most reusable block: services, features, values.
 - `cards` Repeats (min 1): `{id, title}` + `icon?` (see §5), `body?` string,
-  `items?` array of strings (dashed sub-list)
+  `items?` array of strings (dashed sub-list), `link?` url + `linkLabel?` string
+  (an optional doorway to that card's own page — renders one always-visible
+  anchor at the card's foot; `link` is scheme-guarded like every link target,
+  `linkLabel` defaults to "Learn more")
 - `tag?`, `heading?` strings, `columns?` int `2`|`3` (default 3 — hardcode; inputs
   cannot produce numbers)
 

@@ -109,11 +109,33 @@ A grid of repeating cards. The single most reusable block: services, features, v
   - `icon?` string — name of an icon from the icon set (see Icons below)
   - `title` string
   - `body?` string
+  - `link?` url — optional link to that card's own page. This is what turns a services
+    overview into a services *directory*: one card per service, each pointing at the page
+    about it (the shape local SEO wants). Scheme-guarded by `$defs/safeHref` like every
+    other link target.
+  - `linkLabel?` string — text for that link (defaults to "Learn more"); seed it so an
+    owner can edit the wording.
   - `items?` Repeats: plain strings — renders as the dashed sub-list
-CSS: `.services`, `.services-grid`, `.service-card`, `.card-icon`, `.service-card-list`.
-**Maintenance:** card titles/bodies/list lines editable by item id. Owners add cards
-through the shipped `card-grid-card` item blueprint and remove any but the last;
-reordering: developer.
+CSS: `.services`, `.services-grid`, `.service-card`, `.service-card--link`,
+`.service-card-cue`, `.service-card-cue-arrow`, `.card-icon`, `.service-card-list`,
+`.sr-only`.
+
+A linked card renders one **real, always-visible anchor** at the card's foot — not a
+hit area stretched over the whole card. Two reasons, both deliberate: a card-sized
+anchor takes its accessible name from everything inside it (a service card would
+announce as its title + body + sub-list in one breath), and a stretched `::after`
+belongs to the anchor, so in the annotated preview *every* click on the card would
+resolve to the link field and the title/body/list editors would become unreachable. The
+link's accessible name is the visible cue text plus a screen-reader-only `· <title>`
+suffix, so four cards read "Learn more · Basement Development", "Learn more ·
+Hardscaping", … instead of four identical "Learn more"s — and the visible label is a
+prefix of the accessible name (WCAG 2.5.3). **A link-less card renders byte-identically
+to before.**
+
+**Maintenance:** card titles/bodies/list lines editable by item id; a card's `link` and
+`linkLabel` are click-to-edit so an owner can repoint or reword the doorway (the link URL
+rides the anchor, the wording rides its own span). Owners add cards through the shipped
+`card-grid-card` item blueprint and remove any but the last; reordering: developer.
 
 ### `gallery`
 Filterable album grid with lightbox. Each album is a project/collection with one or more
