@@ -19,6 +19,19 @@ module.exports = function photoStrip(fields, site, bk) {
     ? `<div class="container photo-strip-head">${tag}${heading}</div>`
     : '';
 
+  // Column count. Absent → the CSS default (4 across), byte-identical to the
+  // pre-feature build: nothing is emitted at all. Set → one custom property the
+  // stylesheet's `repeat(var(--photo-strip-cols, 4), 1fr)` reads, so a strip of
+  // 3 or 5 photos fills its row instead of leaving a hole.
+  //
+  // The property rides the SECTION and is inherited by the grid, rather than
+  // being declared on the grid itself. That is load-bearing: an inline
+  // declaration outranks every stylesheet rule, so a value set on the grid
+  // would freeze the count at all widths and the responsive steps could never
+  // fire. Inherited, it is the value the media queries override.
+  const cols      = fields.columns;
+  const colsAttrs = cols ? ` data-cols="${escAttr(String(cols))}" style="--photo-strip-cols:${Number(cols)}"` : '';
+
   // A photo with a `link` becomes a doorway (typically into the gallery page):
   // the whole cell is an anchor and the cue names where it goes. Three
   // click-to-edit targets live on it without overlapping — the image rides the
@@ -55,9 +68,9 @@ module.exports = function photoStrip(fields, site, bk) {
       </div>`;
   }).join('\n      ');
 
-  return `<section class="photo-strip">
+  return `<section class="photo-strip"${colsAttrs}>
   ${header}
-  <div class="photo-strip-grid">
+  <div class="photo-strip-grid"${bk.f('columns')}>
       ${cells}
   </div>
 </section>`;

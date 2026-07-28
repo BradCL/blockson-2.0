@@ -440,7 +440,10 @@ section + section { border-top: var(--section-divider, none); }
    so the strip stays edge-to-edge at every width. */
 .photo-strip { padding: 0; border-top: 1px solid rgba(127, 127, 127, 0.18); }
 .photo-strip-head { padding: 2.6rem 0 1.4rem; }
-.photo-strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+/* Column count is a token so a strip fills its row at any photo count: the
+   block emits --photo-strip-cols only when `columns` is set, so an unset strip
+   resolves to the historical 4-wide grid. */
+.photo-strip-grid { display: grid; grid-template-columns: repeat(var(--photo-strip-cols, 4), 1fr); gap: 2px; }
 .photo-strip-cell { aspect-ratio: 4 / 3; overflow: hidden; background: rgba(127,127,127,0.12); }
 .photo-strip-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* A linked cell is a doorway: the photo zooms gently and a label names the
@@ -1002,7 +1005,14 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .services-grid, .album-grid, .photo-strip-grid { grid-template-columns: repeat(2, 1fr); }
+  .services-grid, .album-grid { grid-template-columns: repeat(2, 1fr); }
+  /* A strip narrows by a factor that DIVIDES its column count, so the last row
+     is never left half-empty — the whole point of a configurable count. Even
+     counts (including the unset 4-wide default) halve as they always have; 3
+     and 6 step to 3; 5 divides by nothing and stacks instead of stranding. */
+  .photo-strip-grid { --photo-strip-cols: 2; }
+  .photo-strip[data-cols="3"] .photo-strip-grid { --photo-strip-cols: 3; }
+  .photo-strip[data-cols="5"] .photo-strip-grid { --photo-strip-cols: 1; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .service-area-inner { grid-template-columns: 1fr; }
   .testimonials-grid, .contact-path-grid { grid-template-columns: 1fr; }

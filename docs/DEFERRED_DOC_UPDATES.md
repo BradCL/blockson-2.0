@@ -33,10 +33,10 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Proof count 29 → 32** (2026-07-28) — proofs 30 (hostile content values
-  render inert in every block type), 31 (no-AJV fallback exercised) and 32
-  (photo-strip doorway accessible name) added; `01-system-map.md` and
-  `02-atlas/12-testing-proofs.md` still read 29.
+- **Proof count 29 → 33** (2026-07-28) — proofs 30 (hostile content values
+  render inert in every block type), 31 (no-AJV fallback exercised), 32
+  (photo-strip doorway accessible name) and 33 (photo-strip column count)
+  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
 - **Accessible-name discipline for repeated links** (2026-07-28) — the
   photo-strip cue is no longer `aria-hidden` and its image is decorative inside
   the link. Worth a paragraph wherever the atlas teaches how renderers emit
@@ -85,9 +85,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 32** (2026-07-28) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 33** (2026-07-28) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 32, photo-strip doorways).
+  the next capture session (new last proof: 33, photo-strip column count).
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,

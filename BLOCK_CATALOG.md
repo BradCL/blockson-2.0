@@ -330,6 +330,7 @@ album grid on its own page, `photo-strip` is a flat, edge-to-edge banner of imag
 (typically dropped under a services overview). Modeled on the home-page strip of
 the contractor site that inspired Blockson.
 - `tag?`, `heading?` — optional eyebrow + heading rendered above the strip
+- `columns?` integer ∈ 2 | 3 | 4 | 5 | 6 (default 4) — how many photos per row
 - `photos` Repeats: `{id, image, link?, linkLabel?}` — a **link-less** photo's alt text
   is derived from the site name (the same convention `gallery`/`team-grid`/
   `before-after` use) and it carries exactly one edit target: the picture itself. Give a
@@ -350,10 +351,20 @@ The cue is **visible by default** and fades in on hover only under
 `@media (hover: hover)` — a touch device never fires `:hover`, and the cue is the only
 label there is. The zoom-and-fade animation on a hover-capable pointer is unchanged.
 
+**Column count.** `columns` paints `--photo-strip-cols` on the *section*, which the
+grid's `repeat(var(--photo-strip-cols, 4), 1fr)` reads. Absent, nothing is emitted at all
+and the 4-wide default lives entirely in CSS — byte-identical to the pre-feature build.
+The property rides the section rather than the grid on purpose: an inline declaration
+outranks every stylesheet rule, so a value set on the grid would freeze the count at all
+widths. Below 900px a strip narrows by a factor that *divides* its count, so the last row
+is never left half-empty — even counts (including the default 4) halve as they always
+have, 3 and 6 step to 3, and 5 stacks. Use it when a page has 2, 3, 5 or 6 photos, which
+is the normal situation for a small business filling out pages incrementally.
+
 **Maintenance:** tag/heading editable; each photo replaceable by item id through the
 click-to-edit image picker, and an owner can set/repoint its `link` and reword its
 `linkLabel`. Adding/removing photos is developer work (no item blueprint ships for it
-yet).
+yet), as is the column count.
 
 ### `reviews-link`
 A styled, **capture-free** outbound social-proof badge linking to a business's

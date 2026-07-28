@@ -196,6 +196,11 @@
 //             visible by default and fades only under @media (hover: hover), so
 //             a touch device sees a label at all; and a link-less photo is
 //             untouched, keeping its site-name alt and no cue.
+// Proof 33:   photo-strip column count: `columns` rides the SECTION as a custom
+//             property (absent → nothing emitted at all, and CSS still resolves
+//             the historical 4-wide grid; present → the responsive steps can
+//             still override it, which an inline grid-template-columns would
+//             forbid), and the schema enum refuses anything out of range.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -289,7 +294,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 32;
+const TOTAL = 33;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3823,6 +3828,102 @@ console.log('\n═══ PROOF 32 — Photo-strip doorways announce where they g
     console.log('       identical site names; the cue is visible by default and fades only where');
     console.log('       a pointer can hover, so touch users see a label at all; and a link-less');
     console.log('       photo is untouched — site-name alt, no cue, one edit target.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 33 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 33 — A photo strip fills its row at any photo count ═══');
+{
+  const CLIENT  = '__proof-strip-cols';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const base = readContent('example-contractor');
+    const withStrip = (fieldsExtra) => {
+      const c = JSON.parse(JSON.stringify(base));
+      c.pages.find(p => p.slug === 'index').blocks.push({
+        id: 'strip-main', type: 'photo-strip',
+        fields: Object.assign({
+          heading: 'Recent work',
+          photos: [
+            { id: 'p-one',   image: 'img/project-1.jpg' },
+            { id: 'p-two',   image: 'img/project-2.jpg' },
+            { id: 'p-three', image: 'img/project-3.jpg' },
+          ],
+        }, fieldsExtra || {}),
+      });
+      return c;
+    };
+
+    // (a) No `columns` → the section carries NOTHING new. The 4-wide default
+    //     lives entirely in CSS, so an untouched strip is byte-identical to the
+    //     pre-feature build.
+    writeContent(CLIENT, withStrip());
+    let r = build(CLIENT);
+    if (!r.ok) failures.push(`the strip build failed:\n${r.out}`);
+    let html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    if (!html.includes('<section class="photo-strip">')) {
+      failures.push('a strip with no `columns` emitted attributes on its section — the unset default must be pure CSS');
+    }
+    if (/photo-strip-grid"[^>]/.test(html)) failures.push('a strip with no `columns` emitted attributes on its grid');
+
+    // (b) `columns` rides the SECTION, not the grid. Load-bearing: an inline
+    //     declaration on the grid would outrank every media query and freeze
+    //     the count at all widths, so the responsive steps could never fire.
+    writeContent(CLIENT, withStrip({ columns: 3 }));
+    r = build(CLIENT);
+    if (!r.ok) failures.push(`the 3-column strip build failed:\n${r.out}`);
+    else {
+      html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      if (!/<section class="photo-strip" data-cols="3" style="--photo-strip-cols:3">/.test(html)) {
+        failures.push('columns:3 did not paint --photo-strip-cols + data-cols on the section');
+      }
+      if (/photo-strip-grid"[^>]*style=/.test(html)) failures.push('the column count landed on the grid as an inline style — the responsive steps can never override that');
+      if (/data-bk-/.test(html)) failures.push('the live strip build carries data-bk-* attributes');
+    }
+
+    // (c) The schema bounds the count: out-of-enum and non-integer are refused
+    //     with nothing written.
+    for (const bad of [7, 0, '3', 3.5]) {
+      fs.rmSync(distDir, { recursive: true, force: true });
+      writeContent(CLIENT, withStrip({ columns: bad }));
+      if (build(CLIENT).ok) failures.push(`columns:${JSON.stringify(bad)} passed validation`);
+      if (fs.existsSync(path.join(distDir, 'index.html'))) failures.push(`the refused columns:${JSON.stringify(bad)} build still wrote output`);
+    }
+
+    // (d) The stylesheet holds up its half: an unset strip still resolves to the
+    //     historical 4-wide grid, and the narrower steps divide the count rather
+    //     than stranding the last photo in a half-empty row.
+    const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+    if (!/\.photo-strip-grid\s*\{[^}]*repeat\(var\(--photo-strip-cols,\s*4\),\s*1fr\)/.test(css)) {
+      failures.push('the stylesheet no longer resolves an unset strip to the historical 4-wide grid');
+    }
+    for (const rule of ['.photo-strip[data-cols="3"] .photo-strip-grid', '.photo-strip[data-cols="5"] .photo-strip-grid']) {
+      if (!css.includes(rule)) failures.push(`the responsive step for ${rule} is missing — that count would strand its last photo`);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — the column count rides the section as a token: absent, nothing is emitted');
+    console.log('       and CSS still resolves the historical 4-wide grid; set, it lands on the');
+    console.log('       section (never as an inline grid-template-columns, which would outrank');
+    console.log('       every media query and freeze the count at all widths) and the narrower');
+    console.log('       steps divide it rather than stranding the last photo; and a count outside');
+    console.log('       the schema enum is refused with nothing written.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

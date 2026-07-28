@@ -701,6 +701,7 @@
         "hidden":  { "type": "boolean" },
         "tag":     { "type": "string" },
         "heading": { "type": "string" },
+        "columns": { "type": "integer", "enum": [2, 3, 4, 5, 6] },
         "photos": {
           "type": "array",
           "minItems": 1,
