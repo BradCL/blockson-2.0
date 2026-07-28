@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (31 proofs)
+  _run-proofs.js        Proof suite (32 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -299,7 +299,7 @@ edit surface small and roughly constant as sites grow.
 node engine/_run-proofs.js
 ```
 
-Twenty-nine proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-two proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -384,8 +384,12 @@ Section panel can create omitted optional text only where the resolver allows
 it, (27) hero CTA buttons are id-addressable, guarded, removable except for the
 last item, and addable from an empty state, (28) the same owner handlers drive
 an in-memory browser host for the no-install demo, and (29) photo-heavy gallery
-albums show a soft page-weight advisory without capping the edit. All 29 must
-pass on a clean tree.
+albums show a soft page-weight advisory without capping the edit, (30) hostile
+text renders inert in every one of the 23 block types, (31) the no-AJV fallback
+validator still builds and still guards, and (32) a linked photo-strip cell
+takes its accessible name from its owner-editable cue — image decorative inside
+the link, only the arrow hidden — with the cue visible by default off
+hover-capable pointers. All 32 must pass on a clean tree.
 
 ---
 

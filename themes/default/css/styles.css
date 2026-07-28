@@ -443,9 +443,8 @@ section + section { border-top: var(--section-divider, none); }
 .photo-strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
 .photo-strip-cell { aspect-ratio: 4 / 3; overflow: hidden; background: rgba(127,127,127,0.12); }
 .photo-strip-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* A linked cell is a doorway: the photo zooms gently and a label fades in on
-   hover/focus to signal there's more to see. Plain (link-less) cells are
-   untouched by these rules. */
+/* A linked cell is a doorway: the photo zooms gently and a label names the
+   destination. Plain (link-less) cells are untouched by these rules. */
 .photo-strip-cell--link { position: relative; display: block; cursor: pointer; }
 .photo-strip-img { display: block; width: 100%; height: 100%; }
 .photo-strip-cell--link img { transition: transform 0.3s ease; }
@@ -465,11 +464,17 @@ section + section { border-top: var(--section-divider, none); }
   text-transform: uppercase;
   color: #fff;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.62), transparent);
-  opacity: 0;
   transition: opacity 0.25s ease;
 }
-.photo-strip-cell--link:hover .photo-strip-cue,
-.photo-strip-cell--link:focus-visible .photo-strip-cue { opacity: 1; }
+/* The cue is VISIBLE BY DEFAULT and only fades in on pointers that can hover.
+   It is the link's accessible name and its only "there's more to see" signal,
+   so a touch device — which never fires :hover — must not be able to lose it.
+   Hover-capable pointers keep the original reveal-on-hover animation. */
+@media (hover: hover) {
+  .photo-strip-cue { opacity: 0; }
+  .photo-strip-cell--link:hover .photo-strip-cue,
+  .photo-strip-cell--link:focus-visible .photo-strip-cue { opacity: 1; }
+}
 
 /* Lightbox (built by js/main.js) */
 .lightbox {

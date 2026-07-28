@@ -188,6 +188,14 @@
 //             warning; and the reduced validator still refuses a javascript:
 //             href and structurally-empty content with nothing written — the
 //             degraded path is exercised, not just promised.
+// Proof 32:   photo-strip doorways (the accessibility defect found on a live
+//             site): a linked cell takes its accessible name from the cue — the
+//             owner-editable linkLabel — with the image decorative inside the
+//             link (alt="") and only the arrow aria-hidden, so four linked
+//             photos stop announcing as four identical site names; the cue is
+//             visible by default and fades only under @media (hover: hover), so
+//             a touch device sees a label at all; and a link-less photo is
+//             untouched, keeping its site-name alt and no cue.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -281,7 +289,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 31;
+const TOTAL = 32;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3712,6 +3720,109 @@ console.log('\n═══ PROOF 31 — No-AJV fallback: the build still ships, wa
     console.log('       build with AJV present emits no warning; and the reduced validator still');
     console.log('       refuses a javascript: href and structurally-empty content with nothing');
     console.log('       written — the dependency-free fallback is exercised, not just promised.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 32 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 32 — Photo-strip doorways announce where they go, on every kind of pointer ═══');
+{
+  const CLIENT  = '__proof-strip';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // One cell of the built strip, located by the image it renders.
+  const cellOf = (html, imgPath) => {
+    const i = html.indexOf(imgPath);
+    if (i < 0) return null;
+    const open = html.lastIndexOf('<a class="photo-strip-cell', i);
+    const div  = html.lastIndexOf('<div class="photo-strip-cell', i);
+    const start = Math.max(open, div);
+    const end = html.indexOf(start === open ? '</a>' : '</div>', i);
+    return start < 0 || end < 0 ? null : html.slice(start, end);
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const base = readContent('example-contractor');
+    const content = JSON.parse(JSON.stringify(base));
+    const photos = [
+      { id: 'p-plain', image: 'img/project-1.jpg' },
+      { id: 'p-linked', image: 'img/project-2.jpg', link: 'gallery.html', linkLabel: 'Deck photos' },
+      { id: 'p-default-label', image: 'img/project-3.jpg', link: 'gallery.html' },
+    ];
+    content.pages.find(p => p.slug === 'index').blocks.push({
+      id: 'strip-main', type: 'photo-strip', fields: { heading: 'Recent work', photos },
+    });
+    writeContent(CLIENT, content);
+
+    const r = build(CLIENT);
+    if (!r.ok) failures.push(`the strip build failed:\n${r.out}`);
+    const html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+
+    // (a) A LINKED cell's accessible name is the cue text and nothing else:
+    //     the image is decorative inside the link, the cue is exposed, and only
+    //     the arrow glyph is hidden. This is the whole defect — four linked
+    //     photos used to announce as four identical site names, with the one
+    //     part that says where they go hidden from assistive tech.
+    const linked = cellOf(html, 'img/project-2.jpg');
+    if (!linked) failures.push('the linked cell did not render');
+    else {
+      if (!/<img [^>]*alt=""/.test(linked)) failures.push(`a linked cell's image must be decorative (alt="") so it does not compete with the cue for the link's name: ${linked.slice(0, 200)}`);
+      if (/class="photo-strip-cue"[^>]*aria-hidden/.test(linked)) failures.push('the cue is still aria-hidden — the one part of the link that says where it goes is hidden from assistive tech');
+      if (!linked.includes('>Deck photos<')) failures.push('the cue does not carry the linkLabel text');
+      if (!/class="photo-strip-cue-arrow" aria-hidden="true"/.test(linked)) failures.push('the decorative arrow is not aria-hidden — it would trail every announcement with a stray glyph');
+    }
+
+    // The default label still applies where linkLabel is unset.
+    const defaulted = cellOf(html, 'img/project-3.jpg');
+    if (!defaulted || !defaulted.includes('>View gallery<')) failures.push('a linked photo with no linkLabel lost its default cue text');
+
+    // (b) A LINK-LESS cell is untouched: site-name alt, no cue at all.
+    const plain = cellOf(html, 'img/project-1.jpg');
+    if (!plain) failures.push('the link-less cell did not render');
+    else {
+      if (!plain.includes(`alt="${base.site.name}"`)) failures.push('a link-less photo lost its site-name alt text');
+      if (plain.includes('photo-strip-cue')) failures.push('a link-less photo grew a cue');
+    }
+
+    // (c) Live build stays annotation- and id-free.
+    if (/data-bk-/.test(html)) failures.push('the live strip build carries data-bk-* attributes');
+    for (const p of photos) {
+      if (html.includes(`"${p.id}"`)) failures.push(`live HTML leaks the item id "${p.id}"`);
+    }
+
+    // (d) The stylesheet holds up its half: the cue's fade is gated on a pointer
+    //     that can actually hover. A touch device never fires :hover, and the
+    //     cue is the only label there is — so it must not start invisible there.
+    const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+    const hoverBlocks = css.match(/@media \(hover: hover\) \{[\s\S]*?\n\}/g) || [];
+    if (!hoverBlocks.some(b => /\.photo-strip-cue \{\s*opacity: 0;/.test(b))) {
+      failures.push('the cue\'s opacity:0 is not inside @media (hover: hover) — on a touch device the label would be invisible with no way to reveal it');
+    }
+    if (/\.photo-strip-cue \{[^}]*opacity: 0/.test(css.replace(/@media \(hover: hover\) \{[\s\S]*?\n\}/g, ''))) {
+      failures.push('the cue is hidden by default outside the hover query');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a linked photo-strip cell takes its accessible name from the cue (the');
+    console.log('       owner-editable linkLabel), with the image decorative inside the link and');
+    console.log('       only the arrow hidden, so four doorways no longer announce as four');
+    console.log('       identical site names; the cue is visible by default and fades only where');
+    console.log('       a pointer can hover, so touch users see a label at all; and a link-less');
+    console.log('       photo is untouched — site-name alt, no cue, one edit target.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

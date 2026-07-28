@@ -330,19 +330,30 @@ album grid on its own page, `photo-strip` is a flat, edge-to-edge banner of imag
 (typically dropped under a services overview). Modeled on the home-page strip of
 the contractor site that inspired Blockson.
 - `tag?`, `heading?` — optional eyebrow + heading rendered above the strip
-- `photos` Repeats: `{id, image, link?, linkLabel?}` — each photo's alt text is
-  derived from the site name (the same convention `gallery`/`team-grid`/
-  `before-after` use). A link-less photo carries exactly one edit target: the
-  picture itself. Give a photo a `link` (typically the gallery page) and the
-  whole cell becomes a doorway — the photo zooms and a cue (the `linkLabel`,
-  defaulting to "View gallery") fades in on hover. Three independent click-to-edit
-  targets: the image (click the photo), the cue label (click the words), and the
-  link URL (click the cue's arrow).
+- `photos` Repeats: `{id, image, link?, linkLabel?}` — a **link-less** photo's alt text
+  is derived from the site name (the same convention `gallery`/`team-grid`/
+  `before-after` use) and it carries exactly one edit target: the picture itself. Give a
+  photo a `link` (typically the gallery page) and the whole cell becomes a doorway — the
+  photo zooms and a cue (the `linkLabel`, defaulting to "View gallery") names the
+  destination. Three independent click-to-edit targets: the image (click the photo), the
+  cue label (click the words), and the link URL (click the cue's arrow).
 CSS: `.photo-strip`, `.photo-strip-head`, `.photo-strip-grid`, `.photo-strip-cell`,
-`.photo-strip-cell--link`, `.photo-strip-img`, `.photo-strip-cue`.
+`.photo-strip-cell--link`, `.photo-strip-img`, `.photo-strip-cue`,
+`.photo-strip-cue-arrow`.
+
+**A linked cell's accessible name is the cue text and nothing else.** The image is
+decorative *inside* the link (`alt=""`), because repeating the site name on every linked
+cell made four doorways announce identically with no hint of where any of them went; the
+cue is exposed to assistive tech, so the owner-editable `linkLabel` is the link's name on
+screen and in the accessibility tree alike; and only the arrow glyph stays `aria-hidden`.
+The cue is **visible by default** and fades in on hover only under
+`@media (hover: hover)` — a touch device never fires `:hover`, and the cue is the only
+label there is. The zoom-and-fade animation on a hover-capable pointer is unchanged.
+
 **Maintenance:** tag/heading editable; each photo replaceable by item id through the
-click-to-edit image picker, and an owner can set/repoint its `link`. Adding/removing
-photos is developer work (no item blueprint ships for it yet).
+click-to-edit image picker, and an owner can set/repoint its `link` and reword its
+`linkLabel`. Adding/removing photos is developer work (no item blueprint ships for it
+yet).
 
 ### `reviews-link`
 A styled, **capture-free** outbound social-proof badge linking to a business's
