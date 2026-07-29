@@ -66,6 +66,20 @@ module.exports = function contactForm(fields, site, bk) {
   // Formspree all drop submissions where it is filled.
   const honeypot = `${netlifyName}<div class="form-hp" aria-hidden="true"><input type="text" name="${HONEYPOT_NAME}" tabindex="-1" autocomplete="off"></div>`;
 
+  // Origin tag (optional, developer-tier, rendered in BOTH delivery modes). Once
+  // a site has two forms, the owner needs to know which one fired — the
+  // attribution a marketing company reads to tell a hero lead from a contact-page
+  // enquiry. The alternative is giving each form its own delivery.formName, which
+  // splits them into two inboxes with two notification configs, and a missed
+  // notification is a missed lead.
+  // Like the honeypot above, this is rendered markup rather than editable
+  // content: no bk annotation, and absent from the edit map + refused by
+  // applyPatch (patch.js DEVELOPER_ONLY_FIELDS), because an owner who retargets
+  // it breaks attribution invisibly. Escaped like every other value; omitted
+  // entirely when unset, so every existing client's form is byte-identical.
+  const source = fields.source
+    ? `<input type="hidden" name="source" value="${esc(fields.source)}">\n      ` : '';
+
   // Group half-width fields into rows
   const formFields = fields.fields || [];
   const rows = [];
@@ -87,7 +101,7 @@ module.exports = function contactForm(fields, site, bk) {
     ${heading}
     ${formOpen}
       ${subject}
-      ${honeypot}
+      ${source}${honeypot}
       ${rows.join('\n      ')}
       <div class="form-submit">
         <button type="submit" class="btn btn-primary"${bk.f('submitLabel')}>${esc(submitLabel)}</button>

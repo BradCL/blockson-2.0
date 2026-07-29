@@ -9,7 +9,26 @@ the major version.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- **contact-form `source` tag** (optional, developer-tier): a hidden `source`
+  input rendered in both delivery modes, so two forms on one site can share a
+  single inbox and still be told apart — the attribution a marketing company
+  reads. Omit it and the form is byte-identical to a pre-`source` build.
+- **`DEVELOPER_ONLY_FIELDS`** in `engine/lib/patch.js`: a new, narrow class of
+  block field that is rendered markup *configuration* rather than owner content.
+  Refused by the resolver for every action (field and dotted paths), omitted from
+  the edit map, and refused by the editor's read path — so it cannot be shown,
+  described, or written from the owner tier. `contact-form.source` is the only
+  member today.
+### Notes for vendored client repos
+- This touches the **edit map's shape**, so a client repo with proofs or
+  blueprints keyed to it should re-run its own suite: a `contact-form` that sets
+  `source` will have that field absent from its block descriptor. No existing key
+  changes meaning, and nothing changes for a client that does not set it.
+- Schema surface added: `contactFormFields.source`. Additive and optional — every
+  existing `content.json` validates unchanged.
+- Nothing in this change touches `.gitignore` or `.github/`, the two
+  client-owned trees that are hand-mirrored rather than path-checked-out.
 
 ## [2.0.0] — 2026-07-02
 

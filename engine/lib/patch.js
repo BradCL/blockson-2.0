@@ -130,6 +130,38 @@ function canCreateField(content, blockId, item, key, value) {
   return !!(desc && typeof value === 'string' && desc.guard.test(value));
 }
 
+/* ── Developer-only fields ───────────────────────────────────
+   Block fields that are rendered markup CONFIGURATION rather than owner
+   content. They need a developer-set value, but an owner changing one breaks
+   something they cannot see in the preview and could not diagnose afterwards —
+   so they are refused here AND omitted from the edit map
+   (engine/lib/sitemap.js reads this same table), which together mean no
+   annotation is emitted, the editor never opens one, and the maintenance model
+   is never shown that the field exists. Keyed by block TYPE → field names, on
+   the leaf name so a dotted path cannot slip past.
+
+   The honeypot in engine/blocks/contact-form.js is the same idea taken further
+   (fixed value, no schema surface at all); this table is for the ones that need
+   a per-site value. Today: a contact-form's `source` tag. Two forms sharing one
+   inbox tell themselves apart by it, which is how ad spend gets attributed —
+   retarget it silently and a working form looks exactly like a dead one.
+
+   A developer edits these in content.json, where the change is reviewable in a
+   diff; that is the tier they belong to. */
+const DEVELOPER_ONLY_FIELDS = {
+  'contact-form': new Set(['source']),
+};
+
+// The developer-only field names for a block TYPE, as a Set — the one source
+// the edit map reads, so the two gates can never drift apart.
+function developerOnlyFieldsFor(blockType) {
+  return DEVELOPER_ONLY_FIELDS[blockType] || new Set();
+}
+
+function isDeveloperOnlyField(blockType, field) {
+  return developerOnlyFieldsFor(blockType).has(String(field).split('.').pop());
+}
+
 /* ── SAFE TOKENS ─────────────────────────────────────────────
    The curated allowlist of theme tokens the maintenance tier may edit.
    Keys are canonical token names WITHOUT the leading "--" — matching the
@@ -421,6 +453,14 @@ function applyPatch(content, patch, presetTokens) {
   if (patch.block === 'site' && /^themeOverrides(\.|$)/.test(patch.field)) {
     return { ok: false, error: 'theme tokens are edited with action "set-token", not "set"' };
   }
+  // Rendered markup configuration is refused outright, for every action — the
+  // write half of DEVELOPER_ONLY_FIELDS (the edit map omits the same fields, so
+  // nothing should ever address one; this is what makes that a guarantee rather
+  // than an omission). "site" carries no block type and is unaffected.
+  const patchBlockType = blockTypeById(content, patch.block);
+  if (patchBlockType && isDeveloperOnlyField(patchBlockType, patch.field)) {
+    return { ok: false, error: `"${patch.field}" is part of how this site is wired up, not content — a developer changes it in content.json` };
+  }
 
   // Resolve the host (a block's fields, the site object, or a sub-item by id).
   const hosts = indexHosts(content);
@@ -528,6 +568,7 @@ function applyPatch(content, patch, presetTokens) {
 
 module.exports = {
   applyPatch, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
+  DEVELOPER_ONLY_FIELDS, developerOnlyFieldsFor, isDeveloperOnlyField,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
   FIELD_FORMATS, validateFieldValue,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,

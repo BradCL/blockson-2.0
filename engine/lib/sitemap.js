@@ -20,7 +20,7 @@
 
 'use strict';
 
-const { SAFE_TOKENS, creatableFieldsFor } = require('./patch');
+const { SAFE_TOKENS, creatableFieldsFor, developerOnlyFieldsFor } = require('./patch');
 
 const PREVIEW_LEN = 200;
 
@@ -92,7 +92,14 @@ function describeBlock(block) {
   const textLists = [];
   const itemSets = [];
 
+  // Rendered markup configuration (patch.js DEVELOPER_ONLY_FIELDS): omitted from
+  // the map entirely, which is what keeps it un-annotated in the preview and
+  // invisible to the editor and the maintenance model alike. applyPatch refuses
+  // the same names, so this is a closed door rather than a quiet one.
+  const devOnly = developerOnlyFieldsFor(block.type);
+
   for (const name of Object.keys(fields)) {
+    if (devOnly.has(name)) continue;
     const v = fields[name];
     // The per-block visibility flag is DELIBERATELY not a scalar here: it has
     // no rendered element to annotate (proof 1 requires an annotation for

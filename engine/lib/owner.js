@@ -86,7 +86,8 @@
 // nothing but pure string ops (basename/extname) on upload filenames.
 const path = require('path');
 
-const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor } = require('./patch');
+const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
+        isDeveloperOnlyField } = require('./patch');
 const { buildEditMap } = require('./sitemap');
 const scaffold = require('./scaffold');
 
@@ -420,6 +421,14 @@ function describeFieldValue(session, ref) {
     return { ok: false, error: 'a field reference needs at least "block" and "field"' };
   }
   const content = readCandidate(session);
+  // Rendered markup configuration is not owner surface in EITHER direction: the
+  // edit map omits it (so the UI never asks) and applyPatch refuses to write it,
+  // and this closes the read half so /api/field cannot describe one either —
+  // "not editable" and "not even shown" should not depend on which door is used.
+  const devBlockType = blockTypeById(content, ref.block);
+  if (devBlockType && isDeveloperOnlyField(devBlockType, ref.field)) {
+    return { ok: false, error: `"${ref.field}" is part of how this site is wired up, not content` };
+  }
   const r = resolveHost(content, ref.block, ref.item != null ? ref.item : null);
   if (r.error) return { ok: false, error: r.error };
   const f = readFieldValue(r.host, ref.field);

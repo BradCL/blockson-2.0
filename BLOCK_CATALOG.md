@@ -260,6 +260,17 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
   (both modes). Netlify, the Worker template, and Formspree all drop submissions
   that fill it. It is rendered markup, not schema content — it never appears in
   the edit map and carries no annotations.
+- `source?` string — an origin tag rendered as a hidden `source` input in **both**
+  delivery modes. Once a site has two forms, this is how one inbox tells them
+  apart (`"home-hero"` vs `"contact-page"`), which is what a marketing company
+  reads to attribute ad spend. The alternative — a different `delivery.formName`
+  per form — splits them into two inboxes with two notification configs, and a
+  missed notification is a missed lead. Omit it and the form is byte-identical to
+  a pre-`source` build. **Developer-tier and not owner surface at all:** it is
+  absent from the edit map, carries no annotation, and the resolver *and* the
+  editor's read path both refuse it (`DEVELOPER_ONLY_FIELDS` in
+  `engine/lib/patch.js`), because an owner who retargets it breaks attribution
+  invisibly. Change it in `content.json`, where the diff shows it.
 - **Placeholder convention:** a `formAction` of exactly `https://UNCONFIGURED`
   means "not wired up yet". It passes the schema's `https://` guard so the site
   still builds, and every build warns loudly until it is replaced (warn, never
@@ -270,7 +281,8 @@ CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
 `.form-hp`, `.btn-primary`.
 **Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields and the
 delivery wiring (`formAction`, `delivery.*`): developer (fields carry no ids —
-structural by design).
+structural by design). `source`: developer only, and unreachable from the owner
+tier by construction rather than by convention.
 
 ### `cta`
 Centered closing banner with a statement and a button.

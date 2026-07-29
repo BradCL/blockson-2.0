@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (37 proofs)
+  _run-proofs.js        Proof suite (38 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -275,6 +275,13 @@ Safety invariants enforced in code:
 - A field may not be set without a value.
 - `themeOverrides` is unreachable by plain `set` (container AND dotted paths) — the
   format-guarded `set-token` path is the only way in.
+- `DEVELOPER_ONLY_FIELDS` is unreachable by any action (container AND dotted paths):
+  rendered markup *configuration* that carries a per-site value but is not owner
+  content, because a wrong value breaks something with no visible symptom. The same
+  table is read by the edit-map generator (§8.4), so such a field is never shown to
+  the owner or the maintenance model, and by the editor's read path, so it cannot
+  even be described — omission and refusal are one decision, not two. Today:
+  a contact-form's `source` attribution tag.
 
 ### 8.3 Production apply CLI (`engine/apply-patch.js`)
 
@@ -293,13 +300,19 @@ The map opens with a THEME TOKENS section (each safe token with its effective va
 then SITE fields, then every block/item by id with short previews. This keeps the
 edit surface small and roughly constant as sites grow.
 
+The map is **derived, never duplicated** — it reads the resolver's own allowlists, so
+what the editor offers and what the write path accepts cannot drift apart. In
+particular, a field in `DEVELOPER_ONLY_FIELDS` (§8.2) is omitted entirely, and an
+omitted field in `CREATABLE_FIELDS` is reported as `creatable` when its block renders
+nothing without it.
+
 ### 8.5 Proof suite
 
 ```
 node engine/_run-proofs.js
 ```
 
-Thirty-seven proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-eight proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -400,7 +413,11 @@ child is current, a childless link byte-identical to before, and a second level
 refused, and (36) the footer grid follows its column count, emitting it only
 when it is not three so an existing footer is untouched, and (37) the
 building-trade icons render and match the catalog's published list in both
-directions. All 37 must pass on a clean tree.
+directions, and (38) a contact-form's `source` tag lets two forms share one
+inbox and still be told apart, in both delivery modes, while being provably
+absent from the owner tier — omitted from the edit map, un-annotated, and
+refused by the resolver and the editor's read path alike. All 38 must pass on a
+clean tree.
 
 ---
 

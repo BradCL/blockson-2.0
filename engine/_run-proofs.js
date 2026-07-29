@@ -229,6 +229,12 @@
 //             BLOCK_CATALOG's published list matches the set in BOTH
 //             directions — that list is the contract the maintenance tier
 //             reads, and an unknown name renders as nothing at all.
+// Proof 38:   a contact-form's `source` tag: two forms can share one inbox and
+//             still be told apart, in both delivery modes, with a hostile value
+//             rendering inert and an unset field leaving the form
+//             byte-identical — and the tag is provably NOT owner surface: absent
+//             from the edit map, un-annotated in the annotated preview, and
+//             refused by applyPatch at the field and via a dotted path.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -322,7 +328,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 37;
+const TOTAL = 38;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4375,6 +4381,182 @@ console.log('\n═══ PROOF 37 — The building-trade glyphs render, and the 
     console.log('       through the ordinary card `icon` field; and BLOCK_CATALOG\'s published');
     console.log('       list matches the set in both directions, so the contract the');
     console.log('       maintenance tier reads can never drift from what actually renders.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 38 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 38 — Form source tag: two forms, one inbox, told apart — and never owner surface ═══');
+{
+  const owner       = require('./lib/owner');
+  const contactForm = require('./blocks/contact-form');
+  const { NOOP_BLOCK } = require('./lib/annotate');
+  const CLIENT  = '__proof-form-source';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  try {
+    // The attribution case, set up literally: TWO forms with the SAME
+    // formAction (one inbox, one notification config — the whole point) that
+    // differ only by their source tag. example-contractor's contact page has the
+    // full form; a short one goes on the home page beside it.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base  = readContent('example-contractor');
+    const index = base.pages.find(p => p.slug === 'index');
+    const cForm = base.pages.find(p => p.slug === 'contact').blocks.find(b => b.type === 'contact-form');
+    if (!cForm) failures.push('test premise broken: example-contractor has no contact-form');
+    cForm.fields.source = 'contact-page';
+    const homeForm = JSON.parse(JSON.stringify(cForm));
+    homeForm.id = 'home-lead-form';
+    homeForm.fields.source = 'home-hero';
+    homeForm.fields.fields = homeForm.fields.fields.slice(0, 2);
+    index.blocks.push(homeForm);
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Source Proof', publish: 'none' }) + '\n', 'utf8');
+
+    // (a) Both forms build, both POST to the same endpoint, and each carries its
+    //     own origin tag — the attribution a marketing company reads.
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`the two-form build failed:\n${b1.out}`);
+    else {
+      const home    = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      const contact = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'contact.html'), 'utf8');
+      if (!home.includes('<input type="hidden" name="source" value="home-hero">')) {
+        failures.push('the home form did not render its source tag');
+      }
+      if (!contact.includes('<input type="hidden" name="source" value="contact-page">')) {
+        failures.push('the contact form did not render its source tag');
+      }
+      const action = 'action="' + cForm.fields.formAction + '"';
+      if (!home.includes(action) || !contact.includes(action)) {
+        failures.push('the two forms no longer share one endpoint — the source tag exists to avoid splitting inboxes');
+      }
+    }
+
+    // (b) Additive: a form with no source tag renders EXACTLY as before, so no
+    //     existing client's form changes by a byte.
+    const noSource = JSON.parse(JSON.stringify(cForm.fields));
+    delete noSource.source;
+    const before = contactForm(noSource, base.site, NOOP_BLOCK);
+    if (before.includes('name="source"')) failures.push('a form without a source tag rendered one anyway');
+    const withSource = contactForm(cForm.fields, base.site, NOOP_BLOCK);
+    const inserted = '<input type="hidden" name="source" value="contact-page">\n      ';
+    if (!withSource.includes(inserted)) failures.push('the source tag did not render in the expected form position');
+    if (withSource.replace(inserted, '') !== before) {
+      failures.push('adding a source tag changed more of the form than the one hidden input');
+    }
+
+    // (c) Rendered in netlify mode too — delivery mode and attribution are
+    //     independent concerns.
+    const netlify = JSON.parse(JSON.stringify(cForm.fields));
+    netlify.delivery = { mode: 'netlify', formName: 'leads' };
+    const netHtml = contactForm(netlify, base.site, NOOP_BLOCK);
+    if (!netHtml.includes('name="source" value="contact-page"')) failures.push('netlify mode dropped the source tag');
+    if (!netHtml.includes('data-netlify="true"')) failures.push('netlify mode broke while rendering the source tag');
+
+    // (d) A hostile value renders inert, like every other content value.
+    const hostile = JSON.parse(JSON.stringify(cForm.fields));
+    hostile.source = '"><script>alert(1)</script>';
+    const hostileHtml = contactForm(hostile, base.site, NOOP_BLOCK);
+    if (hostileHtml.includes('<script>alert(1)')) failures.push('a hostile source value was not escaped');
+
+    // (e) NOT owner surface — the edit map omits it entirely, so neither the
+    //     editor nor the maintenance model is ever shown that it exists.
+    const content = readContent(CLIENT);
+    const map = buildEditMap(content, loadTokens(content));
+    const formDesc = map.pages.find(p => p.slug === 'contact').blocks.find(b => b.id === cForm.id);
+    if ((formDesc.scalars || []).some(s => s.field === 'source')) failures.push('the source tag was exposed as an editable scalar');
+    if ((formDesc.creatable || []).some(c => c.field === 'source')) failures.push('the source tag was offered as a creatable field');
+    if (JSON.stringify(formDesc).includes('source')) failures.push('the source tag leaked into the edit map somewhere');
+    // Fields that ARE owner content on the same block are untouched by the omission.
+    if (!(formDesc.scalars || []).some(s => s.field === 'heading')) failures.push('omitting the source tag also removed the form heading from the map');
+    const { renderEditMap } = require('./lib/sitemap');
+    if (renderEditMap(content, loadTokens(content)).includes('source')) failures.push("the model's text edit map names the source tag");
+
+    // (f) The annotated preview stamps no annotation for it — and the map
+    //     omission does not break annotation coverage in either direction
+    //     (proof 1's contract, re-run on a client that has the field).
+    build(CLIENT, ['--annotate']);
+    const { required, allowed } = annotationSets(content, loadTokens(content));
+    for (const [file, reqSet] of required) {
+      const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', file), 'utf8');
+      const present = presentAnnotations(html);
+      for (const k of reqSet) if (!present.has(k)) failures.push(`annotated ${file}: MISSING annotation ${k}`);
+      for (const k of present) if (!allowed.get(file).has(k)) failures.push(`annotated ${file}: INVALID annotation ${k}`);
+      if (/data-bk-field="source"/.test(html)) failures.push(`annotated ${file}: the source tag carries an annotation`);
+    }
+
+    // (g) The write path refuses it outright — at the field, and via a dotted
+    //     path whose leaf is the same name, with nothing written either way.
+    const orig = JSON.stringify(content);
+    const rejects = [
+      ['set the source tag',          { action: 'set', block: cForm.id, field: 'source', value: 'somewhere-else' }],
+      ['set it to an empty value',    { action: 'set', block: cForm.id, field: 'source', value: '' }],
+      ['reach it by a dotted path',   { action: 'set', block: cForm.id, field: 'delivery.source', value: 'x' }],
+      ['append to it',                { action: 'append', block: cForm.id, field: 'source', value: 'x' }],
+      ['delete it',                   { action: 'delete', block: cForm.id, field: 'source', match: 'contact-page' }],
+    ];
+    for (const [label, patch] of rejects) {
+      const probe = JSON.parse(orig);
+      const r = applyPatch(probe, patch);
+      if (r.ok) failures.push(`a write that must be refused was accepted: ${label}`);
+      if (JSON.stringify(probe) !== orig) failures.push(`a refused write (${label}) modified the content`);
+    }
+    // The same block's ordinary content is still writable — the refusal is
+    // scoped to the one field, not to the block.
+    const okProbe = JSON.parse(orig);
+    if (!applyPatch(okProbe, { action: 'set', block: cForm.id, field: 'heading', value: 'Tell us more.' }).ok) {
+      failures.push('the developer-only refusal spilled onto ordinary fields of the same block');
+    }
+    // A field of the same name on a block type that does NOT reserve it is
+    // unaffected — the table is keyed by block type, not by field name globally.
+    const anyItem = content.pages.flatMap(p => p.blocks).find(b => b.type === 'contact-info');
+    if (anyItem) {
+      const probe = JSON.parse(orig);
+      const item = (probe.pages.flatMap(p => p.blocks).find(b => b.id === anyItem.id).fields.items || [])[0];
+      if (item) {
+        item.source = 'x';
+        if (!applyPatch(probe, { action: 'set', block: anyItem.id, item: item.id, field: 'source', value: 'y' }).ok) {
+          failures.push('the developer-only refusal is leaking across block types');
+        }
+      }
+    }
+
+    // (h) The editor cannot even open it: /api/field refuses, so the field is
+    //     unreachable by read as well as by write.
+    const session = owner.createSession(CLIENT);
+    const d = owner.describeField(session, { block: cForm.id, field: 'source' });
+    if (d.ok) failures.push('the editor described the source tag as an editable field');
+    const dOk = owner.describeField(session, { block: cForm.id, field: 'heading' });
+    if (!dOk.ok) failures.push(`the editor stopped describing an ordinary field on the same block: ${dOk.error}`);
+    const e = owner.applyEdit(session, { action: 'set', block: cForm.id, field: 'source', value: 'nope' });
+    if (e.ok) failures.push('the editor wrote the source tag');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — two forms sharing ONE endpoint each render their own hidden source');
+    console.log('       tag, in endpoint and netlify modes alike, with a hostile value escaped');
+    console.log('       and a form that omits the field byte-identical to before; and the tag is');
+    console.log('       provably not owner surface — absent from the edit map and the model\'s');
+    console.log('       text map, un-annotated in the annotated preview (whose coverage still');
+    console.log('       holds both ways), refused by applyPatch at the field, by dotted path,');
+    console.log('       and by append/delete with nothing written, and refused by the editor\'s');
+    console.log('       own read path — while ordinary fields on that block, and a same-named');
+    console.log('       field on another block type, keep working exactly as before.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

@@ -248,6 +248,18 @@ field, a developer deletes it from `content.json`. (This is the
 omitted field as "creatable" so the Section panel offers exactly what the write
 path will accept.)
 
+**Developer-only fields.** The mirror image of a creatable field: rendered markup
+*configuration* that needs a per-site value but must never reach the owner tier.
+A contact-form's `source` tag is the one today — the hidden field that lets two
+forms share one inbox and still be told apart, which is how ad spend gets
+attributed. It is omitted from the edit map, carries no annotation, and is
+refused by both the resolver and the editor's read path, so it cannot be opened,
+described, or written from the editor at all. An owner who retargeted it would
+break attribution with no visible symptom; a developer changes it in
+`content.json`, where the diff shows it. (This is `DEVELOPER_ONLY_FIELDS` in
+`engine/lib/patch.js`, read by the same edit map that reads the creatable
+allowlist, so the two gates cannot drift apart.)
+
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
 editor scales it to at most 2400 px on the longest edge and re-encodes it (PNG →
 WebP to keep transparency, everything else → JPEG) before uploading — so a 4 MB
