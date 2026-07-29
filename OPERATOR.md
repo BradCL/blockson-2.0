@@ -239,14 +239,34 @@ deliberate, allowlisted exceptions are:
   element to click, so the Section panel offers "Add a subtitle"; saving creates
   the field with the typed line. (A hero subhead is schema-*required*, so a hero
   always has one and it is edited in place — it is not creatable.)
+- a **reviews-link's rating, review count, and badge label** — the block is built
+  to degrade as each goes absent, and renders nothing at all for one that is
+  missing. Without this, the ordinary request "take that stale review count out"
+  would be a one-way door: the number comes out, the element disappears, and only
+  a developer can put it back. Each returns as an "Add a …" doorway instead.
+  `rating` and `reviewCount` additionally carry a shape guard on the *overwrite*
+  path, not just on creation — a rating field holds a 0–5 figure or nothing,
+  however the owner got there.
 
 Each write is narrowly guarded — only these block types and fields, an image
-field only an image-path value, a text field only a single capped line — so the
-exception never widens what else the owner can create. To remove a created
-field, a developer deletes it from `content.json`. (This is the
+field only an image-path value, a text field only a single capped line, a rating
+only a rating — so the exception never widens what else the owner can create. A
+refused value is explained in its own terms ("a rating is a number from 0 to
+5…"), not reported as a missing field. To remove a created field, a developer
+deletes it from `content.json`, or the owner simply clears it. (This is the
 `CREATABLE_FIELDS` allowlist in `engine/lib/patch.js`; the edit map reports each
 omitted field as "creatable" so the Section panel offers exactly what the write
 path will accept.)
+
+**A cleared optional value counts as omitted.** Clearing is the documented way to
+drop an optional value, and a cleared field is still *present* in
+`content.json` — so for a field whose block renders nothing when it is empty, the
+editor treats present-but-blank exactly like absent and offers the same doorway
+back. (Without that, a cleared field would sit in the edit map with no rendered
+element to click: unreachable, and demanding an annotation no block emits.) A
+field that still renders when empty is unaffected and stays directly
+click-editable — a page-header `background` falls back to the site hero image and
+always paints its layer, so it is never a doorway.
 
 **Developer-only fields.** The mirror image of a creatable field: rendered markup
 *configuration* that needs a per-site value but must never reach the owner tier.

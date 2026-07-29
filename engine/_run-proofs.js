@@ -235,6 +235,12 @@
 //             byte-identical — and the tag is provably NOT owner surface: absent
 //             from the edit map, un-annotated in the annotated preview, and
 //             refused by applyPatch at the field and via a dotted path.
+// Proof 39:   reviews-link's optional rating/reviewCount/label are no longer a
+//             one-way door: each is creatable through the same allowlist a
+//             page-header subtitle uses, the shape guard holds on BOTH the
+//             create and the overwrite path (so a cleared rating can only come
+//             back as a rating), clearing one hands back the doorway instead of
+//             leaving an unclickable field, and a refused value says why.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -328,7 +334,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 38;
+const TOTAL = 39;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4557,6 +4563,231 @@ console.log('\n═══ PROOF 38 — Form source tag: two forms, one inbox, tol
     console.log('       and by append/delete with nothing written, and refused by the editor\'s');
     console.log('       own read path — while ordinary fields on that block, and a same-named');
     console.log('       field on another block type, keep working exactly as before.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 39 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 39 — reviews-link optional fields: no longer a one-way door, guarded both ways ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-reviews-creatable';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  try {
+    // A reviews-link carrying a rating and a count (the ordinary case), plus an
+    // about page-header whose subtitle will be CLEARED — the same
+    // present-but-empty state, on the block type that already had creatables.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const index = base.pages.find(p => p.slug === 'index');
+    index.blocks.push({
+      id: 'home-reviews', type: 'reviews-link',
+      fields: { heading: "Don't just take our word for it.", platform: 'Google',
+                rating: '5.0', reviewCount: '11', url: 'https://example.com/listing' },
+    });
+    const header = base.pages.find(p => p.slug === 'about').blocks.find(b => b.type === 'page-header');
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Reviews Proof', publish: 'none' }) + '\n', 'utf8');
+
+    const content = readContent(CLIENT);
+    const descOf = (c, slug, id) => buildEditMap(c, loadTokens(c))
+      .pages.find(p => p.slug === slug).blocks.find(b => b.id === id);
+
+    // (a) Present values are ordinary scalars; the absent `label` is the doorway.
+    const d0 = descOf(content, 'index', 'home-reviews');
+    for (const f of ['rating', 'reviewCount']) {
+      if (!(d0.scalars || []).some(s => s.field === f)) failures.push(`a present ${f} is not an editable scalar`);
+      if ((d0.creatable || []).some(c => c.field === f)) failures.push(`a present ${f} was also offered as creatable`);
+    }
+    if (!(d0.creatable || []).some(c => c.field === 'label' && c.kind === 'text')) {
+      failures.push('an absent badge label is not offered as a creatable text field');
+    }
+
+    // (b) REMOVED by a developer → creatable, never a scalar (a scalar would make
+    //     proof 1 demand an annotation for an element the block does not render).
+    const removed = JSON.parse(JSON.stringify(content));
+    const rBlock = removed.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews');
+    delete rBlock.fields.rating;
+    delete rBlock.fields.reviewCount;
+    const d1 = descOf(removed, 'index', 'home-reviews');
+    for (const f of ['rating', 'reviewCount']) {
+      if (!(d1.creatable || []).some(c => c.field === f)) failures.push(`a removed ${f} is not offered back as creatable — the one-way door`);
+      if ((d1.scalars || []).some(s => s.field === f)) failures.push(`a removed ${f} was left in scalars`);
+    }
+
+    // (c) CLEARED by the owner → the same doorway. Clearing is the documented way
+    //     to drop an optional value, and a cleared field still exists, so without
+    //     this it would sit in the map with no element to click.
+    const cleared = JSON.parse(JSON.stringify(content));
+    const cBlock = cleared.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews');
+    cBlock.fields.rating = '';
+    cBlock.fields.reviewCount = '   ';
+    const d2 = descOf(cleared, 'index', 'home-reviews');
+    for (const f of ['rating', 'reviewCount']) {
+      if (!(d2.creatable || []).some(c => c.field === f)) failures.push(`a cleared ${f} is not offered back as creatable`);
+      if ((d2.scalars || []).some(s => s.field === f)) failures.push(`a cleared ${f} was left in scalars with nothing to click`);
+    }
+    // The same rule reaches the block type that already had creatables.
+    const clearedSub = JSON.parse(JSON.stringify(content));
+    clearedSub.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id).fields.subhead = '';
+    const d3 = descOf(clearedSub, 'about', header.id);
+    if (!(d3.creatable || []).some(c => c.field === 'subhead')) failures.push('a cleared page-header subtitle is not offered back as creatable');
+    if ((d3.scalars || []).some(s => s.field === 'subhead')) failures.push('a cleared page-header subtitle was left in scalars');
+    // A field that still RENDERS when empty stays a click-reachable scalar — a
+    // page-header background falls back to the site hero, so it is not a doorway.
+    const clearedBg = JSON.parse(JSON.stringify(content));
+    clearedBg.pages.find(p => p.slug === 'about').blocks.find(b => b.id === header.id).fields.background = '';
+    const d4 = descOf(clearedBg, 'about', header.id);
+    if (!(d4.scalars || []).some(s => s.field === 'background')) failures.push('a cleared inheriting background stopped being a scalar');
+    if ((d4.creatable || []).some(c => c.field === 'background')) failures.push('a cleared inheriting background became a doorway it does not need');
+
+    // (d) CREATE path: guarded, and a refusal says what is wrong with the VALUE
+    //     rather than reporting the field missing.
+    const removedText = JSON.stringify(removed);
+    const okCreates = [['rating', '4.9'], ['reviewCount', '1,204'], ['label', 'Rated best in town']];
+    for (const [field, value] of okCreates) {
+      const probe = JSON.parse(removedText);
+      delete probe.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.label;
+      const r = applyPatch(probe, { action: 'set', block: 'home-reviews', field, value });
+      if (!r.ok || !r.created) failures.push(`creating ${field} = "${value}" failed: ${r.error || 'no created flag'}`);
+    }
+    const badCreates = [
+      ['rating', '4.85', /rating/i], ['rating', 'Awesome', /rating/i], ['rating', '7', /rating/i],
+      ['reviewCount', '12 reviews', /review count/i], ['reviewCount', '-4', /review count/i],
+      ['label', 'x'.repeat(201), /label/i], ['label', 'two\nlines', /label/i],
+    ];
+    for (const [field, value, expect] of badCreates) {
+      const probe = JSON.parse(removedText);
+      delete probe.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.label;
+      const r = applyPatch(probe, { action: 'set', block: 'home-reviews', field, value });
+      if (r.ok) failures.push(`creating ${field} = ${JSON.stringify(value)} was accepted and must not be`);
+      else if (!expect.test(r.error || '')) failures.push(`refusing ${field} = ${JSON.stringify(value)} did not explain the value: "${r.error}"`);
+      else if (/does not exist/.test(r.error)) failures.push(`refusing ${field} blamed a missing field instead of the value`);
+    }
+    // Still narrow: a non-string, an item field, and an unrelated field are refused.
+    for (const [label, patch] of [
+      ['a non-string rating', { action: 'set', block: 'home-reviews', field: 'rating', value: 5 }],
+      ['an invented field',   { action: 'set', block: 'home-reviews', field: 'stars', value: '5' }],
+    ]) {
+      const probe = JSON.parse(removedText);
+      if (applyPatch(probe, patch).ok) failures.push(`a creation that must be refused was accepted: ${label}`);
+    }
+    // A rating on a block type NOT in the allowlist is still uncreatable.
+    const foreign = content.pages.flatMap(p => p.blocks).find(b => b.type !== 'reviews-link' && !('rating' in (b.fields || {})));
+    if (foreign) {
+      const probe = JSON.parse(JSON.stringify(content));
+      if (applyPatch(probe, { action: 'set', block: foreign.id, field: 'rating', value: '4.9' }).ok) {
+        failures.push(`a rating was created on a ${foreign.type} block, which is not in the allowlist`);
+      }
+    }
+
+    // (e) OVERWRITE path carries the SAME shape guard — the half that stops a
+    //     cleared-then-refilled rating from coming back as anything at all.
+    const origText = JSON.stringify(content);
+    for (const [field, value, ok] of [
+      ['rating', '4.9', true], ['rating', '', true], ['rating', 'Awesome', false], ['rating', '4.85', false],
+      ['reviewCount', '250', true], ['reviewCount', '', true], ['reviewCount', 'many', false],
+    ]) {
+      const probe = JSON.parse(origText);
+      const r = applyPatch(probe, { action: 'set', block: 'home-reviews', field, value });
+      if (ok && !r.ok) failures.push(`overwriting ${field} with ${JSON.stringify(value)} was refused: ${r.error}`);
+      if (!ok && r.ok) failures.push(`overwriting ${field} with ${JSON.stringify(value)} was accepted and must not be`);
+      if (!ok && JSON.stringify(probe) !== origText) failures.push(`a refused overwrite of ${field} modified the content`);
+    }
+    // A numeric reviewCount stays a number through a guarded write (the schema
+    // accepts either; a string where a number was would fail the build gate).
+    const numProbe = JSON.parse(origText);
+    numProbe.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.reviewCount = 11;
+    const numR = applyPatch(numProbe, { action: 'set', block: 'home-reviews', field: 'reviewCount', value: 250 });
+    const stored = numProbe.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.reviewCount;
+    if (!numR.ok || typeof stored !== 'number') failures.push(`a numeric review count did not stay numeric: ${JSON.stringify(stored)}`);
+
+    // (f) Through the owner editor, end to end: the doorway opens an empty text
+    //     editor, the Section panel offers it, and the created value publishes.
+    const noRating = JSON.parse(JSON.stringify(content));
+    delete noRating.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.rating;
+    writeContent(CLIENT, noRating);
+    const session = owner.createSession(CLIENT);
+    const dF = owner.describeField(session, { block: 'home-reviews', field: 'rating' });
+    if (!dF.ok || dF.kind !== 'text' || dF.value !== '' || !dF.creating) {
+      failures.push(`the editor did not open the missing rating as an empty creating text field: ${JSON.stringify(dF)}`);
+    }
+    const sec = owner.describeSection(session, { block: 'home-reviews' });
+    if (!sec.ok) failures.push(`describeSection on the reviews-link failed: ${sec.error}`);
+    else {
+      for (const f of ['rating', 'label']) {
+        if (!(sec.addable || []).some(a => a.field === f)) failures.push(`the Section panel did not offer to add the ${f}`);
+      }
+    }
+    const bad = owner.applyEdit(session, { action: 'set', block: 'home-reviews', field: 'rating', value: '4.85' });
+    if (bad.ok) failures.push('the editor accepted a malformed rating');
+    else if (!/rating/i.test(bad.error || '')) failures.push(`the editor's refusal did not explain the rating: "${bad.error}"`);
+    const good = owner.applyEdit(session, { action: 'set', block: 'home-reviews', field: 'rating', value: '4.9' });
+    if (!good.ok) failures.push(`creating the rating through the editor failed: ${good.error}`);
+    else {
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const cf = cand.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields;
+      if (cf.rating !== '4.9') failures.push(`the candidate rating is not as created: ${JSON.stringify(cf.rating)}`);
+      const live = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if ('rating' in live.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields) {
+        failures.push('LIVE content gained the rating before publish');
+      }
+    }
+    owner.keep(session);
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!html.includes('4.9')) failures.push('the published rating is not in the live HTML');
+      if (html.includes('data-bk-')) failures.push('live HTML carries data-bk-* after publish');
+    }
+
+    // (g) The blank-as-absent rule does not over-constrain the annotation proof:
+    //     with a cleared rating, the annotated build still covers the map exactly.
+    const clearedLive = readContent(CLIENT);
+    clearedLive.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-reviews').fields.rating = '';
+    writeContent(CLIENT, clearedLive);
+    const bA = build(CLIENT, ['--annotate']);
+    if (!bA.ok) failures.push(`the annotated build with a cleared rating failed:\n${bA.out}`);
+    else {
+      const { required, allowed } = annotationSets(clearedLive, loadTokens(clearedLive));
+      for (const [file, reqSet] of required) {
+        const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', file), 'utf8');
+        const present = presentAnnotations(html);
+        for (const k of reqSet) if (!present.has(k)) failures.push(`annotated ${file}: MISSING annotation ${k}`);
+        for (const k of present) if (!allowed.get(file).has(k)) failures.push(`annotated ${file}: INVALID annotation ${k}`);
+      }
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a reviews-link\'s optional rating / review count / badge label are');
+    console.log('       creatable through the same narrow allowlist a page-header subtitle uses,');
+    console.log('       whether a developer REMOVED the field or the owner CLEARED it (both leave');
+    console.log('       nothing rendered, so both surface as a doorway rather than an unclickable');
+    console.log('       scalar — the page-header subtitle now behaves the same, while a background');
+    console.log('       that still inherits stays a scalar); the shape guard holds on the create');
+    console.log('       AND the overwrite path, so a cleared rating can only come back as a');
+    console.log('       rating, a numeric count stays numeric, and every refusal names what was');
+    console.log('       wrong with the value instead of blaming a missing field; and the created');
+    console.log('       value rides the ordinary editor session to live HTML while the annotated');
+    console.log('       build still matches the edit map exactly in both directions.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

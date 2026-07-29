@@ -20,11 +20,34 @@ the major version.
   the edit map, and refused by the editor's read path — so it cannot be shown,
   described, or written from the owner tier. `contact-form.source` is the only
   member today.
+- **reviews-link `rating` / `reviewCount` / `label` are owner-creatable.** The
+  block already degraded gracefully as each went absent, but the owner could not
+  add one back, so "take the stale review count out" was a one-way door that cost
+  a developer callout to reopen. Each now returns as an "Add a …" doorway.
+
+### Changed
+- **A cleared optional value now counts as omitted** in the edit map, for any
+  creatable field whose block renders nothing when it is blank. Previously a
+  cleared field stayed an ordinary scalar with no rendered element — unclickable,
+  with no doorway either, and (in a client whose proofs check annotation
+  coverage) demanding an annotation no block emits. Also fixes this for a cleared
+  `page-header` subtitle. A field that still renders when empty (an inheriting
+  `page-header` background) is unaffected.
+- **`rating` and `reviewCount` are shape-guarded on overwrite, not just on
+  creation** (`FIELD_FORMATS`): a rating is a 0–5 figure with at most one decimal,
+  a count is a whole number optionally comma-grouped, and `""` is always accepted
+  because clearing is a removal rather than a bad value. Every value in the
+  shipped clients already conforms, and a numeric `reviewCount` stays numeric.
+- **A refused creatable value now explains itself.** A guard failure reported
+  "field does not exist", which was true of the field but said nothing about the
+  value typed; descriptors carry a plain-language `hint` instead.
+
 ### Notes for vendored client repos
-- This touches the **edit map's shape**, so a client repo with proofs or
-  blueprints keyed to it should re-run its own suite: a `contact-form` that sets
-  `source` will have that field absent from its block descriptor. No existing key
-  changes meaning, and nothing changes for a client that does not set it.
+- Both additions touch the **edit map's shape**, so a client repo with proofs or
+  blueprints keyed to it should re-run its own suite: block descriptors may now
+  carry `creatable` entries for `reviews-link`, and a `contact-form` that sets
+  `source` will have that field absent from its descriptor. No existing key
+  changes meaning and no field is removed from any client that does not opt in.
 - Schema surface added: `contactFormFields.source`. Additive and optional — every
   existing `content.json` validates unchanged.
 - Nothing in this change touches `.gitignore` or `.github/`, the two

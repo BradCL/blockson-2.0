@@ -37,10 +37,14 @@
   var transport = window.__blocksonTransport || null;
 
   // Friendly names for section settings / addable fields (Section panel).
+  // These read after "Add a …" in the Section panel, so they are phrased to fit.
   var FIELD_LABELS = {
     subhead: 'subtitle',
     variant: 'style',
     background: 'background',
+    rating: 'rating',
+    reviewCount: 'review count',
+    label: 'badge label',
   };
   function fieldLabel(f) { return FIELD_LABELS[f] || f; }
   function sectionTypeLabel(t) {

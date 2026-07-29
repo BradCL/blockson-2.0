@@ -85,6 +85,23 @@ function tokenEntries(content, presetTokens) {
   }));
 }
 
+// A creatable field that is PRESENT but empty is treated exactly like an absent
+// one, when nothing renders for an empty value (whenAbsent 'omitted'). Clearing
+// an optional value is the documented way to drop it, and a cleared field still
+// exists — so without this it would sit in `scalars` as a field with no rendered
+// element: proof 1 would demand an annotation no renderer emits, and the owner
+// would have no element to click and no doorway either, which is the same
+// one-way door as outright removal wearing a different hat.
+// A field that still renders when empty ('inherits' — a page-header background
+// falls back to the site hero and always paints its div) stays an ordinary
+// click-reachable scalar; only the render decides which case applies.
+function isBlankOmitted(desc, fields) {
+  return desc.whenAbsent === 'omitted'
+    && Object.prototype.hasOwnProperty.call(fields, desc.field)
+    && typeof fields[desc.field] === 'string'
+    && fields[desc.field].trim() === '';
+}
+
 // Describe one block's editable surface.
 function describeBlock(block) {
   const fields   = block.fields || {};
@@ -92,14 +109,16 @@ function describeBlock(block) {
   const textLists = [];
   const itemSets = [];
 
+  const creatables = creatableFieldsFor(block.type);
+  const blank      = new Set(creatables.filter(c => isBlankOmitted(c, fields)).map(c => c.field));
   // Rendered markup configuration (patch.js DEVELOPER_ONLY_FIELDS): omitted from
   // the map entirely, which is what keeps it un-annotated in the preview and
   // invisible to the editor and the maintenance model alike. applyPatch refuses
   // the same names, so this is a closed door rather than a quiet one.
-  const devOnly = developerOnlyFieldsFor(block.type);
+  const devOnly    = developerOnlyFieldsFor(block.type);
 
   for (const name of Object.keys(fields)) {
-    if (devOnly.has(name)) continue;
+    if (devOnly.has(name) || blank.has(name)) continue;
     const v = fields[name];
     // The per-block visibility flag is DELIBERATELY not a scalar here: it has
     // no rendered element to annotate (proof 1 requires an annotation for
@@ -165,8 +184,10 @@ function describeBlock(block) {
   //     be a scalar (proof 1 would demand an annotation no renderer emits), so
   //     it surfaces in `creatable` — the doorway the Section panel reads.
   const creatable = [];
-  for (const c of creatableFieldsFor(block.type)) {
-    if (Object.prototype.hasOwnProperty.call(fields, c.field)) continue; // present → handled above
+  for (const c of creatables) {
+    // present → handled above, UNLESS it is present-but-empty with nothing
+    // rendered for it, which is indistinguishable from absent (isBlankOmitted).
+    if (Object.prototype.hasOwnProperty.call(fields, c.field) && !blank.has(c.field)) continue;
     if (c.whenAbsent === 'inherits') {
       if (!scalars.some(s => s.field === c.field)) scalars.push({ field: c.field, preview: null });
     } else {

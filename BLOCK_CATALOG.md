@@ -448,8 +448,10 @@ rating. Platform-agnostic — nothing hard-codes "Google". Different from `booki
   validated by the same `$defs/safeHref` scheme guard the engine uses everywhere; a
   `javascript:` (or any non-https) scheme is rejected at build time.
 - `platform?` string (e.g. "Google") — named in the composed label
-- `rating?` string (e.g. "5.0") — omit → not rendered
-- `reviewCount?` string or number (e.g. "11") — omit → not rendered
+- `rating?` string (e.g. "5.0") — omit → not rendered. A 0–5 figure with at most
+  one decimal; the value guard applies wherever it is written (see Maintenance).
+- `reviewCount?` string or number (e.g. "11") — omit → not rendered. A whole
+  number, optionally comma-grouped ("1,204"); same guard.
 - `label?` string — overrides the composed link text outright
 The default label is composed from the present fields ("★ 5.0 · 11 reviews on Google
 →") and gracefully degrades when `rating`/`reviewCount`/`platform` are absent (down to
@@ -461,10 +463,18 @@ CSS: `.reviews-link-section`, `.reviews-link-heading`, `.reviews-link`,
 `.reviews-link-arrow`.
 **Maintenance:** every value is owner-editable through the ordinary `set` path —
 `tag`, `heading`, `url`, `platform`, `rating`, `reviewCount`, `label`. There is **no
-structural or resolver surface**: an optional field is "hidden" simply by clearing it
+structural surface**: an optional field is "hidden" simply by clearing it
 (the render omits empty fields), and the whole block is hidden with the standard
 per-block `hidden` flag. Owners keep the rating/count honest by hand; the link itself
 points at the live listing for anyone to verify.
+`rating`, `reviewCount`, and `label` are also **owner-creatable** (see OPERATOR.md):
+because the block renders nothing for an absent *or* cleared value, there would
+otherwise be no element left to click — so clearing a stale review count would
+permanently cost the owner the ability to put one back. Cleared or deleted, each
+returns as an "Add a …" doorway in the Section panel. `rating` and `reviewCount`
+carry a value guard on **both** paths (creating and overwriting), so the field
+holds a well-formed figure or nothing at all, however the owner got there; `""`
+is always accepted, because clearing is a removal rather than a bad value.
 
 ### Evaluated and deliberately NOT included
 - `announcement-banner` — a *site-wide* notice conflicts with the per-page block model;

@@ -87,7 +87,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (38 proofs)
+  _run-proofs.js        Proof suite (39 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -301,10 +301,15 @@ then SITE fields, then every block/item by id with short previews. This keeps th
 edit surface small and roughly constant as sites grow.
 
 The map is **derived, never duplicated** — it reads the resolver's own allowlists, so
-what the editor offers and what the write path accepts cannot drift apart. In
-particular, a field in `DEVELOPER_ONLY_FIELDS` (§8.2) is omitted entirely, and an
-omitted field in `CREATABLE_FIELDS` is reported as `creatable` when its block renders
-nothing without it.
+what the editor offers and what the write path accepts cannot drift apart. Three rules
+decide how a field appears:
+- a field in `DEVELOPER_ONLY_FIELDS` (§8.2) is omitted entirely;
+- an omitted field in `CREATABLE_FIELDS` is reported as `creatable` when its block
+  renders nothing without it (a doorway the Section panel offers), or stays an ordinary
+  scalar when the block still renders something (an inheriting background);
+- a *cleared* creatable field — present but blank, with nothing rendered — is treated
+  exactly like an omitted one, since a value the owner can clear is a value they must be
+  able to restore, and a blank field has no element left to click.
 
 ### 8.5 Proof suite
 
@@ -312,7 +317,7 @@ nothing without it.
 node engine/_run-proofs.js
 ```
 
-Thirty-eight proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Thirty-nine proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -416,8 +421,11 @@ building-trade icons render and match the catalog's published list in both
 directions, and (38) a contact-form's `source` tag lets two forms share one
 inbox and still be told apart, in both delivery modes, while being provably
 absent from the owner tier — omitted from the edit map, un-annotated, and
-refused by the resolver and the editor's read path alike. All 38 must pass on a
-clean tree.
+refused by the resolver and the editor's read path alike — and (39) a
+reviews-link's optional rating, review count, and badge label are creatable
+through the same narrow allowlist, whether a developer removed the field or the
+owner cleared it, with the value guard holding on the overwrite path as well as
+on creation. All 39 must pass on a clean tree.
 
 ---
 

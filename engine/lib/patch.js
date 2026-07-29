@@ -77,9 +77,19 @@ const IMAGE_PATH_RE = /^img\/[A-Za-z0-9._-]+\.(png|jpe?g|gif|webp|avif|svg)$/i;
 // safety net. \x00-\x1F and \x7F are the C0/C1-adjacent control range.
 const TEXT_LINE_RE = /^[^\x00-\x1F\x7F]{1,200}$/;
 
+// Star-rating and review-count shapes, shared by BOTH gates that touch them:
+// the CREATABLE descriptor below (may this field be brought into existence?)
+// and the FIELD_FORMATS guard further down (may this value be written at all?).
+// One regex per concept, read twice, so the create path and the overwrite path
+// can never disagree about what a rating is. A rating is the 0–5 star figure the
+// badge prints beside a ★ glyph; a count is a plain integer, optionally
+// comma-grouped the way a listing displays it ("1,204").
+const RATING_RE       = /^[0-5](?:\.\d)?$/;
+const REVIEW_COUNT_RE = /^(?:\d{1,7}|\d{1,3}(?:,\d{3})+)$/;
+
 // CREATABLE FIELDS — the single, narrow exception to "the resolver never
 // creates a field." Keyed by block TYPE → field → a DESCRIPTOR
-// { kind, guard, whenAbsent }. A plain `set` may bring one of these into
+// { kind, guard, whenAbsent, hint? }. A plain `set` may bring one of these into
 // existence on a block that omits it, but ONLY with a value the `guard`
 // (a RegExp) accepts; everything else still requires the field to pre-exist.
 //   kind:       'image' | 'text' — which editor the field opens / how the
@@ -91,6 +101,12 @@ const TEXT_LINE_RE = /^[^\x00-\x1F\x7F]{1,200}$/;
 //               'omitted' — no element renders when the value is absent (a
 //               subhead), so the field is unreachable by clicking and is
 //               surfaced as a "creatable" doorway instead.
+//   hint:       the plain-language reason a value was refused. Without one, a
+//               guard failure reports "field does not exist", which is true of
+//               the field but says nothing about the value the owner typed —
+//               fine when rejection is near-impossible (any one-line string
+//               clears TEXT_LINE_RE), misleading for a shaped value like a
+//               rating, where rejection is the ordinary case.
 // The guard means creation can never smuggle in arbitrary content, and the
 // editable surface is still developer-defined (this allowlist), not
 // owner-expandable. Only genuinely OPTIONAL fields belong here: a hero subhead
@@ -98,9 +114,24 @@ const TEXT_LINE_RE = /^[^\x00-\x1F\x7F]{1,200}$/;
 // one and it is already click-editable — it is not creatable. A page-header
 // subhead IS optional (pageHeaderFields requires only tag + heading), so an
 // interior header that omits its subtitle can have one added from the editor.
+// A reviews-link's rating / reviewCount / label are the other natural members:
+// the block is BUILT to degrade as each goes absent (see its header comment), so
+// an owner who has a stale review count taken out would otherwise lose the
+// ability to put one back — a one-way door that turns an ordinary "drop the
+// number" request into a developer errand. All three render nothing when they
+// are absent, hence 'omitted'. `label` overrides the composed badge text
+// outright, which is why its hint says so: adding one is how an owner replaces
+// "★ 5.0 · 11 reviews on Google" wholesale, and the preview shows the effect
+// before anything is kept.
 const CREATABLE_FIELDS = {
-  'page-header': { background: { kind: 'image', guard: IMAGE_PATH_RE,  whenAbsent: 'inherits' },
-                   subhead:    { kind: 'text',  guard: TEXT_LINE_RE,   whenAbsent: 'omitted'  } },
+  'page-header':  { background: { kind: 'image', guard: IMAGE_PATH_RE,  whenAbsent: 'inherits' },
+                    subhead:    { kind: 'text',  guard: TEXT_LINE_RE,   whenAbsent: 'omitted'  } },
+  'reviews-link': { rating:      { kind: 'text', guard: RATING_RE,       whenAbsent: 'omitted',
+                      hint: 'a rating is a number from 0 to 5, with at most one decimal — like "4.9"' },
+                    reviewCount: { kind: 'text', guard: REVIEW_COUNT_RE, whenAbsent: 'omitted',
+                      hint: 'a review count is a whole number — like "11" or "1,204"' },
+                    label:       { kind: 'text', guard: TEXT_LINE_RE,    whenAbsent: 'omitted',
+                      hint: 'a badge label is a single line of text, up to 200 characters; it replaces the rating and review count in the badge' } },
 };
 
 // The creatable-field descriptors for a block TYPE, as a flat list — the one
@@ -123,11 +154,19 @@ function blockTypeById(content, id) {
 // May a plain `set` CREATE this (block, field) with this value? Only for a
 // top-level block field (never an item field) whose (type, field) is in the
 // allowlist and whose value clears the descriptor's guard.
-function canCreateField(content, blockId, item, key, value) {
-  if (item != null) return false;
+// Reports the two failures separately, because they are different answers to
+// the owner: `creatable:false` means this field is not one the resolver may ever
+// invent (fall through to the ordinary "does not exist" refusal), while
+// creatable-but-not-ok means the field WAS offered and the value was wrong —
+// the case that earns the descriptor's plain-language hint.
+function creatableCheck(content, blockId, item, key, value) {
+  if (item != null) return { creatable: false };
   const guard = CREATABLE_FIELDS[blockTypeById(content, blockId)];
   const desc = guard && guard[key];
-  return !!(desc && typeof value === 'string' && desc.guard.test(value));
+  if (!desc) return { creatable: false };
+  if (typeof value === 'string' && desc.guard.test(value)) return { creatable: true, ok: true };
+  return { creatable: true, ok: false,
+    error: desc.hint || `"${value}" is not an accepted value for "${key}"` };
 }
 
 /* ── Developer-only fields ───────────────────────────────────
@@ -305,10 +344,21 @@ function validateTokenValue(type, raw) {
 
    Today: the hero background's owner-editable focal point + zoom
    (engine/blocks/hero.js paints these as inline background-position /
-   transform:scale on .hero-bg). */
+   transform:scale on .hero-bg), and a reviews-link's rating + review count.
+
+   The rating/count pair is here as well as in CREATABLE_FIELDS on purpose. A
+   creatable field can be cleared back to "" (the documented way to drop an
+   optional value — the render omits an empty field), and a cleared field still
+   EXISTS, so re-filling it takes the overwrite path, not the create path.
+   Guarding only creation would mean a rating typed once was shaped and the same
+   rating typed again was not; guarding both means the field holds a rating or
+   nothing, however the owner got there. Both validators accept "" for exactly
+   that reason — clearing is a removal, not a malformed value. */
 const FIELD_FORMATS = {
-  bgPosition: 'position',  // two percentages, each 0–100 (focal point)
-  bgZoom:     'zoom',      // a bounded number, 1–3
+  bgPosition:  'position',  // two percentages, each 0–100 (focal point)
+  bgZoom:      'zoom',      // a bounded number, 1–3
+  rating:      'rating',    // 0–5, at most one decimal, or "" to remove
+  reviewCount: 'count',     // a whole number, optionally comma-grouped, or "" to remove
 };
 
 /* Per-type whitelist format guards for FIELD_FORMATS scalars. Everything
@@ -326,6 +376,20 @@ function validateFieldValue(type, raw) {
     const n = typeof raw === 'number' ? raw : Number(String(raw).trim());
     if (Number.isFinite(n) && n >= 1 && n <= 3) return { ok: true, value: n };
     return { ok: false, error: `"${raw}" is not a valid zoom — use a number from 1 to 3` };
+  }
+  // rating/count pass the ORIGINAL value through rather than the trimmed string:
+  // reviewCount is schema-typed string OR number, and a client holding a number
+  // must keep holding one (owner.js re-coerces a numeric string before it gets
+  // here). Only the shape is checked; the stored type is left alone.
+  if (type === 'rating') {
+    const v = String(raw).trim();
+    if (v === '' || RATING_RE.test(v)) return { ok: true, value: raw };
+    return { ok: false, error: `"${v}" is not a valid rating — use a number from 0 to 5, with at most one decimal, or clear it to remove the rating` };
+  }
+  if (type === 'count') {
+    const v = String(raw).trim();
+    if (v === '' || REVIEW_COUNT_RE.test(v)) return { ok: true, value: raw };
+    return { ok: false, error: `"${v}" is not a valid review count — use a whole number like "11" or "1,204", or clear it to remove the count` };
   }
   return { ok: false, error: `unknown field type "${type}"` };
 }
@@ -518,9 +582,15 @@ function applyPatch(content, patch, presetTokens) {
     if (parent == null || !(key in parent)) {
       // A missing field is an error EXCEPT for an allowlisted creatable field
       // set to a guard-passing value (e.g. a page-header background image).
-      if (parent != null && canCreateField(content, patch.block, patch.item, String(key), patch.value)) {
-        parent[key] = patch.value;
-        return { ok: true, action: 'set', created: true };
+      // A creatable field whose VALUE was refused reports why, so "4.85" gets
+      // told it is a rating problem rather than a field-does-not-exist one.
+      if (parent != null) {
+        const c = creatableCheck(content, patch.block, patch.item, String(key), patch.value);
+        if (c.creatable) {
+          if (!c.ok) return { ok: false, error: c.error };
+          parent[key] = patch.value;
+          return { ok: true, action: 'set', created: true };
+        }
       }
       return { ok: false, error: `field does not exist: ${patch.field}` };
     }
