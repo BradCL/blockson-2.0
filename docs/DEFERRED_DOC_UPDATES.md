@@ -33,11 +33,23 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Proof count 29 → 37** (2026-07-28) — proofs 30 (hostile content values
+- **Proof count 29 → 39** (2026-07-29) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
-  (card-grid card links), 35 (nav submenus), 36 (footer column count) and 37 (trade icons) added; `01-system-map.md` and
-  `02-atlas/12-testing-proofs.md` still read 29.
+  (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
+  icons), 38 (contact-form source tag) and 39 (reviews-link creatable fields)
+  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+- **Two new field classes in the write allowlist** (2026-07-29) — wherever the
+  atlas teaches `CREATABLE_FIELDS` and how the edit map is derived from it
+  (`02-atlas/05-patch-resolver.md` / the edit-map chapter), there are now three
+  rules rather than one: `DEVELOPER_ONLY_FIELDS` (omitted from the map AND
+  refused by the resolver and the editor's read path — rendered markup
+  configuration, e.g. a contact-form's `source` tag), a creatable field surfaced
+  as a doorway, and a *cleared* creatable field now treated as omitted because a
+  blank field has no element left to click. The last one is the interesting
+  teaching point: it is why the annotation-coverage proof and the render can
+  never disagree. Also worth noting `FIELD_FORMATS` now guards a value shape on
+  both the create and the overwrite path.
 - **Optional link/submenu surfaces on existing blocks** (2026-07-28) — a
   `card-grid` card can carry `link`/`linkLabel`, a `photo-strip` can carry
   `columns`, and a `site.nav.links[]` entry can carry one level of `children`
@@ -92,9 +104,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 37** (2026-07-28) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 39** (2026-07-29) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 37, building-trade icons).
+  the next capture session (new last proof: 39, reviews-link creatable fields).
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,
@@ -117,6 +129,13 @@ Pending:
   editor and clicking the words opens the label editor (the same pattern as a
   photo-strip doorway). One line in "What else you can change"; no new
   screenshot needed — it reuses the existing text/link editors.
+- **Clearing an optional value no longer loses it** (2026-07-29) — on a reviews
+  badge, the Section panel now offers "Add a rating / review count / badge label"
+  once one is missing *or* has been cleared, so taking a stale review count out is
+  reversible by the owner. Worth a sentence in "What else you can change" framed
+  as reassurance (clearing something optional is safe — you can put it back); no
+  new screenshot needed, it reuses the existing text editor and the Section panel
+  already appears in the captures.
 
 - ✅ **Keep-open flow** (`f8be338`) — `scripts/flows/owner-editor.js` updated:
   the §3 and §5 steps now wait for the in-place `#editor:has-text("Review your
