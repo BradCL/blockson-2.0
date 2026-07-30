@@ -1,9 +1,16 @@
 'use strict';
 
 // video-embed — a single responsive embedded video. The schema restricts
-// videoUrl to YouTube/Vimeo EMBED endpoints (defense in depth alongside
-// escaping): an arbitrary iframe src is an injection surface; a known
-// embed host is not.
+// videoUrl to YouTube/Vimeo EMBED endpoints, and it is worth being exact about
+// what that buys, because this comment used to claim more: the SCHEME check
+// (^https://) is the security boundary — in an iframe src, javascript: and data:
+// are live hazards — and esc() puts the value in a quoted attribute it cannot
+// break out of. Both apply to every embed field in the engine. The host
+// allowlist on top is a TYPO-CATCHER: this field means "a YouTube or Vimeo
+// embed", so a wrong URL becomes a build error instead of an empty frame on a
+// client's live page. A field with a broader meaning (service-area.mapEmbedUrl:
+// "a map") is scheme-only for the same reason, not a different policy — see
+// SPEC.md §2 principle 5.
 const { esc } = require('../lib/escape');
 
 module.exports = function videoEmbed(fields, site, bk) {

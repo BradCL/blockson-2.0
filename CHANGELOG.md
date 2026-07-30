@@ -57,6 +57,25 @@ the major version.
   shared by both blocks — a like-for-like extraction with no change to what
   validates.
 
+### Documentation
+- **SPEC §2 principle 5 now describes the engine that exists.** It claimed the
+  deployed site has "no tracking — and no external resources," stated absolutely,
+  while `service-area` has always rendered a third-party map frame and
+  `contact-form` has always posted to a third-party endpoint. The principle is now
+  three separate rules: the engine adds nothing of its own, themes may contain
+  nothing (machine-enforced), and **content may reference a third party where a
+  developer puts one there** — fenced by the schema and visible in a diff. The
+  property protected is that nothing reaches out unless a developer wrote it into
+  `content.json`; the owner tier can never create such a field. This records a
+  decision, not a change: no code behaviour was altered, and
+  BLUEPRINT_AUTHORING.md §8 already documented the exceptions this way.
+- The same section now states why two embed fields carry different guards: the
+  **scheme** check is the security boundary (`javascript:`/`data:` in an
+  `iframe src`) and everything is `esc()`d into a quoted attribute regardless,
+  while a **host** allowlist is a typo-catcher for a field that means one specific
+  thing. `video-embed`'s comment claimed the host allowlist was what made an
+  iframe safe; corrected.
+
 ### Fixed
 - **Replacing a home-page `hero` with another hero-style block no longer loses
   the site hero image.** `findSiteHeroImage` matched the literal type name in

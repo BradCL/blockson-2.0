@@ -57,11 +57,34 @@ session, and ships the whole session with one explicit Publish (§13).
    stylesheet's class names; every color, font, and radius resolves through a CSS custom
    property injected from the theme's `tokens.json` merged with `site.themeOverrides`.
 5. **Static output, zero runtime dependencies.** The build emits plain HTML/CSS/JS to
-   `dist/`. The deployed site has no server, no database, no client-side fetching of
-   content, no tracking — and no external resources: local-first means no CDN fonts
-   and no remote scripts; font tokens are self-contained stacks, and a theme that
-   needs a specific face self-hosts it. SEO-complete (canonical tags, meta, sitemap,
-   OG tags).
+   `dist/`. The deployed site has no server, no database, and no client-side fetching
+   of content. SEO-complete (canonical tags, meta, sitemap, OG tags). Three separate
+   rules govern reaching a third party, and only the first two are absolute:
+   - **The engine adds nothing of its own.** No partial or block renderer emits a
+     link to an external host, and the engine never inserts tracking
+     (`partials/head.js` emits no external resource links — §3).
+   - **Themes are self-contained**: no CDN fonts, no remote scripts, no off-site
+     `@import`; font tokens are self-contained stacks and a theme needing a specific
+     face self-hosts it. Machine-enforced by `lib/themecheck.js`, so it cannot drift.
+   - **Content may reference a third party where a developer puts one there.** Each
+     such field is fenced by the schema — always to a scheme, and to a host where the
+     field means one specific thing. Enumerated in BLUEPRINT_AUTHORING.md §8.
+
+   The property protected here is not that a Blockson site never talks to anyone. It
+   is that **nothing talks out unless a developer wrote it into `content.json`**,
+   where it is visible in a diff and reproducible from a clone; the owner tier can
+   edit such a field's value but can never create one. A site that embeds nothing
+   tracks nobody, and that is the client's decision to make, not the engine's.
+
+   Do not conflate the two kinds: an embedded frame runs a third party's code on page
+   view, while a form endpoint receives data the visitor chose to submit. On the URL
+   guards specifically — the **scheme** check is the security boundary (in an
+   `iframe src`, `javascript:` and `data:` are live hazards in a way they are not in a
+   link), and every value is `esc()`d into a quoted attribute besides. A **host**
+   allowlist on top of that, as on `video-embed.videoUrl`, is a typo-catcher that
+   turns a wrong URL into a build error; it is not what makes the field safe. That is
+   why a narrowly-fenced `videoUrl` and a scheme-only `mapEmbedUrl` are two instances
+   of one policy rather than a disagreement.
 6. **Extend by addition.** New capabilities arrive as new block types added to the
    registry. Adding a block must never require changing existing blocks or existing
    client content files.

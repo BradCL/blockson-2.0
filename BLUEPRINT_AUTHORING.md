@@ -511,10 +511,14 @@ A blueprint **cannot**:
 - **Introduce a new block type**, change a renderer, or emit raw HTML. Unknown
   `type` values are rejected. New block types are Tier B (SPEC.md §10.1).
 - **Carry any styling or scripting** — no CSS, classes, inline styles, or JS.
-- **Reference external network resources.** Built sites are local-first: no CDN
-  fonts, no remote scripts. The narrow exceptions are content the schema explicitly
-  fences: `video-embed` (YouTube/Vimeo embed URLs only), `booking-cta` and
-  `contact-form` endpoints (`https://` links out), `service-area.mapEmbedUrl`.
+- **Reference external network resources.** The engine adds none of its own and
+  themes may contain none (SPEC.md §2 principle 5). The narrow exceptions are
+  content the schema explicitly fences, and a blueprint may only carry one where
+  the block already has such a field:
+  - embedded frames — `video-embed.videoUrl` (YouTube/Vimeo embed hosts only) and
+    `service-area.mapEmbedUrl` (`https://`);
+  - endpoints a submission or booking is sent to (`https://` links out) —
+    `contact-form.formAction`, `hero-form.form.formAction`, `booking-cta.button.href`.
 - **Touch anything outside the new page/block.** No site-level edits (name, contact,
   theme, footer), no nav reordering (the new page's nav entry is appended), no
   modification or removal of existing pages or blocks.

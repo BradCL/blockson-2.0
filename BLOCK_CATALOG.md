@@ -12,7 +12,11 @@ Conventions used below:
   `tel`, `sms`, `#anchor`, or relative — `javascript:`/`data:` fail the build);
   `formAction` and `mapEmbedUrl` must be `https://` wherever they appear
   (`formAction` is required unless the contact-form block selects netlify
-  delivery — see its entry).
+  delivery — see its entry). Some URL fields are additionally fenced to a **host**
+  (`video-embed.videoUrl` accepts only YouTube/Vimeo embed hosts). That extra
+  layer is a typo-catcher for a field that means one specific thing, not the
+  safety boundary — the scheme check plus escaping is (SPEC.md §2 principle 5) —
+  so a field with a broader meaning being scheme-only is deliberate.
 - `?` marks an optional field. Everything else is required.
 - "Repeats" means the field is an array of sub-objects, each with the listed shape.
   Every repeating sub-object carries a stable string `id` — the maintenance tier's
