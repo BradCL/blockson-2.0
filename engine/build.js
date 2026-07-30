@@ -98,6 +98,9 @@ if (idErrors.length) {
 
 // ── Step 2: Assemble HTML into memory (no partial writes) ──────
 const { renderPage } = require('./lib/render');
+// Shared with lib/owner.js + lib/host-browser.js so the set of block types that
+// can supply the site hero image is defined once (see lib/heroimage.js).
+const { findSiteHeroImage } = require('./lib/heroimage');
 const site  = content.site;
 const theme = site.theme || 'default';
 
@@ -234,15 +237,6 @@ warnOnPlaceholderForms(content);
 warnOnPlaceholderAlbumLinks(content);
 
 // ── Helpers ────────────────────────────────────────────────────
-function findSiteHeroImage(content) {
-  const pages = content.pages || [];
-  const heroBg = page => (page.blocks || [])
-    .find(b => b && b.type === 'hero' && b.fields && b.fields.background);
-  // Prefer the home page's hero; otherwise the first hero anywhere.
-  const index = pages.find(p => p.slug === 'index');
-  const hit = (index && heroBg(index)) || pages.map(heroBg).find(Boolean);
-  return hit ? hit.fields.background : null;
-}
 
 function warnOnPlaceholderForms(content) {
   const PLACEHOLDER = 'https://UNCONFIGURED';

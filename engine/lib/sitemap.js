@@ -165,8 +165,13 @@ function describeBlock(block) {
       // structural / developer-managed — intentionally not exposed as editable.
       continue;
     } else if (v !== null && typeof v === 'object') {
-      // Nested object field — list its scalar leaves.
+      // Nested object field — list its scalar leaves. Developer-only names are
+      // skipped HERE too: a nested form spec (hero-form's `form.source`) is the
+      // same field as a root-level one, and applyPatch already matches it on the
+      // leaf name, so the map has to omit it on the same terms or the two gates
+      // would disagree about a field that merely sits one level down.
       for (const k of Object.keys(v)) {
+        if (devOnly.has(k)) continue;
         if (typeof v[k] !== 'object') scalars.push({ field: `${name}.${k}`, preview: preview(v[k]) });
       }
     } else {

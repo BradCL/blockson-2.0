@@ -241,6 +241,15 @@
 //             create and the overwrite path (so a cleared rating can only come
 //             back as a rating), clearing one hands back the doorway instead of
 //             leaving an unclickable field, and a refused value says why.
+// Proof 40:   hero-form — a hero whose CTA is the form itself: copy one side,
+//             a short lead form the other. The form is rendered by the SHARED
+//             lib/formfields.js, proven by rendering the same spec through both
+//             blocks and comparing the markup; `hero` and heroFields are
+//             untouched (each block's contract still refuses the other's
+//             fields); the nested `form.source` is no more owner-reachable than
+//             a root-level one; the site hero image survives replacing a hero
+//             with a hero-form; and the narrow layout reads copy-first whichever
+//             side the form takes on a wide one.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -334,7 +343,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 39;
+const TOTAL = 40;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -4788,6 +4797,271 @@ console.log('\n═══ PROOF 39 — reviews-link optional fields: no longer a 
     console.log('       wrong with the value instead of blaming a missing field; and the created');
     console.log('       value rides the ordinary editor session to live HTML while the annotated');
     console.log('       build still matches the edit map exactly in both directions.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 40 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 40 — hero-form: the same form as the contact page, in a hero, sharing one renderer ═══');
+{
+  const owner        = require('./lib/owner');
+  const heroFormBlk  = require('./blocks/hero-form');
+  const contactBlk   = require('./blocks/contact-form');
+  const { NOOP_BLOCK } = require('./lib/annotate');
+  const { validate } = require('./lib/validate');
+  const { findSiteHeroImage } = require('./lib/heroimage');
+  const CLIENT  = '__proof-hero-form';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const failures = [];
+
+  // The form spec, used for BOTH blocks below — the client case that prompted
+  // this: "instead of the button, my description on the left and the exact same
+  // form on the right."
+  const SPEC = {
+    heading: 'Start your project', formAction: 'https://formspree.io/f/shared',
+    subjectLine: 'Website lead', submitLabel: 'Send request', source: 'home-hero',
+    fields: [
+      { name: 'name', label: 'Name', type: 'text', required: true, half: true },
+      { name: 'phone', label: 'Phone', type: 'tel', required: true, half: true },
+      { name: 'scope', label: 'What do you need?', type: 'select', options: ['Deck', 'Basement'] },
+      { name: 'detail', label: 'Details', type: 'textarea', required: true },
+    ],
+  };
+
+  try {
+    // (a) ONE RENDERER, proven rather than asserted: render the same spec
+    //     through contact-form (spec at the block root) and hero-form (spec
+    //     under `form`), then compare the <form> markup with indentation and the
+    //     class list normalized away. Anything that differed — an escaping gap,
+    //     a missing honeypot, a divergent delivery branch — shows up here.
+    const formOf = (html) => html.slice(html.indexOf('<form '), html.indexOf('</form>') + 7)
+      .replace(/^[ \t]+/gm, '')                       // indentation is per-block
+      .replace(/class="contact-form[^"]*"/, 'class="FORM"');  // so is the class hook
+    const cHtml = contactBlk({ ...SPEC, heading: undefined, tag: 'Message' }, {}, NOOP_BLOCK);
+    const hHtml = heroFormBlk({ tag: 'Free quote', headline: 'Built right.', subhead: 'One line.',
+      background: 'img/x.jpg', form: SPEC }, {}, NOOP_BLOCK);
+    if (formOf(cHtml) !== formOf(hHtml)) {
+      failures.push('the two blocks do not render the same form from the same spec — the shared renderer is not actually shared');
+    }
+    // Both carry the honeypot and the origin tag, in the hero as on the page.
+    for (const [name, html] of [['contact-form', cHtml], ['hero-form', hHtml]]) {
+      if (!html.includes('name="_gotcha"')) failures.push(`${name} lost its honeypot`);
+      if (!html.includes('name="source" value="home-hero"')) failures.push(`${name} lost its origin tag`);
+    }
+    // Netlify delivery reaches the hero form too — delivery and layout are
+    // independent concerns.
+    const netHero = heroFormBlk({ tag: 'T', headline: 'H', subhead: 'S', background: 'img/x.jpg',
+      form: { ...SPEC, delivery: { mode: 'netlify', formName: 'leads' } } }, {}, NOOP_BLOCK);
+    if (!netHero.includes('data-netlify="true"') || !netHero.includes('name="form-name" value="leads"')) {
+      failures.push('netlify delivery does not work in a hero form');
+    }
+    // A hostile value in the nested spec renders inert (esc() rides the shared
+    // renderer, so this covers both blocks at once).
+    const eviHero = heroFormBlk({ tag: 'T', headline: 'H', subhead: 'S', background: 'img/x.jpg',
+      form: { ...SPEC, submitLabel: '"><script>alert(1)</script>' } }, {}, NOOP_BLOCK);
+    if (eviHero.includes('<script>alert(1)')) failures.push('a hostile submit label was not escaped in the hero form');
+
+    // (b) `hero` is UNTOUCHED — each block's contract still refuses the other's
+    //     fields, which is the additive claim SPEC §2.6 asks for.
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const idx  = base.pages.find(p => p.slug === 'index');
+    const heroIdx = idx.blocks.findIndex(b => b.type === 'hero');
+    const heroBlock = idx.blocks[heroIdx];
+    const heroFormBlock = {
+      id: 'home-lead-hero', type: 'hero-form',
+      fields: {
+        tag: heroBlock.fields.tag, headline: heroBlock.fields.headline,
+        subhead: heroBlock.fields.subhead, background: heroBlock.fields.background,
+        // Seeded like a hero's, so the focal-point/zoom controls are in play
+        // below: patch.js's guard is keyed on the leaf name and owner.js gates
+        // the controls on the `background` field, so neither knows or cares that
+        // this is a different block type.
+        bgPosition: '50% 40%', bgZoom: 1.2,
+        variant: 'copy-left', hidden: false, form: JSON.parse(JSON.stringify(SPEC)),
+      },
+    };
+
+    const heroWithForm = JSON.parse(JSON.stringify(base));
+    heroWithForm.pages.find(p => p.slug === 'index').blocks[heroIdx].fields.form = SPEC;
+    if (validate(heroWithForm).ok) failures.push('a hero accepted a `form` field — heroFields is no longer closed');
+    const formWithActions = JSON.parse(JSON.stringify(base));
+    const fwa = JSON.parse(JSON.stringify(heroFormBlock));
+    fwa.fields.actions = [{ id: 'a', label: 'L', href: 'index.html', style: 'primary' }];
+    formWithActions.pages.find(p => p.slug === 'index').blocks.push(fwa);
+    if (validate(formWithActions).ok) failures.push('a hero-form accepted hero `actions` — its contract is not closed');
+
+    // (c) REPLACING a hero with a hero-form keeps the site hero image, so every
+    //     page-header background and the og:image survive the swap. This is the
+    //     adoption path (his home page loses the button and gains the form), and
+    //     a type-name check would have dropped all of it silently.
+    const swapped = JSON.parse(JSON.stringify(base));
+    const sIdx = swapped.pages.find(p => p.slug === 'index');
+    sIdx.blocks.splice(heroIdx, 1, JSON.parse(JSON.stringify(heroFormBlock)));
+    if (findSiteHeroImage(swapped) !== heroBlock.fields.background) {
+      failures.push(`replacing the hero with a hero-form lost the site hero image (got ${JSON.stringify(findSiteHeroImage(swapped))})`);
+    }
+    writeContent(CLIENT, swapped);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Hero Form Proof', publish: 'none' }) + '\n', 'utf8');
+    const b1 = build(CLIENT);
+    if (!b1.ok) failures.push(`the hero-form client failed to build:\n${b1.out}`);
+    else {
+      const home = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!home.includes('class="hero hero-form"')) failures.push('the hero-form section did not render');
+      if (!home.includes('action="https://formspree.io/f/shared"')) failures.push('the hero form does not post to its endpoint');
+      if (!home.includes('name="source" value="home-hero"')) failures.push('the built hero form carries no origin tag');
+      // The page-header on an interior page still inherits the hero image.
+      const about = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'about.html'), 'utf8');
+      if (!about.includes(heroBlock.fields.background)) {
+        failures.push('an interior page-header stopped inheriting the site hero image after the swap');
+      }
+      if (!home.includes(`og:image" content="${swapped.site.baseUrl}/${heroBlock.fields.background}`)) {
+        failures.push('og:image no longer resolves to the hero image after the swap');
+      }
+    }
+
+    // (d) The nested origin tag is no more reachable than a root-level one —
+    //     the edit map omits it, the resolver refuses it at both its own path
+    //     and the leaf, and the editor will not describe it. Its SIBLINGS in the
+    //     same nested object stay ordinary editable dotted scalars, so the
+    //     refusal is scoped to the field rather than to the object holding it.
+    const content = readContent(CLIENT);
+    const desc = buildEditMap(content, loadTokens(content))
+      .pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'home-lead-hero');
+    for (const f of ['form.heading', 'form.formAction', 'form.subjectLine', 'form.submitLabel']) {
+      if (!(desc.scalars || []).some(s => s.field === f)) failures.push(`${f} is not an editable scalar on the hero form`);
+    }
+    if ((desc.scalars || []).some(s => /(^|\.)source$/.test(s.field))) failures.push('the nested source tag was exposed as an editable scalar');
+    if (JSON.stringify(desc).includes('home-hero')) failures.push('the nested source VALUE leaked into the edit map');
+    if (require('./lib/sitemap').renderEditMap(content, loadTokens(content)).includes('home-hero')) {
+      failures.push("the model's text edit map names the nested source tag");
+    }
+    // The structural parts of the spec stay out of the map entirely.
+    if ((desc.scalars || []).some(s => s.field.startsWith('form.delivery'))) failures.push('the delivery wiring was exposed as editable');
+    if ((desc.scalars || []).some(s => s.field.startsWith('form.fields'))) failures.push('the form field list was exposed as editable');
+
+    const orig = JSON.stringify(content);
+    for (const [label, patch] of [
+      ['the nested path',        { action: 'set', block: 'home-lead-hero', field: 'form.source', value: 'elsewhere' }],
+      ['the bare leaf',          { action: 'set', block: 'home-lead-hero', field: 'source', value: 'elsewhere' }],
+      ['a deeper dotted path',   { action: 'set', block: 'home-lead-hero', field: 'form.delivery.source', value: 'x' }],
+    ]) {
+      const probe = JSON.parse(orig);
+      const r = applyPatch(probe, patch);
+      if (r.ok) failures.push(`a write that must be refused was accepted: ${label}`);
+      if (JSON.stringify(probe) !== orig) failures.push(`a refused write (${label}) modified the content`);
+    }
+    const okProbe = JSON.parse(orig);
+    if (!applyPatch(okProbe, { action: 'set', block: 'home-lead-hero', field: 'form.subjectLine', value: 'New lead' }).ok) {
+      failures.push('the refusal spilled onto a sibling field in the same nested form spec');
+    }
+
+    // (e) The annotated preview covers what the map reports and nothing else,
+    //     with no annotation on the origin tag.
+    build(CLIENT, ['--annotate']);
+    const { required, allowed } = annotationSets(content, loadTokens(content));
+    for (const [file, reqSet] of required) {
+      const html = fs.readFileSync(path.join(ROOT, 'dist', CLIENT + '__annotated', file), 'utf8');
+      const present = presentAnnotations(html);
+      for (const k of reqSet) if (!present.has(k)) failures.push(`annotated ${file}: MISSING annotation ${k}`);
+      for (const k of present) if (!allowed.get(file).has(k)) failures.push(`annotated ${file}: INVALID annotation ${k}`);
+      if (/data-bk-field="(form\.)?source"/.test(html)) failures.push(`annotated ${file}: the origin tag carries an annotation`);
+    }
+
+    // (f) Through the owner editor: the copy and the form's own heading are
+    //     ordinary edits, the background keeps its focal/zoom controls (the same
+    //     guard as a hero's, keyed on the field not the block type), and the
+    //     session publishes to clean live HTML.
+    const session = owner.createSession(CLIENT);
+    const dHead = owner.describeField(session, { block: 'home-lead-hero', field: 'headline' });
+    if (!dHead.ok) failures.push(`the editor cannot edit the hero-form headline: ${dHead.error}`);
+    const dFormHeading = owner.describeField(session, { block: 'home-lead-hero', field: 'form.heading' });
+    if (!dFormHeading.ok || dFormHeading.value !== SPEC.heading) failures.push(`the editor cannot edit the form heading: ${JSON.stringify(dFormHeading)}`);
+    const dSrc = owner.describeField(session, { block: 'home-lead-hero', field: 'form.source' });
+    if (dSrc.ok) failures.push('the editor described the nested origin tag as editable');
+    const dBg = owner.describeField(session, { block: 'home-lead-hero', field: 'background' });
+    if (!dBg.ok || !dBg.heroFocal) failures.push('the hero-form background lost its focal-point/zoom controls');
+    else if (dBg.heroFocal.position !== '50% 40%' || dBg.heroFocal.zoom !== 1.2) {
+      failures.push(`the hero-form focal controls report the wrong values: ${JSON.stringify(dBg.heroFocal)}`);
+    }
+    // And the guarded write reaches them, refusing an out-of-range value.
+    const focalOk = owner.applyEdit(session, { action: 'set', block: 'home-lead-hero', field: 'bgPosition', value: '30% 60%' });
+    if (!focalOk.ok) failures.push(`a guarded focal-point write was refused on the hero form: ${focalOk.error}`);
+    else owner.discard(session);
+    const focalBad = owner.applyEdit(session, { action: 'set', block: 'home-lead-hero', field: 'bgZoom', value: 9 });
+    if (focalBad.ok) failures.push('an out-of-range zoom was accepted on the hero form');
+    const sec = owner.describeSection(session, { block: 'home-lead-hero' });
+    if (!sec.ok || !sec.background) failures.push('the Section panel does not report the hero-form background');
+    else if (!sec.variant) failures.push('the Section panel does not offer the layout variant');
+
+    const e = owner.applyEdit(session, { action: 'set', block: 'home-lead-hero', field: 'form.heading', value: 'Get a free estimate' });
+    if (!e.ok) failures.push(`editing the form heading failed: ${e.error}`);
+    owner.keep(session);
+    const pub = owner.publish(session);
+    if (!pub.ok) failures.push(`publish failed: ${pub.error}`);
+    else {
+      const home = fs.readFileSync(path.join(ROOT, 'dist', CLIENT, 'index.html'), 'utf8');
+      if (!home.includes('Get a free estimate')) failures.push('the edited form heading is not in the live HTML');
+      if (home.includes('data-bk-')) failures.push('live HTML carries data-bk-* after publish');
+    }
+
+    // (g) Mobile reads copy-first whichever side the form takes on a wide
+    //     screen. The desktop swap and the narrow-screen reset are both in the
+    //     stylesheet, and the reset has to live inside the narrow media query —
+    //     the one thing that makes the order a decision rather than an accident.
+    const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+    const mediaBlock = (query) => {
+      const at = css.indexOf(query);
+      if (at === -1) return '';
+      let depth = 0, i = css.indexOf('{', at);
+      const start = i;
+      for (; i < css.length; i++) {
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}' && --depth === 0) return css.slice(start, i);
+      }
+      return '';
+    };
+    const narrow = mediaBlock('@media (max-width: 900px)');
+    const wide   = mediaBlock('@media (min-width: 901px)');
+    if (!/\.hero-form-inner\.form-left[^}]*order:\s*2/.test(wide)) {
+      failures.push('the desktop-only form-left swap is not in the wide media query');
+    }
+    if (!/\.hero-form-inner\.form-left[^}]*order:\s*0/.test(narrow)) {
+      failures.push('the narrow layout does not reset form-left to copy-first — mobile order would follow the desktop choice');
+    }
+    if (!/\.hero-form\b[^}]*min-height:\s*0/.test(css)) {
+      failures.push('.hero-form does not release the hero 92vh floor — a lead form would sit below the fold');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — hero-form renders the SAME form as contact-form from the same spec');
+    console.log('       (compared markup-to-markup, not by inspection), so one escaping path, one');
+    console.log('       honeypot, one delivery contract and one origin tag serve both — netlify');
+    console.log('       delivery and value escaping included; `hero` and heroFields are untouched');
+    console.log('       and each block still refuses the other\'s fields; replacing a hero with a');
+    console.log('       hero-form KEEPS the site hero image, so interior page-header backgrounds');
+    console.log('       and og:image survive the swap; the nested origin tag is exactly as');
+    console.log('       unreachable as a root-level one (map, model map, resolver at three paths,');
+    console.log('       editor read path) while its siblings stay editable; the annotated preview');
+    console.log('       covers the map both ways with nothing stamped on the tag; the owner edits');
+    console.log('       copy, form heading and background focal point through the ordinary');
+    console.log('       session to clean live HTML; and the narrow layout resets to copy-first');
+    console.log('       whichever side the form takes wide.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

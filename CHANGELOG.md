@@ -42,15 +42,50 @@ the major version.
   "field does not exist", which was true of the field but said nothing about the
   value typed; descriptors carry a plain-language `hint` instead.
 
+- **`hero-form` block type** (the 24th): a hero whose call to action *is* the
+  form — copy on one side, a short lead form on the other, above the fold,
+  instead of a button that makes a visitor navigate before they can act. It
+  renders **the same form as `contact-form`**, through a new shared renderer
+  (`engine/lib/formfields.js`), so both share one escaping path, one honeypot,
+  one delivery contract and one origin tag. A distinct block type rather than an
+  option on `hero` (SPEC §2.6): `hero` and `heroFields` are untouched, and the
+  two-column layout lives in the new block's own markup, so nothing was needed
+  from `lib/render.js` or `partials/head.js`. Narrow screens always read
+  copy-first, whichever side `variant` gives the form on a wide one.
+- Schema surface: `heroFormFields` plus `$defs/leadForm`. The `contact-form`
+  field and delivery shapes moved to `$defs/formField` / `$defs/formDelivery`,
+  shared by both blocks — a like-for-like extraction with no change to what
+  validates.
+
+### Fixed
+- **Replacing a home-page `hero` with another hero-style block no longer loses
+  the site hero image.** `findSiteHeroImage` matched the literal type name in
+  three separate copies (`build.js`, `lib/owner.js`, `lib/host-browser.js`), so a
+  swap would silently have taken every interior `page-header` background and the
+  default `og:image` with it. The three copies are now one module
+  (`engine/lib/heroimage.js`) with the eligible block types named once.
+- **A developer-only field nested inside an object is now omitted from the edit
+  map**, not just a top-level one. `applyPatch` already refused it on the leaf
+  name, so the resolver and the map disagreed about a field that merely sat one
+  level down (`form.source`).
+
 ### Notes for vendored client repos
-- Both additions touch the **edit map's shape**, so a client repo with proofs or
+- All three additions touch the **edit map's shape**, so a client repo with proofs or
   blueprints keyed to it should re-run its own suite: block descriptors may now
   carry `creatable` entries for `reviews-link`, and a `contact-form` that sets
   `source` will have that field absent from its descriptor. No existing key
   changes meaning and no field is removed from any client that does not opt in.
-- Schema surface added: `contactFormFields.source`. Additive and optional — every
-  existing `content.json` validates unchanged.
-- Nothing in this change touches `.gitignore` or `.github/`, the two
+- Schema surface added: `contactFormFields.source`, `heroFormFields`,
+  `$defs/leadForm`, `$defs/formField`, `$defs/formDelivery`. Additive and
+  optional — every existing `content.json` validates unchanged, and all 77 built
+  pages across the example clients, the blueprint gallery and a live client were
+  verified byte-identical through the `contact-form` extraction.
+- A client adopting `hero-form` must carry the **stylesheet** across too: the new
+  block's classes live in `themes/default/css/styles.css`. A vendored engine
+  checkout that pins its own theme CSS will render the block unstyled until the
+  theme is synced (the theme validator names this — it refuses a theme that
+  styles no class of a registered block type).
+- Nothing in these changes touches `.gitignore` or `.github/`, the two
   client-owned trees that are hand-mirrored rather than path-checked-out.
 
 ## [2.0.0] — 2026-07-02

@@ -104,6 +104,50 @@ has none) or remove one (the last is refused, like any item). The link and style
 the build (`safeHref` + the style enum), so a bad value is rolled back. Id-less actions stay
 developer-only/structural until migrated — run `extras/add-action-ids.js`.
 
+### `hero-form`
+A hero whose call to action **is** the form: copy on one side, a short lead form on
+the other, above the fold — instead of a button that makes a visitor navigate
+before they can act. The layout ad traffic lands on.
+- `tag`, `headline`, `subhead` string — the copy column, same fields as `hero`
+- `background` image, `bgPosition?`, `bgZoom?` — identical to `hero`'s, including
+  the owner-editable focal point and zoom
+- `variant?` ∈ `copy-left` | `form-left` — which side the form takes **on a wide
+  screen only**; absent means `copy-left`. Narrow screens always stack copy first
+  (see below), so this is one decision, not two.
+- `form` object **(required)** — the form spec:
+  - `heading?` string — a heading above the form ("Request a quote")
+  - `formAction` url — required unless `delivery.mode` is `netlify` (same rule as
+    `contact-form`)
+  - `delivery?`, `subjectLine?`, `submitLabel?`, `source?`, `fields` — **exactly**
+    the `contact-form` shapes, because they are the same schema definitions
+    (`$defs/formField`, `$defs/formDelivery`) and the same renderer
+- **The form is `contact-form`'s form.** Field markup, escaping, the half-width row
+  grouping, delivery modes, the honeypot and the origin tag all come from
+  `engine/lib/formfields.js`, which both blocks render through — so a hero form
+  and a contact-page form cannot drift apart, and there is one escaping path and
+  one honeypot rather than two of each.
+- **Mobile order is fixed at copy-first**, whichever side `variant` picks for
+  desktop: a visitor who has just landed needs to know what the business does
+  before being asked for their phone number, and the `<h1>` lives in the copy
+  column. The narrow media query resets the `form-left` order deliberately.
+- **A distinct block type, not an option on `hero`** (SPEC §2.6): `hero` is in
+  every client and stays untouched, and the two-column layout lives inside this
+  block's own markup — so nothing is needed from `lib/render.js` or
+  `partials/head.js`. Each block's schema refuses the other's fields.
+- **It counts as a hero for the site hero image.** Replacing a home-page `hero`
+  with a `hero-form` keeps `site.heroImage`, so interior `page-header` backgrounds
+  and the default `og:image` survive the swap (`engine/lib/heroimage.js`).
+CSS: `.hero`, `.hero-bg`, `.hero-content`, `.hero-tag` (reused, so the photo,
+overlay, texture layer and owner-editable overlay opacity all apply), plus
+`.hero-form`, `.hero-form-inner`, `.hero-form-panel`, `.hero-form-heading`,
+`.hero-lead-form`. The panel paints `--color-surface` so it stays readable over a
+photo on light and dark themes alike.
+**Maintenance:** tag/headline/subhead/`form.heading` editable; background
+replaceable with focal point + zoom; `variant` offered in the Section panel as the
+section's style. Form fields and delivery wiring: developer (no ids — structural).
+`form.source`: developer only and unreachable from the owner tier, exactly as
+`contact-form`'s is — the guard matches the leaf name, so nesting changes nothing.
+
 ### `page-header`
 Sub-hero band used at the top of interior pages (about/services/gallery/contact).
 - `tag` string — eyebrow

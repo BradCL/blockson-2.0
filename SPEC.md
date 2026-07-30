@@ -87,12 +87,12 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (39 proofs)
+  _run-proofs.js        Proof suite (40 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
                         the build-demo bundle is built from; ui.js drives both (§13)
-  blocks/               One template module per block type (see BLOCK_CATALOG.md, 23 types)
+  blocks/               One template module per block type (see BLOCK_CATALOG.md, 24 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
                         local-first — emits no external resource links)
@@ -102,6 +102,11 @@ engine/
     render.js           Page assembler: walks a page's blocks, calls each block module
     validate.js         Validates content.json against the schema; clear error messages
     escape.js           HTML-escaping helpers
+    formfields.js       Shared lead-form renderer (fields + escaping, half-width
+                        rows, delivery modes, honeypot, origin tag) — rendered by
+                        BOTH contact-form and hero-form so the two cannot drift
+    heroimage.js        The site hero image, derived once: which block types can
+                        supply it, read by build.js + owner.js + host-browser.js
     icons.js            Named inline-SVG set (icon blocks reference these by name)
     patch.js            Canonical patch resolver — single source of truth for write allowlist
                         AND the safeTokens allowlist + token value guards (§9)
@@ -317,7 +322,7 @@ decide how a field appears:
 node engine/_run-proofs.js
 ```
 
-Thirty-nine proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Forty proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -403,7 +408,7 @@ it, (27) hero CTA buttons are id-addressable, guarded, removable except for the
 last item, and addable from an empty state, (28) the same owner handlers drive
 an in-memory browser host for the no-install demo, and (29) photo-heavy gallery
 albums show a soft page-weight advisory without capping the edit, (30) hostile
-text renders inert in every one of the 23 block types, (31) the no-AJV fallback
+text renders inert in every one of the 24 block types, (31) the no-AJV fallback
 validator still builds and still guards, and (32) a linked photo-strip cell
 takes its accessible name from its owner-editable cue — image decorative inside
 the link, only the arrow hidden — with the cue visible by default off
@@ -425,7 +430,12 @@ refused by the resolver and the editor's read path alike — and (39) a
 reviews-link's optional rating, review count, and badge label are creatable
 through the same narrow allowlist, whether a developer removed the field or the
 owner cleared it, with the value guard holding on the overwrite path as well as
-on creation. All 39 must pass on a clean tree.
+on creation, and (40) `hero-form` renders the very same form as `contact-form`
+from the same spec (compared markup-to-markup, so the shared renderer is proven
+rather than asserted), leaves `hero` and its schema untouched, keeps the site
+hero image when it REPLACES a hero, keeps its nested origin tag as unreachable
+as a root-level one, and reads copy-first on a narrow screen whichever side the
+form takes on a wide one. All 40 must pass on a clean tree.
 
 ---
 

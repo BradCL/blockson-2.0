@@ -48,7 +48,8 @@
   };
   function fieldLabel(f) { return FIELD_LABELS[f] || f; }
   function sectionTypeLabel(t) {
-    return t === 'hero' ? 'hero' : t === 'page-header' ? 'page header' : t;
+    if (t === 'hero' || t === 'hero-form') return 'hero';
+    return t === 'page-header' ? 'page header' : t;
   }
 
   // Friendly labels for the safe-token allowlist.

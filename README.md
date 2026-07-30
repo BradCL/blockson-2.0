@@ -139,7 +139,7 @@ Design intent and full token reference: [themes/README.md](themes/README.md).
 
 ---
 
-## Block types (23)
+## Block types (24)
 
 Core: `hero`, `page-header`, `text`, `card-grid`, `gallery`, `testimonials`,
 `list-panel`, `service-area`, `contact-cards`, `contact-info`, `contact-form`, `cta`
@@ -152,6 +152,10 @@ strip of the contractor site that inspired Blockson; companion to `gallery`)
 
 Social proof: `reviews-link` — a compact external-review callout for Google,
 Facebook, or another review platform
+
+Lead capture: `hero-form` — a hero whose call to action *is* the form (copy one
+side, a short form the other, above the fold), rendering the same form as
+`contact-form` through a shared renderer
 
 `contact-form` has a selectable, subscription-free delivery mode: the default
 endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
@@ -514,11 +518,11 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (39 proofs)
+  _run-proofs.js        End-to-end proof suite (40 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only);
                         ui/demo/ is the static browser-demo bootstrap
-  blocks/               One module per block type (23 total)
+  blocks/               One module per block type (24 total)
   partials/             head, nav, footer
   lib/                  render, validate, escape, icons, patch (allowlist + token
                         guards), sitemap (edit map), annotate (preview-build

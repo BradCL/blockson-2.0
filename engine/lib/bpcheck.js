@@ -390,6 +390,18 @@ const SHOWCASE_BLOCKS = [
     tag: 'Social proof', heading: 'A reviews link',
     url: 'https://example.com/listing', platform: 'Google',
     rating: '5.0', reviewCount: '11' } },
+  { id: 'show-hero-form', type: 'hero-form', fields: {
+    tag: 'Lead capture', headline: 'A hero with a form',
+    subhead: 'Copy on one side, a short form on the other — the layout ad traffic lands on.',
+    background: 'img/sample-banner.jpg', variant: 'copy-left',
+    form: {
+      heading: 'Request a quote', formAction: 'https://formspree.io/f/sample',
+      subjectLine: 'Showcase lead', submitLabel: 'Send request', source: 'showcase-hero',
+      fields: [
+        { name: 'name', label: 'Name', type: 'text', required: true, half: true },
+        { name: 'phone', label: 'Phone', type: 'tel', required: true, half: true },
+        { name: 'detail', label: 'What do you need?', type: 'textarea', required: true },
+      ] } } },
 ];
 
 // Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks

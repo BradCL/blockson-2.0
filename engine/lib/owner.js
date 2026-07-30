@@ -89,6 +89,9 @@ const path = require('path');
 const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
         isDeveloperOnlyField } = require('./patch');
 const { buildEditMap } = require('./sitemap');
+// What a page-header that omits its background inherits — one definition,
+// shared with build.js + lib/host-browser.js (see lib/heroimage.js).
+const { findSiteHeroImage } = require('./heroimage');
 const scaffold = require('./scaffold');
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif']);
@@ -396,18 +399,6 @@ function describeField(session, ref) {
   return res;
 }
 
-// The site hero image (home-page hero background, else the first hero
-// anywhere) — what a page-header that omits its own background inherits at
-// render time. Mirrors findSiteHeroImage in build.js (that module is an entry
-// script and can't be required without running a build).
-function siteHeroImage(content) {
-  const pages = (content && content.pages) || [];
-  const heroBg = (page) => (page.blocks || [])
-    .find(b => b && b.type === 'hero' && b.fields && b.fields.background);
-  const index = pages.find(p => p.slug === 'index');
-  const hit = (index && heroBg(index)) || pages.map(heroBg).find(Boolean);
-  return hit ? hit.fields.background : null;
-}
 
 // The creatable-field descriptor for (block, field), or null. Shares patch.js's
 // CREATABLE_FIELDS so the editor offers exactly what the write path will accept
@@ -442,7 +433,7 @@ function describeFieldValue(session, ref) {
     const desc = (ref.index == null || ref.index === '') && (ref.item == null || ref.item === '')
       ? creatableDescriptor(content, ref.block, ref.field) : null;
     if (desc && desc.kind === 'image') {
-      return { ok: true, kind: 'image', field: ref.field, value: siteHeroImage(content) || '', inherited: true };
+      return { ok: true, kind: 'image', field: ref.field, value: findSiteHeroImage(content) || '', inherited: true };
     }
     if (desc && desc.kind === 'text') {
       return { ok: true, kind: 'text', field: ref.field, value: '', creating: true };

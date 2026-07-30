@@ -28,4 +28,6 @@ module.exports = {
   'photo-strip':   require('./photo-strip'),
   // social-proof addition
   'reviews-link':  require('./reviews-link'),
+  // lead-capture addition: a hero whose CTA is the form itself
+  'hero-form':     require('./hero-form'),
 };

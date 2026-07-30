@@ -189,6 +189,10 @@ function creatableCheck(content, blockId, item, key, value) {
    diff; that is the tier they belong to. */
 const DEVELOPER_ONLY_FIELDS = {
   'contact-form': new Set(['source']),
+  // hero-form keeps its form spec one level down (`form.source`), which is why
+  // the match below is on the LEAF name — the field is the same field wherever
+  // the block chooses to put it.
+  'hero-form':    new Set(['source']),
 };
 
 // The developer-only field names for a block TYPE, as a Set — the one source

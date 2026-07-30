@@ -38,6 +38,9 @@
 const { renderPage }     = require('./render');
 const { buildAnnotator } = require('./annotate');
 const { validate }       = require('./validate');
+// The site hero image (what a page-header that omits its background inherits,
+// and the default og:image) — one definition, shared with build.js + owner.js.
+const { findSiteHeroImage } = require('./heroimage');
 
 const MIME = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
@@ -48,18 +51,6 @@ function mimeOf(name) {
   return MIME[ext] || 'application/octet-stream';
 }
 
-// The site hero image (home-page hero background, else the first hero anywhere)
-// — what a page-header that omits its own background inherits at render time,
-// and the default og:image. Mirrors findSiteHeroImage in build.js (an entry
-// script that can't be required) and siteHeroImage in owner.js.
-function findSiteHeroImage(content) {
-  const pages = (content && content.pages) || [];
-  const heroBg = (page) => (page.blocks || [])
-    .find(b => b && b.type === 'hero' && b.fields && b.fields.background);
-  const index = pages.find(p => p.slug === 'index');
-  const hit = (index && heroBg(index)) || pages.map(heroBg).find(Boolean);
-  return hit ? hit.fields.background : null;
-}
 
 // Strip any literal </script> so an inlined script can't break out of its tag.
 function safeInlineScript(src) {

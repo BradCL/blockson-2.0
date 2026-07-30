@@ -150,7 +150,7 @@
                     "contact-form","cta",
                     "pricing-table","team-grid","faq","hours-table","before-after",
                     "stats-bar","process-steps","video-embed","booking-cta",
-                    "photo-strip","reviews-link"
+                    "photo-strip","reviews-link","hero-form"
                   ]
                 },
                 "fields": { "type": "object" }
@@ -247,6 +247,10 @@
                 {
                   "if":   { "properties": { "type": { "const": "reviews-link" } },   "required": ["type"] },
                   "then": { "properties": { "fields": { "$ref": "#/$defs/reviewsLinkFields" } } }
+                },
+                {
+                  "if":   { "properties": { "type": { "const": "hero-form" } },     "required": ["type"] },
+                  "then": { "properties": { "fields": { "$ref": "#/$defs/heroFormFields" } } }
                 }
               ]
             }
@@ -270,6 +274,78 @@
         "label": { "type": "string" },
         "href":  { "$ref": "#/$defs/safeHref" },
         "style": { "$ref": "#/$defs/buttonStyle" }
+      }
+    },
+    "formField": {
+      "type": "object",
+      "required": ["name", "label", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "name":        { "type": "string" },
+        "label":       { "type": "string" },
+        "type":        { "type": "string", "enum": ["text","email","tel","textarea","select"] },
+        "required":    { "type": "boolean" },
+        "placeholder": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "half": { "type": "boolean" }
+      }
+    },
+    "formDelivery": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode":        { "type": "string", "enum": ["endpoint", "netlify"] },
+        "formName":    { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "successPath": { "type": "string", "pattern": "^[^:]*$" }
+      }
+    },
+    "leadForm": {
+      "type": "object",
+      "required": ["fields"],
+      "additionalProperties": false,
+      "if": {
+        "required": ["delivery"],
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": { "mode": { "const": "netlify" } }
+          }
+        }
+      },
+      "else": { "required": ["formAction"] },
+      "properties": {
+        "heading":     { "type": "string" },
+        "formAction":  { "type": "string", "pattern": "^https://" },
+        "delivery":    { "$ref": "#/$defs/formDelivery" },
+        "subjectLine": { "type": "string" },
+        "submitLabel": { "type": "string" },
+        "source":      { "type": "string" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/formField" }
+        }
+      }
+    },
+    "heroFormFields": {
+      "type": "object",
+      "required": ["tag", "headline", "subhead", "background", "form"],
+      "additionalProperties": false,
+      "properties": {
+        "hidden":     { "type": "boolean" },
+        "tag":        { "type": "string" },
+        "headline":   { "type": "string" },
+        "subhead":    { "type": "string" },
+        "background": { "type": "string" },
+        "bgPosition": { "type": "string" },
+        "bgZoom":     { "type": "number" },
+        "variant":    { "type": "string", "enum": ["copy-left", "form-left"] },
+        "form":       { "$ref": "#/$defs/leadForm" }
       }
     },
     "heroFields": {
@@ -527,39 +603,14 @@
         "tag":         { "type": "string" },
         "heading":     { "type": "string" },
         "formAction":  { "type": "string", "pattern": "^https://" },
-        "delivery": {
-          "type": "object",
-          "required": ["mode"],
-          "additionalProperties": false,
-          "properties": {
-            "mode":        { "type": "string", "enum": ["endpoint", "netlify"] },
-            "formName":    { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
-            "successPath": { "type": "string", "pattern": "^[^:]*$" }
-          }
-        },
+        "delivery":    { "$ref": "#/$defs/formDelivery" },
         "subjectLine": { "type": "string" },
         "submitLabel": { "type": "string" },
         "source":      { "type": "string" },
         "fields": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["name", "label", "type"],
-            "additionalProperties": false,
-            "properties": {
-              "name":        { "type": "string" },
-              "label":       { "type": "string" },
-              "type":        { "type": "string", "enum": ["text","email","tel","textarea","select"] },
-              "required":    { "type": "boolean" },
-              "placeholder": { "type": "string" },
-              "options": {
-                "type": "array",
-                "items": { "type": "string" }
-              },
-              "half": { "type": "boolean" }
-            }
-          }
+          "items": { "$ref": "#/$defs/formField" }
         }
       }
     },

@@ -1,112 +1,26 @@
 'use strict';
 
+// contact-form — a full-width contact form with a selectable, subscription-free
+// delivery mode. Everything about the form itself (field markup, half-width
+// rows, delivery, honeypot, the origin tag) lives in engine/lib/formfields.js,
+// shared with hero-form so the two can never drift apart; this module owns only
+// the section wrapper around it.
 const { esc } = require('../lib/escape');
-
-// Honeypot field name. "_gotcha" is Formspree's reserved honeypot field, so
-// endpoint-mode relays that recognise it drop bot submissions with no extra
-// setup; the same name is wired into netlify-honeypot below and into the
-// Cloudflare Worker template (extras/cloudflare-form-worker/). The input is
-// rendered markup, never schema content — it must never appear in the edit
-// map and never carry a data-bk-* annotation.
-const HONEYPOT_NAME = '_gotcha';
-
-function renderField(f) {
-  const req      = f.required ? ' required' : '';
-  const phAttr   = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : '';
-  const reqMark  = f.required
-    ? ' <span class="form-required" aria-hidden="true">*</span>'
-    : ' <span class="form-optional">(optional)</span>';
-
-  let input;
-  if (f.type === 'textarea') {
-    input = `<textarea name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${req} rows="6"></textarea>`;
-  } else if (f.type === 'select') {
-    const opts = (f.options || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    input = `<select name="${esc(f.name)}" id="field-${esc(f.name)}"${req}><option value="">Select…</option>${opts}</select>`;
-  } else {
-    input = `<input type="${esc(f.type)}" name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${req}>`;
-  }
-
-  return `<div class="form-group">
-        <label for="field-${esc(f.name)}">${esc(f.label)}${reqMark}</label>
-        ${input}
-      </div>`;
-}
+const { renderForm } = require('../lib/formfields');
 
 module.exports = function contactForm(fields, site, bk) {
   const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
   const heading = fields.heading ? `<h2${bk.f('heading')}>${esc(fields.heading)}</h2>` : '';
-  const subject = fields.subjectLine
-    ? `<input type="hidden" name="_subject" value="${esc(fields.subjectLine)}"${bk.f('subjectLine')}>` : '';
-  const submitLabel = fields.submitLabel || 'Send Message';
 
-  // Delivery mode (optional, additive — see BLOCK_CATALOG.md / OPERATOR.md
-  // "Contact form delivery"). Absent or "endpoint": the classic POST to an
-  // https:// formAction, rendered exactly as before. "netlify": render the
-  // attributes Netlify's edge form handling picks up at deploy time instead;
-  // formAction, if present, is not rendered in this mode.
-  const delivery = (fields.delivery && typeof fields.delivery === 'object') ? fields.delivery : {};
-  let formOpen;
-  let netlifyName = '';
-  if (delivery.mode === 'netlify') {
-    const formName = delivery.formName || 'contact';
-    // The success redirect: a configured relative path renders as the form
-    // action so Netlify redirects there after a submission; without one,
-    // Netlify's built-in success page answers the POST.
-    const action = delivery.successPath ? ` action="${esc(delivery.successPath)}"` : '';
-    formOpen = `<form class="contact-form" method="POST" name="${esc(formName)}" data-netlify="true" netlify-honeypot="${HONEYPOT_NAME}"${action}>`;
-    netlifyName = `<input type="hidden" name="form-name" value="${esc(formName)}">\n      `;
-  } else {
-    formOpen = `<form class="contact-form" method="POST" action="${esc(fields.formAction)}"${bk.f('formAction')}>`;
-  }
-
-  // Visually hidden honeypot, rendered in BOTH modes: offscreen via
-  // .form-hp, hidden from assistive tech, and not focusable — only a bot
-  // that fills every field touches it. Netlify, the Worker template, and
-  // Formspree all drop submissions where it is filled.
-  const honeypot = `${netlifyName}<div class="form-hp" aria-hidden="true"><input type="text" name="${HONEYPOT_NAME}" tabindex="-1" autocomplete="off"></div>`;
-
-  // Origin tag (optional, developer-tier, rendered in BOTH delivery modes). Once
-  // a site has two forms, the owner needs to know which one fired — the
-  // attribution a marketing company reads to tell a hero lead from a contact-page
-  // enquiry. The alternative is giving each form its own delivery.formName, which
-  // splits them into two inboxes with two notification configs, and a missed
-  // notification is a missed lead.
-  // Like the honeypot above, this is rendered markup rather than editable
-  // content: no bk annotation, and absent from the edit map + refused by
-  // applyPatch (patch.js DEVELOPER_ONLY_FIELDS), because an owner who retargets
-  // it breaks attribution invisibly. Escaped like every other value; omitted
-  // entirely when unset, so every existing client's form is byte-identical.
-  const source = fields.source
-    ? `<input type="hidden" name="source" value="${esc(fields.source)}">\n      ` : '';
-
-  // Group half-width fields into rows
-  const formFields = fields.fields || [];
-  const rows = [];
-  let i = 0;
-  while (i < formFields.length) {
-    const f = formFields[i];
-    if (f.half && i + 1 < formFields.length && formFields[i + 1].half) {
-      rows.push(`<div class="form-row">${renderField(f)}${renderField(formFields[i + 1])}</div>`);
-      i += 2;
-    } else {
-      rows.push(renderField(f));
-      i++;
-    }
-  }
+  // The form spec sits at this block's root, so annotation paths need no
+  // prefix and the historical 6-space body indent is the default.
+  const form = renderForm(fields, bk, { className: 'contact-form' });
 
   return `<section class="contact-form-section">
   <div class="container">
     ${tag}
     ${heading}
-    ${formOpen}
-      ${subject}
-      ${source}${honeypot}
-      ${rows.join('\n      ')}
-      <div class="form-submit">
-        <button type="submit" class="btn btn-primary"${bk.f('submitLabel')}>${esc(submitLabel)}</button>
-      </div>
-    </form>
+    ${form}
   </div>
 </section>`;
 };
