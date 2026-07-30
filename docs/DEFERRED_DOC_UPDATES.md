@@ -33,12 +33,26 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Proof count 29 → 39** (2026-07-29) — proofs 30 (hostile content values
+- **Block-type count 23 → 24, and `hero-form` is the first block sharing a
+  renderer** (2026-07-29) — `01-system-map.md:126` reads "(23)". Two new lib
+  modules to name there as well: `formfields.js` (the lead-form renderer that
+  `contact-form` and `hero-form` both call, so neither owns the form) and
+  `heroimage.js` (the site hero image, previously copied in three places).
+  `02-atlas/03-blocks-and-render.md` teaches one-module-per-block-type; the shared
+  renderer is a genuine wrinkle in that model and worth a paragraph.
+- **SPEC §2 principle 5 was amended** (2026-07-29) — wherever the guide teaches
+  "local-first / no external resources" as a flat invariant, it is now three rules:
+  the engine adds nothing, themes may contain nothing (machine-enforced), and
+  content may reference a third party where a developer puts one there. The
+  teaching point is the distinction the old wording hid — a scheme check is a
+  security boundary, a host allowlist is a typo-catcher.
+- **Proof count 29 → 40** (2026-07-29) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
   (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
-  icons), 38 (contact-form source tag) and 39 (reviews-link creatable fields)
-  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+  icons), 38 (contact-form source tag), 39 (reviews-link creatable fields) and 40
+  (hero-form) added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still
+  read 29.
 - **Two new field classes in the write allowlist** (2026-07-29) — wherever the
   atlas teaches `CREATABLE_FIELDS` and how the edit map is derived from it
   (`02-atlas/05-patch-resolver.md` / the edit-map chapter), there are now three
@@ -104,9 +118,13 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 39** (2026-07-29) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 40** (2026-07-29) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 39, reviews-link creatable fields).
+  the next capture session (new last proof: 40, hero-form).
+- **Block-type count 23 → 24** (2026-07-29) — `README.md:77` and
+  `term/02-new-client.txt` both say "all 23 block types" (the second is captured
+  from `new-client.js` output, so it regenerates), and `term/01-proofs.txt:68`
+  carries it inside the theme-validator proof line.
 
 - ✅ **Proof transcript + count** — `term/*.txt` regenerated via
   `node scripts/capture-terminal-snippets.js` (`01-proofs.txt` now `29/29`,
