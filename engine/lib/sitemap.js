@@ -85,6 +85,24 @@ function tokenEntries(content, presetTokens) {
   }));
 }
 
+// Item fields that exist in the data but render NO element in this block's
+// current configuration, and so must stay out of the map (proof 1 requires an
+// annotation for every field the map reports; a field with nothing to annotate
+// would fail it, and would show the owner an editor for something they cannot
+// see change).
+//
+// Today there is exactly one: a gallery filter's `cover` renders a category
+// card only while the gallery's "All" tab is in `categories` mode. Seeded
+// covers on a gallery still in `albums` mode are inert data, and this is what
+// makes seeding them ahead of the switch safe rather than a build failure.
+function unrenderedItemFields(block, arrayField) {
+  if (block.type === 'gallery' && arrayField === 'filters'
+      && (block.fields || {}).allShows !== 'categories') {
+    return new Set(['cover']);
+  }
+  return new Set();
+}
+
 // A creatable field that is PRESENT but empty is treated exactly like an absent
 // one, when nothing renders for an empty value (whenAbsent 'omitted'). Clearing
 // an optional value is the documented way to drop it, and a cleared field still
@@ -146,12 +164,29 @@ function describeBlock(block) {
       // from that click, never a per-element click of their own. Keying on the
       // field name keeps proof 1's required-annotation set in sync with what
       // hero.js actually annotates.
+      //
+      // Two further exclusions apply to every item array, and they are
+      // different in kind from the `actions` case above — which is why they do
+      // NOT live in this ternary. `actions` is an annotation-COVERAGE rule (one
+      // element can carry one annotation). The two below are about whether the
+      // field belongs to the owner at all, and whether it renders:
+      //   - devOnly: rendered-markup configuration (patch.js
+      //     DEVELOPER_ONLY_FIELDS), refused by applyPatch on item paths just as
+      //     on block paths — so omitting it here keeps the two doors shut
+      //     together rather than hiding a field the write path would accept.
+      //   - unrendered: a field with no rendered element IN THIS BLOCK'S
+      //     CURRENT CONFIGURATION. Same family as the `hidden`/`bgPosition`
+      //     exclusions above: proof 1 requires an annotation for every field
+      //     the map reports, so a field that renders nothing must not be
+      //     reported.
+      const unrendered = unrenderedItemFields(block, name);
       const items = v.map(it => ({
         id:     it.id,
         label:  pickLabel(it),
-        fields: name === 'actions'
+        fields: (name === 'actions'
           ? Object.keys(it).filter(k => k === 'label')
-          : Object.keys(it).filter(k => k !== 'id' && k !== 'type'),
+          : Object.keys(it).filter(k => k !== 'id' && k !== 'type')
+        ).filter(k => !devOnly.has(k) && !unrendered.has(k)),
       }));
       itemSets.push({ field: name, items });
     } else if (isStringArray(v) && v.length) {

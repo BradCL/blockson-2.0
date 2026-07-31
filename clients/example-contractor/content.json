@@ -418,19 +418,26 @@
             "filters": [
               {
                 "label": "All",
-                "value": "all"
+                "value": "all",
+                "id": "filter-all"
               },
               {
                 "label": "Bathroom",
-                "value": "bathroom"
+                "value": "bathroom",
+                "id": "filter-bathroom",
+                "cover": "img/bathroom-2.jpg"
               },
               {
                 "label": "Exterior",
-                "value": "exterior"
+                "value": "exterior",
+                "id": "filter-exterior",
+                "cover": "img/deck-1.jpg"
               },
               {
                 "label": "Framing",
-                "value": "framing"
+                "value": "framing",
+                "id": "filter-framing",
+                "cover": "img/infill-2.jpg"
               }
             ],
             "albums": [
@@ -464,7 +471,8 @@
                 ]
               }
             ],
-            "hidden": false
+            "hidden": false,
+            "allShows": "categories"
           }
         },
         {

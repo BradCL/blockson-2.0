@@ -110,7 +110,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (41 proofs)
+  _run-proofs.js        Proof suite (42 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -308,8 +308,12 @@ Safety invariants enforced in code:
   content, because a wrong value breaks something with no visible symptom. The same
   table is read by the edit-map generator (§8.4), so such a field is never shown to
   the owner or the maintenance model, and by the editor's read path, so it cannot
-  even be described — omission and refusal are one decision, not two. Today:
-  a contact-form's `source` attribution tag.
+  even be described — omission and refusal are one decision, not two. It covers
+  item fields as well as block fields, matching on the leaf name. Today: a
+  contact-form's `source` attribution tag; a gallery filter's `value` (the join
+  key its albums match on — renaming it orphans a whole category silently); and a
+  gallery's `allShows` (which switches what the first tab shows, renders no
+  element of its own, and can strand an album in no view at all).
 
 ### 8.3 Production apply CLI (`engine/apply-patch.js`)
 
@@ -464,8 +468,17 @@ because each link's accessible name is its cue text plus a screen-reader-only
 attribution, so the photo-strip defect cannot recur — while a link-less quote
 stays byte-identical, the owner can repoint and reword an existing link, an
 owner can ADD a linked quote through the shipped blueprint, and a `javascript:`
-target is refused by the blueprint and by both validators. All 41 must pass on a
-clean tree.
+target is refused by the blueprint and by both validators, and (42) a gallery's
+"All" tab can show one cover per category instead of every album — covers being
+LINKS to a real `#category-` fragment while album cards stay lightbox BUTTONS, so
+two look-alike cards never mean two things through one affordance — each
+announcing as its visible text (category plus a derived project count), with an
+unchosen cover falling back to the first album photo without becoming a dead edit
+target, an empty category getting no doorway at all, `label` and `cover`
+owner-editable while the join key and the mode switch are refused by the edit map
+AND the resolver together, albums mode byte-identical, and the two advisories no
+real client can trigger — an album reachable from no view, and a category with no
+albums — firing on a fixture built for them. All 42 must pass on a clean tree.
 
 ---
 

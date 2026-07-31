@@ -224,7 +224,22 @@ Filterable album grid with lightbox. Each album is a project/collection with one
 photos; the first photo is the thumbnail.
 - `tag?` string
 - `heading?` string
-- `filters` Repeats: `{label, value}` — the filter bar. First should be `{label:"All", value:"all"}`.
+- `allShows?` `"albums"` (default) | `"categories"` — what the first tab shows. See
+  "The All tab" below. Developer-only (it re-plumbs the first view every visitor
+  gets, and renders no element of its own): omitted from the edit map and refused
+  by `applyPatch`.
+- `filters` Repeats — the filter bar, and the site's list of CATEGORIES:
+  - `id?` string — seed it (or run `extras/add-filter-ids.js`) to make the tab's
+    `label` and `cover` click-editable. Optional and all-or-nothing: the array
+    stays developer-managed until EVERY filter carries one.
+  - `label` string — the tab's wording. Owner-editable once ids are seeded.
+  - `value` string — the category's identity, and the join key albums match on.
+    **Developer-only**, for both doors: renaming it orphans every album in the
+    category at once, with nothing in the preview to say why.
+  - `cover?` image path — the photo representing this category on the "All" tab
+    in `categories` mode. Ignored (with a build warning) in `albums` mode.
+  - First entry should be `{label:"All", value:"all"}`; it is the container tab
+    and never gets a cover card of its own.
 - `albums` Repeats:
   - `id` string
   - `category` string — must equal one of the `filters[].value`
@@ -237,14 +252,47 @@ photos; the first photo is the thumbnail.
   - `linkLabel?` string — text for that link (defaults to "See all photos");
     seed it so an owner can edit the wording (e.g. "Full album on Facebook").
   - `images` Repeats: image paths (first = thumbnail)
+**The All tab (`allShows`).** By default "All" lists every album — and it is the only
+view that gets WORSE as a portfolio grows, because it is the tab that loads first.
+Set `allShows: "categories"` and "All" instead shows one **cover card per category**,
+with the project cards living on the category tabs where the count is bounded and the
+lightbox makes sense. Adding work then improves the front door instead of diluting it.
+
+- A cover card is an `<a href="#category-<value>">`, **not** a lightbox trigger. That
+  is deliberate: a cover and an album card are two similar-looking cards that do
+  different things, so they use the platform's own distinction — a cover is a LINK
+  (it goes somewhere), an album card stays a BUTTON (it acts here). Its accessible
+  name is its visible text: the category label plus a derived project count
+  ("Garages · 3 projects"); only the arrow is `aria-hidden`.
+- **The filter now lives in the URL fragment** (`#category-garages`), so a category
+  is linkable, shareable and ad-targetable, and Back returns to the overview. Tabs
+  and covers both work by setting the hash; one `hashchange` handler filters. An
+  unknown or foreign fragment falls back to the first tab.
+- A category with **no `cover`** falls back to the first photo of its first album, so
+  the mode works the moment it is switched on. That fallback is not an edit target —
+  seed `cover` to make it editable.
+- A category with **no albums** gets no cover card (a doorway to the empty-filter
+  message is worse than none), and the build warns.
+- An album whose `category` matches no filter shows under "All" in `albums` mode, but
+  in `categories` mode it is reachable from **no view at all**. The build warns by
+  album id. Keep the `gallery-album` blueprint's `category` options in sync with this
+  block's `filters[].value` set.
+
 CSS: `.gallery`, `.filter-bar`, `.filter-btn`, `.album-grid`, `.album-card` (+ `data-type`,
-`data-images`, `data-title`), `.album-link`, `.gallery-empty`. JS reads the `data-*` attributes.
+`data-images`, `data-title`), `.album-link`, `.gallery-empty`; in `categories` mode also
+`.category-grid` (+ `.category-grid[hidden]`, which main.js toggles to swap tabs),
+`.category-card`, `.category-card-img`, `.category-card-body`, `.category-name`,
+`.category-count`, `.category-cue-arrow`. JS reads the `data-*` attributes and the hash.
 **Maintenance:** album titles/meta editable; the per-album `href` is click-to-edit so an
 owner can repoint it if the host changes; image lists support append/delete by filename.
+Once `filters[].id` is seeded, a tab's `label` is click-editable (from the tab itself and
+from its cover card) and a category's `cover` photo is swappable through the image picker
+— which is how an owner says "this photo represents Garages" without touching structure.
+Item fields are not owner-creatable, so seed `cover` on every filter at setup if the owner
+should be able to change it later. `value` and `allShows` are developer-only.
 Owners add albums through the shipped `gallery-album` item blueprint (tailor its
-`category` select options to this block's `filters[].value` set per client — an album
-whose category matches no filter only appears under "All") and remove any but the last.
-Filters themselves: developer.
+`category` select options to this block's `filters[].value` set per client) and remove any
+but the last. Adding or removing filters themselves: developer.
 
 ### `testimonials`
 Two-column quote cards with a star row.

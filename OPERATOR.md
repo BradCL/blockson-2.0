@@ -226,6 +226,36 @@ like the visibility flag). Migrate once with
 every hero button that lacks one), then rebuild; the live HTML is byte-identical,
 and the buttons become editable in the editor.
 
+**Gallery category tabs and covers.** A gallery's `filters` are the site's list
+of categories, and they follow the same id rule: un-migrated filters stay
+non-editable. Run `node extras/add-filter-ids.js <client-name>` once (idempotent)
+and a tab's wording becomes click-editable — and, if the gallery uses category
+covers, so does the photo representing each category.
+
+Those covers are what the `allShows: "categories"` mode on a `gallery` turns on:
+the "All" tab shows one cover card per category instead of every album, with the
+project cards on the category tabs. Reach for it once a portfolio outgrows a
+readable "All" — that tab loads first and is the only view that gets worse as
+work is added. Two setup notes:
+
+- **Seed a `cover` on every filter**, even if it starts as the same photo the
+  fallback would pick. Item fields are not owner-creatable, so a filter with no
+  `cover` gives the owner nothing to click and no way to add one later — the same
+  seeding rule as a card's `linkLabel`.
+- **Keep every album's `category` matching a filter's `value`.** In the default
+  mode a mismatch is harmless (the album still shows under "All"); in
+  `categories` mode that album is reachable from **no view at all**. The build
+  warns by album id, and `npm run doctor` surfaces it — it is not a failure, so
+  read the advisories.
+
+The mode switch and a filter's `value` are developer-only (`content.json`): the
+first re-plumbs the first view every visitor gets, and the second is the key
+albums are matched on, so renaming it empties a category silently.
+
+Switching the mode also gives every category a **shareable address** —
+`gallery.html#category-garages` — which is what a marketing campaign can point
+an ad at, and what makes the browser's Back button behave inside the gallery.
+
 **Owner-creatable fields (the narrow exception).** The maintenance tier
 otherwise only edits fields a developer seeded — it cannot invent new ones. The
 deliberate, allowlisted exceptions are:
@@ -473,6 +503,7 @@ developer.
 | Replace any photo (phone photos are fine — they're resized automatically) | Reorder sections or menu entries |
 | Add, edit, or remove lines in plain lists (hours, service areas, "what's included") | Change fonts, sizes, spacing, or layout |
 | Add or remove photos in a gallery album | Change text colors (they're matched to backgrounds for readability) |
+| Choose the photo that represents each gallery category, and rename a category tab | Add or remove the category tabs themselves |
 | Change the brand colors (the editor blocks unreadable combinations) | Edit the footer columns, navigation order, or form fields |
 | Hide a whole section (and bring it back later) — e.g. the booking section over winter | Hide a whole page or its menu entry |
 | Add whole new pages from the built-in layouts (contact, gallery, content page) | Add a page that doesn't match one of those layouts |

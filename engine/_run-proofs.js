@@ -354,7 +354,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 41;
+const TOTAL = 42;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -5299,6 +5299,328 @@ console.log('\n═══ PROOF 41 — testimonial quotes can link back to the re
     console.log('       are click-to-editable and owner-repointable through the ordinary item');
     console.log('       path; an owner can ADD a linked quote through the shipped blueprint; and a');
     console.log('       javascript: target is refused by the blueprint and by BOTH validators.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 42 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 42 — a gallery\'s "All" tab can show one cover per category, and a category is a real destination ═══');
+{
+  const CLIENT  = '__proof-gallery-covers';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // This fixture carries the shapes NO shipped client has, and that is the
+  // point: the flagship gallery this feature was built for has zero orphan
+  // albums and zero empty categories, and will still have zero after its album
+  // split. Those two advisories can therefore never fire in a real build — if
+  // they are not exercised here they are not exercised anywhere.
+  const mk = (extra = {}) => ({
+    id: 'proof-gallery', type: 'gallery',
+    fields: {
+      heading: 'Our work',
+      filters: [
+        { id: 'f-all',     label: 'All',     value: 'all' },
+        { id: 'f-decks',   label: 'Decks',   value: 'decks', cover: 'img/decks-cover.jpg' },
+        { id: 'f-garages', label: 'Garages', value: 'garages' },
+        { id: 'f-roofing', label: 'Roofing', value: 'roofing', cover: 'img/roofing-cover.jpg' },
+      ],
+      albums: [
+        { id: 'ga-tamarack', category: 'decks',   title: 'Tamarack Deck',  images: ['img/tamarack-1.jpg', 'img/tamarack-2.jpg'] },
+        { id: 'ga-cedar',    category: 'decks',   title: 'Cedar Deck',     images: ['img/cedar-1.jpg'] },
+        { id: 'ga-doubleg',  category: 'garages', title: 'Double Garage',  images: ['img/doubleg-1.jpg'] },
+        // 'roofing' has a cover but NO albums — the empty-category case.
+      ],
+      ...extra,
+    },
+  });
+  const withGallery = (extra) => {
+    const c = readContent('example-league');
+    c.pages.find(p => p.slug === 'index').blocks.push(mk(extra));
+    return c;
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    // (a) DEFAULT MODE IS UNCHANGED. Covers may be seeded ahead of the switch;
+    //     until allShows says otherwise the block renders no cover markup at
+    //     all — not even the blank line an empty interpolation would leave.
+    writeContent(CLIENT, withGallery());
+    let r = build(CLIENT);
+    if (!r.ok) failures.push(`the albums-mode build failed:\n${r.out}`);
+    let html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    if (html.includes('category-grid') || html.includes('category-card')) {
+      failures.push('a gallery in the default "albums" mode emitted cover markup');
+    }
+    if (!/<\/div>\n    <div class="album-grid">/.test(html)) {
+      failures.push('albums mode is no longer byte-identical around the cover slot (stray whitespace)');
+    }
+    if (!r.out.includes('has category covers set (decks, roofing)')) {
+      failures.push('seeded covers on a gallery still in albums mode drew no advisory — the data is inert and silently so');
+    }
+    // A cover that renders nothing must not be offered as editable either:
+    // proof 1 requires an annotation for every field the map reports.
+    {
+      const desc = buildEditMap(readContent(CLIENT)).pages
+        .flatMap(p => p.blocks).find(b => b.id === 'proof-gallery');
+      const decks = desc.itemSets.find(s => s.field === 'filters').items.find(i => i.id === 'f-decks');
+      if (decks.fields.includes('cover')) {
+        failures.push('the edit map offers a cover editor in albums mode, where the cover renders no element');
+      }
+    }
+
+    // (b) CATEGORIES MODE. One card per NON-EMPTY category, in filter order,
+    //     and the "All" filter itself is the container — never a card.
+    writeContent(CLIENT, withGallery({ allShows: 'categories' }));
+    r = build(CLIENT);
+    if (!r.ok) failures.push(`the categories-mode build failed:\n${r.out}`);
+    html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    const cards = html.match(/<a class="category-card[\s\S]*?<\/a>/g) || [];
+    if (cards.length !== 2) failures.push(`expected 2 cover cards (decks, garages), found ${cards.length}`);
+    if (html.includes('href="#category-all"')) failures.push('the "All" filter rendered a cover card of its own');
+    if (html.includes('href="#category-roofing"')) {
+      failures.push('a category with no albums rendered a cover card — it would lead to the empty-filter message');
+    }
+    if (!r.out.includes('The gallery filter "roofing"') || !r.out.includes('has no albums')) {
+      failures.push('an empty category drew no build advisory — the tab is in the bar and absent from the overview with nothing to say why');
+    }
+
+    // (c) THE AFFORDANCE. A cover is a LINK (it goes somewhere); an album card
+    //     stays a BUTTON (it opens the lightbox here). That native pair is what
+    //     keeps two visually related cards from meaning two things through one
+    //     affordance — so a cover must carry none of the lightbox contract.
+    const deckCard = cards.find(c => c.includes('#category-decks')) || '';
+    if (!deckCard.startsWith('<a class="category-card')) failures.push('a cover card is not an anchor');
+    if (/role="button"|tabindex=|data-images=/.test(deckCard)) {
+      failures.push('a cover card carries the album card\'s button/lightbox contract — the two affordances have merged again');
+    }
+    for (const card of cards) {
+      if (!/<img src="[^"]*" alt="" loading="lazy">/.test(card)) {
+        failures.push('a cover photo is not alt="" inside its link — it would prepend the filename to the link name');
+      }
+    }
+    // The album cards, by contrast, must be untouched.
+    if (!html.includes('role="button" aria-label="View Tamarack Deck gallery"')) {
+      failures.push('the album card lost its lightbox role/name in categories mode');
+    }
+
+    // (d) ACCESSIBLE NAME = what is on screen: category label + a DERIVED
+    //     count, with only the arrow hidden. The count is the honest signal
+    //     that there is more behind the card, and being derived it cannot drift
+    //     from the albums. Both the plural and singular branches are live here.
+    const nameOf = (card) => card
+      .replace(/<span class="category-cue-arrow"[\s\S]*?<\/span>/g, '')
+      .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const names = cards.map(nameOf);
+    if (!names.includes('Decks 2 projects')) failures.push(`the decks cover does not announce as "Decks 2 projects" (got: ${names.join(' | ')})`);
+    if (!names.includes('Garages 1 project')) failures.push(`a one-album category does not announce in the singular (got: ${names.join(' | ')})`);
+    if (new Set(names).size !== names.length) failures.push('two cover cards resolve to the same accessible name');
+    if (!/class="category-cue-arrow" aria-hidden="true"/.test(deckCard)) failures.push('the decorative arrow is not aria-hidden — it would append a stray glyph to every cover name');
+
+    // (e) THE HASH CONTRACT between renderer and theme JS: every cover points
+    //     at a fragment naming a filter this gallery actually has a button for.
+    //     main.js resolves anything else to the default tab, so a mismatch here
+    //     would be a dead link that fails silently.
+    const buttonValues = new Set((html.match(/data-filter="([^"]*)"/g) || [])
+      .map(m => m.replace(/.*data-filter="([^"]*)".*/, '$1')));
+    for (const href of (html.match(/href="#category-([^"]*)"/g) || [])) {
+      const v = decodeURIComponent(href.replace(/.*#category-([^"]*)".*/, '$1'));
+      if (!buttonValues.has(v)) failures.push(`cover link #category-${v} names no filter button on the page`);
+    }
+
+    // …including a category whose `value` is not already URL-safe. The schema
+    // allows any string, and an un-encoded space would emit a fragment that
+    // matches no filter and quietly falls back to the overview — a dead cover
+    // that looks fine. The round trip (encode in the renderer, decode in
+    // main.js) is what has to hold.
+    {
+      const spaced = withGallery({ allShows: 'categories' });
+      const blk = spaced.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'proof-gallery');
+      blk.fields.filters.push({ id: 'f-custom', label: 'Custom Homes', value: 'custom homes' });
+      blk.fields.albums.push({ id: 'ga-custom', category: 'custom homes', title: 'Ridge House', images: ['img/ridge-1.jpg'] });
+      writeContent(CLIENT, spaced);
+      if (!build(CLIENT).ok) failures.push('a category value with a space broke the build');
+      else {
+        const h = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+        if (!h.includes('href="#category-custom%20homes"')) {
+          failures.push('a category value with a space was not percent-encoded in its cover link');
+        }
+        if (decodeURIComponent('custom%20homes') !== 'custom homes') {
+          failures.push('the encode/decode round trip does not recover the filter value');
+        }
+      }
+      writeContent(CLIENT, withGallery({ allShows: 'categories' }));
+      build(CLIENT);
+      html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    }
+
+    // (f) COVER FALLBACK. A category with no chosen cover still gets a card,
+    //     using the first photo of its first album — so switching the mode on
+    //     works immediately and choosing a nicer photo is an upgrade, not a
+    //     prerequisite. The fallback is NOT an edit target: the field does not
+    //     exist, and an annotation there would open an editor for a value the
+    //     resolver may not create.
+    const garageCard = cards.find(c => c.includes('#category-garages')) || '';
+    if (!garageCard.includes('src="img/doubleg-1.jpg"')) {
+      failures.push('a category with no cover did not fall back to its first album photo');
+    }
+    if (!deckCard.includes('src="img/decks-cover.jpg"')) {
+      failures.push('a chosen cover did not win over the fallback');
+    }
+
+    // (g) OWNER SURFACE. In categories mode a filter's label and cover are
+    //     click-to-editable, and `value` — the join key — is reachable from
+    //     NEITHER door: absent from the edit map AND refused by applyPatch.
+    //     Same for allShows, which renders no element and re-plumbs the front
+    //     door. Hiding a field the write path would still accept is the split
+    //     this repo refuses to ship.
+    r = build(CLIENT, ['--annotate']);
+    if (!r.ok) failures.push(`the annotated categories-mode build failed:\n${r.out}`);
+    else {
+      const ann = fs.readFileSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`, 'index.html'), 'utf8');
+      for (const [item, field] of [['f-decks', 'cover'], ['f-decks', 'label'], ['f-all', 'label']]) {
+        if (!ann.includes(`data-bk-item="${item}" data-bk-field="${field}"`)) {
+          failures.push(`the annotated build does not mark filter ${item}.${field} as editable`);
+        }
+      }
+      if (/data-bk-item="f-[a-z]*" data-bk-field="value"/.test(ann)) {
+        failures.push('a filter\'s join key was annotated as editable');
+      }
+      if (ann.includes('data-bk-field="allShows"')) failures.push('the allShows mode switch was annotated as editable');
+      // The label is annotated on the tab button AND on the cover card: the
+      // same field with two doorways, which is what an owner expects when the
+      // same words appear in two places.
+      const labelHits = (ann.match(/data-bk-item="f-decks" data-bk-field="label"/g) || []).length;
+      if (labelHits !== 2) failures.push(`the decks label should be editable from both its tab and its cover card, found ${labelHits} target(s)`);
+
+      const desc = buildEditMap(readContent(CLIENT)).pages
+        .flatMap(p => p.blocks).find(b => b.id === 'proof-gallery');
+      const fset = desc.itemSets.find(s => s.field === 'filters');
+      if (!fset) failures.push('gallery filters are not an addressable item set — ids did not take');
+      else {
+        const decks = fset.items.find(i => i.id === 'f-decks');
+        if (!decks.fields.includes('cover')) failures.push('the edit map does not report a category cover as editable');
+        if (!decks.fields.includes('label')) failures.push('the edit map does not report a filter label as editable');
+        if (decks.fields.includes('value')) failures.push('the edit map reports a filter\'s join key as editable');
+      }
+      if ((desc.scalars || []).some(s => s.field === 'allShows')) {
+        failures.push('the edit map reports allShows as an editable scalar');
+      }
+    }
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+
+    // The write half of the same two doors.
+    for (const [field, value, what] of [
+      ['value',    'garages-renamed', 'a filter\'s join key'],
+      ['allShows', 'albums',          'the All-tab mode switch'],
+    ]) {
+      const patch = field === 'value'
+        ? { action: 'set', block: 'proof-gallery', item: 'f-decks', field, value }
+        : { action: 'set', block: 'proof-gallery', field, value };
+      if (applyPatch(readContent(CLIENT), patch).ok) {
+        failures.push(`applyPatch wrote ${what} — the edit map hides it, so the two doors have drifted apart`);
+      }
+    }
+    // …and the positive: label and cover DO write, and reach the page.
+    {
+      const edited = readContent(CLIENT);
+      for (const [item, field, value] of [
+        ['f-decks', 'label', 'Decks & Patios'],
+        ['f-decks', 'cover', 'img/decks-better.jpg'],
+      ]) {
+        const pr = applyPatch(edited, { action: 'set', block: 'proof-gallery', item, field, value });
+        if (!pr.ok) failures.push(`editing a filter's ${field} was refused: ${pr.error}`);
+      }
+      writeContent(CLIENT, edited);
+      if (!build(CLIENT).ok) failures.push('the site did not rebuild after a category cover was changed');
+      else {
+        const after = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+        if (!after.includes('src="img/decks-better.jpg"')) failures.push('the new cover photo did not reach the built page');
+        if (!after.includes('>Decks &amp; Patios<')) failures.push('the renamed category did not reach the built page');
+      }
+    }
+
+    // (h) THE UNREACHABLE ALBUM. An album whose category matches no filter is
+    //     benign in albums mode (it still shows under "All", as documented) and
+    //     is reachable from NO view once "All" stops listing albums. Nothing
+    //     fails, no page 500s, the album is simply gone — which is exactly why
+    //     the build has to say so out loud.
+    {
+      const orphaned = withGallery({ allShows: 'categories' });
+      const blk = orphaned.pages.find(p => p.slug === 'index').blocks.find(b => b.id === 'proof-gallery');
+      blk.fields.albums.push({ id: 'ga-orphan', category: 'siding', title: 'Siding Job', images: ['img/siding-1.jpg'] });
+      writeContent(CLIENT, orphaned);
+      const orphanBuild = build(CLIENT);
+      if (!orphanBuild.ok) failures.push('an album with an unmatched category broke the build — it should warn, not fail');
+      if (!orphanBuild.out.includes('"ga-orphan"') || !orphanBuild.out.includes('reachable from NO view')) {
+        failures.push('an album reachable from no view drew no build advisory');
+      }
+      // Same content, default mode: the album is reachable under "All", so the
+      // advisory must NOT fire — an advisory that cries wolf gets ignored.
+      delete blk.fields.allShows;
+      writeContent(CLIENT, orphaned);
+      const benign = build(CLIENT);
+      if (benign.out.includes('reachable from NO view')) {
+        failures.push('the unreachable-album advisory fired in albums mode, where the album still shows under "All"');
+      }
+    }
+
+    // (i) The live build still leaks no ids and no annotations — the new filter
+    //     ids are addressing metadata, never markup.
+    writeContent(CLIENT, withGallery({ allShows: 'categories' }));
+    build(CLIENT);
+    html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+    if (/data-bk-/.test(html)) failures.push('the live categories-mode build carries data-bk-* attributes');
+    for (const id of ['f-decks', 'f-all', 'ga-tamarack']) {
+      if (html.includes(`"${id}"`)) failures.push(`live HTML leaks the item id "${id}"`);
+    }
+
+    // (j) THE THEME HALF. The renderer's classes have to be styled or the
+    //     covers ship as unstyled boxes — and the theme validator will NOT
+    //     catch it: its bar is one styled class per BLOCK TYPE, which
+    //     .album-card already clears for gallery. So this is asserted here.
+    //     The [hidden] rule is load-bearing: main.js swaps tabs by toggling the
+    //     attribute, and a bare `display:grid` would silently outrank it,
+    //     leaving the covers stacked on top of every category tab.
+    {
+      const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+      for (const cls of ['.category-grid', '.category-card', '.category-card-img', '.category-name', '.category-count', '.category-cue-arrow']) {
+        if (!new RegExp(`\\${cls}(?![\\w-])`).test(css)) failures.push(`the default theme styles no ${cls} rule`);
+      }
+      if (!/\.category-grid\[hidden\]\s*\{\s*display:\s*none/.test(css)) {
+        failures.push('.category-grid[hidden] does not force display:none — the grid\'s own display rule would outrank the attribute main.js toggles');
+      }
+      const js = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'js', 'main.js'), 'utf8');
+      if (!js.includes("'category-'")) failures.push('main.js no longer agrees with the renderer on the fragment prefix');
+      if (!js.includes('hashchange')) failures.push('main.js does not listen for hashchange — a pasted category link would not filter');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a gallery\'s "All" tab can show one cover per category instead of every');
+    console.log('       album, so adding work stops diluting the front door; covers are LINKS to');
+    console.log('       a real fragment while album cards stay lightbox BUTTONS, which is what');
+    console.log('       keeps two look-alike cards from meaning two things through one');
+    console.log('       affordance; each cover announces as its visible text — category plus a');
+    console.log('       DERIVED project count, singular and plural — with only the arrow hidden;');
+    console.log('       an unchosen cover falls back to the first album photo without becoming a');
+    console.log('       dead edit target, and an empty category gets no doorway at all; label and');
+    console.log('       cover are owner-editable while the join key and the mode switch are');
+    console.log('       refused by the edit map AND applyPatch together; albums mode is');
+    console.log('       byte-identical; and the two advisories no real client can trigger — an');
+    console.log('       album reachable from no view, and a category with no albums — fire here.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

@@ -46,13 +46,15 @@ Pending:
   content may reference a third party where a developer puts one there. The
   teaching point is the distinction the old wording hid — a scheme check is a
   security boundary, a host allowlist is a typo-catcher.
-- **Proof count 29 → 41** (2026-07-31) — proofs 30 (hostile content values
+- **Proof count 29 → 42** (2026-07-31) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
   (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
   icons), 38 (contact-form source tag), 39 (reviews-link creatable fields), 40
-  (hero-form) and 41 (testimonial review links) added; `01-system-map.md` and
-  `02-atlas/12-testing-proofs.md` still read 29.
+  (hero-form), 41 (testimonial review links) and 42 (gallery category covers)
+  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+  There is also a fourth browser test now (`npm run test:gallery`), wherever the
+  testing chapter lists the standalone Playwright smokes alongside `npm test`.
 - **Two new field classes in the write allowlist** (2026-07-29) — wherever the
   atlas teaches `CREATABLE_FIELDS` and how the edit map is derived from it
   (`02-atlas/05-patch-resolver.md` / the edit-map chapter), there are now three
@@ -79,6 +81,32 @@ Pending:
   suffix is. Worth a paragraph wherever the atlas teaches how renderers emit
   links, with the three cue-bearing blocks (photo-strip, card-grid,
   testimonials) named as one pattern rather than three.
+- **A block can have two rendering MODES chosen by content** (2026-07-31) — a
+  `gallery`'s `allShows` switches its "All" tab between every album and one cover
+  card per category. `02-atlas/03-blocks-and-render.md` teaches a block renderer
+  as one function of `(fields, site, bk)`; a field that changes which markup the
+  function emits at all is a wrinkle worth a paragraph, and the reason it is
+  developer-only rather than owner surface is the teaching point (it re-plumbs
+  the first view a visitor gets and can strand an album in no view).
+- **Link vs. button as an accessibility decision** (2026-07-31) — the gallery's
+  category covers are the cleanest case the engine has of *choosing an element
+  for what it means*: a cover navigates (an `<a>` to a `#category-` fragment) and
+  an album card acts (a `role="button"` that opens the lightbox), so two
+  look-alike cards never share one affordance. Belongs with the accessible-name
+  entry above; this is the same discipline applied one level earlier, at the
+  element rather than the name.
+- **Theme JS now reads URL state** (2026-07-31) — `themes/default/js/main.js`
+  drives the gallery filter entirely from the location hash (`#category-…`), so
+  the DOM/events chapter's account of the filter is out of date: clicks no longer
+  filter directly, they set the hash and one `hashchange` handler does the work.
+  Worth naming the three things that buys (deep links, sharing, a working Back
+  button) and the deliberate push-vs-replace history trade-off documented in the
+  source.
+- **`DEVELOPER_ONLY_FIELDS` reaches item fields** (2026-07-31) — extend the
+  write-allowlist entry above: the table now applies to repeating-item fields
+  too. The motivating case is worth teaching — a gallery filter's `value` is a
+  JOIN KEY (albums match it by `category`), so making filters editable exposed a
+  field that silently orphans a whole category when renamed.
 - **Blueprint variants can gate a whole field** (2026-07-31) — the
   `testimonial-quote` blueprint gained a `linked` variant so an owner adding a
   review can paste its URL. Wherever the atlas teaches blueprint variants
@@ -130,9 +158,15 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 41** (2026-07-31) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 42** (2026-07-31) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 41, testimonial review links).
+  the next capture session (new last proof: 42, gallery category covers).
+- **`example-contractor`'s gallery is now in `categories` mode** (2026-07-31) —
+  the example client the tutorial builds has `allShows: "categories"` and covers
+  seeded on its filters, so its `gallery.html` now opens on category cards rather
+  than album cards. Any excerpt or capture showing that page's markup or output
+  needs regenerating; the build also emits a new advisory line for the `exterior`
+  category if album data ever changes under it.
 - **Block-type count 23 → 24** (2026-07-29) — `README.md:77` and
   `term/02-new-client.txt` both say "all 23 block types" (the second is captured
   from `new-client.js` output, so it regenerates), and `term/01-proofs.txt:68`
@@ -166,6 +200,16 @@ Pending:
   One line in "What else you can change" plus a clause in the add-an-item step;
   no new screenshot needed — it reuses the existing text editor and the variant
   picker already visible in the captures.
+- **Choosing the photo that represents a category** (2026-07-31) — on a gallery
+  whose "All" tab shows one card per category, clicking that card's photo opens
+  the ordinary image picker, and clicking the category's name (on the card or on
+  the tab itself) opens the text editor. Worth a line in "What else you can
+  change", framed the way the owner asked for it — keeping the nicer photos on
+  the front tab. Needs a screenshot only if the category view is shown at all;
+  the editors it opens are already in the captures. Note for whoever writes it:
+  the tab's *name* is editable but the category's identity underneath is not, and
+  that distinction should not be explained to the owner — they will only ever see
+  the name.
 - **Clearing an optional value no longer loses it** (2026-07-29) — on a reviews
   badge, the Section panel now offers "Add a rating / review count / badge label"
   once one is missing *or* has been cleared, so taking a stale review count out is

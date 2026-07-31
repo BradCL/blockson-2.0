@@ -236,6 +236,15 @@ warnOnPlaceholderForms(content);
 // hosted-album URL. Advisory only — warn, never fail.
 warnOnPlaceholderAlbumLinks(content);
 
+// ── Gallery category-cover advisory ────────────────────────────
+// A gallery whose "All" tab shows category covers (allShows: "categories")
+// depends on every album belonging to a category that has a tab. In the default
+// "albums" mode a mismatch is harmless and documented — the album still shows
+// under "All". In categories mode "All" no longer lists albums, so the same
+// mismatch makes the album UNREACHABLE: it is in the HTML, it is in nobody's
+// view. Nothing else fails, which is exactly why it needs naming here.
+warnOnGalleryCategoryGaps(content);
+
 // ── Helpers ────────────────────────────────────────────────────
 
 function warnOnPlaceholderForms(content) {
@@ -258,6 +267,47 @@ function warnOnPlaceholderAlbumLinks(content) {
       for (const album of block.fields.albums || []) {
         if (album && album.href === PLACEHOLDER) {
           console.warn(`  ⚠ The gallery album "${album.id}" (page "${page.slug}") still links to the placeholder ${PLACEHOLDER} — its "See all photos" link goes nowhere until href is set to the real hosted-album URL (e.g. the Google Photos or Facebook album), or removed to drop the link.`);
+        }
+      }
+    }
+  }
+}
+
+function warnOnGalleryCategoryGaps(content) {
+  for (const page of content.pages || []) {
+    for (const block of page.blocks || []) {
+      if (!block || block.type !== 'gallery' || !block.fields) continue;
+      const filters = block.fields.filters || [];
+      const albums  = block.fields.albums  || [];
+      const categoriesMode = block.fields.allShows === 'categories';
+
+      // A cover on a gallery still in the default mode renders nothing. Not an
+      // error — seeding covers BEFORE flipping the switch is the sane order to
+      // do this in — but silent inert data is worth one line.
+      if (!categoriesMode) {
+        const seeded = filters.filter(f => f && f.cover).map(f => f.value);
+        if (seeded.length) {
+          console.warn(`  ⚠ The gallery "${block.id}" (page "${page.slug}") has category covers set (${seeded.join(', ')}) but its "All" tab is still in "albums" mode — the covers are not rendered. Set fields.allShows to "categories" to show them.`);
+        }
+        continue;
+      }
+
+      // Unreachable albums: category matches no filter, and "All" no longer
+      // lists albums to catch them.
+      const known = new Set(filters.map(f => f && f.value));
+      for (const album of albums) {
+        if (album && !known.has(album.category)) {
+          console.warn(`  ⚠ The gallery album "${album.id}" (page "${page.slug}") has category "${album.category}", which matches no filter in gallery "${block.id}" — with the "All" tab in "categories" mode this album is reachable from NO view. Add a filter with that value, or change the album's category to an existing one.`);
+        }
+      }
+
+      // Categories with no albums: the cover card is skipped by the renderer
+      // (a doorway to "No projects match this filter" is worse than none), so
+      // the tab is present in the bar and absent from the overview.
+      for (const f of filters.slice(1)) {
+        if (!f) continue;
+        if (!albums.some(a => a && a.category === f.value)) {
+          console.warn(`  ⚠ The gallery filter "${f.value}" (block "${block.id}", page "${page.slug}") has no albums, so no cover card appears for it on the "All" tab. Add an album in that category, or remove the filter.`);
         }
       }
     }

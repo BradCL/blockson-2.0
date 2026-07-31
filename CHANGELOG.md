@@ -10,6 +10,39 @@ the major version.
 ## [Unreleased]
 
 ### Added
+- **A gallery's "All" tab can show one cover photo per category** (optional
+  `allShows: "categories"` on a `gallery`, plus optional `id` and `cover` on each
+  `filters[]` entry). "All" is the tab that loads first and the only view that
+  gets *worse* as a portfolio grows — adding work diluted the front door instead
+  of improving it. In the new mode "All" shows one cover card per category and
+  the project cards live on the category tabs, where the count is bounded and the
+  lightbox makes sense. A cover card is an `<a href="#category-…">`, never a
+  lightbox trigger: a cover and an album card are two similar-looking cards doing
+  different things, so they use the platform's own distinction — link for "goes
+  somewhere", button for "acts here". Each cover announces as its visible text,
+  the category label plus a derived project count. A category with no chosen
+  cover falls back to its first album photo (not an edit target); a category with
+  no albums gets no card. The default `"albums"` mode is byte-identical to
+  before. The cover hangs off the FILTER, not the album, because the category is
+  already defined exactly once in `filters[]` — which also leaves the album
+  object's shape completely untouched.
+- **The gallery filter now lives in the URL fragment** (`#category-garages`).
+  Previously the filter was JS-only with no URL state, so a category could not be
+  linked, shared, or landed on by an ad campaign, and filtering left the Back
+  button pointing off the page entirely. Tabs and covers both work by setting the
+  hash and one `hashchange` handler filters, so a click, a paste and a Back all
+  travel one path. History is *pushed* deliberately (browsing a gallery is
+  exploratory; Back should return to the overview) — see the note in
+  `themes/default/js/main.js`. An unknown or foreign fragment falls back to the
+  first tab rather than blanking the grid.
+- **`extras/add-filter-ids.js`** — one-time, idempotent migration seeding an `id`
+  on every gallery filter, which is what makes a tab's `label` and a category's
+  `cover` click-editable. Same graceful, all-or-nothing shape as the CTA-button
+  id migration; live output is byte-identical.
+- **`npm run test:gallery`** (`scripts/gallery-e2e.js`) — browser smoke for the
+  hash-driven filter: cover clicks, Back, deep links, stale fragments, and the
+  fade-in observer re-firing on a card revealed by filtering. Standalone like the
+  other browser tests, and added to `test:all`.
 - **Testimonial quotes can link back to the review they came from** (optional
   `link` / `linkLabel` on a `testimonials` quote — the pair `card-grid` cards and
   `photo-strip` photos already carried). It was the last card-shaped block whose
@@ -28,14 +61,21 @@ the major version.
   block field that is rendered markup *configuration* rather than owner content.
   Refused by the resolver for every action (field and dotted paths), omitted from
   the edit map, and refused by the editor's read path — so it cannot be shown,
-  described, or written from the owner tier. `contact-form.source` is the only
-  member today.
+  described, or written from the owner tier. Members today:
+  `contact-form.source` / `hero-form.form.source`, and (see above) a gallery
+  filter's `value` and a gallery's `allShows`.
 - **reviews-link `rating` / `reviewCount` / `label` are owner-creatable.** The
   block already degraded gracefully as each went absent, but the owner could not
   add one back, so "take the stale review count out" was a one-way door that cost
   a developer callout to reopen. Each now returns as an "Add a …" doorway.
 
 ### Changed
+- **`DEVELOPER_ONLY_FIELDS` now covers repeating-item fields, not just block
+  fields.** Gallery filters became addressable items in this release, which
+  exposed every field on them — including `value`, the join key an album's
+  `category` matches on. The edit map applies the same table to item fields that
+  the resolver already applied to any path, so the field is hidden and refused by
+  one decision rather than hidden while the write path stayed open.
 - **A cleared optional value now counts as omitted** in the edit map, for any
   creatable field whose block renders nothing when it is blank. Previously a
   cleared field stayed an ordinary scalar with no rendered element — unclickable,

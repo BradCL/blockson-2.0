@@ -56,24 +56,119 @@
     faders.forEach(function (el) { el.classList.add('visible'); });
   }
 
-  /* ── Gallery filter ─────────────────────────────────────── */
-  var filterBtns = document.querySelectorAll('.filter-btn');
-  var albumCards = document.querySelectorAll('.album-card');
-  var emptyMsg   = document.getElementById('gallery-empty');
-  filterBtns.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      filterBtns.forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      var f = btn.getAttribute('data-filter');
+  /* ── Gallery filter ─────────────────────────────────────────
+     The active category lives in the URL fragment (#category-garages), and
+     THAT is the single source of truth: buttons and category covers alike do
+     nothing but set the hash, and one hashchange handler does the filtering.
+     One code path, and the back button works without touching the History API.
+
+     Why the fragment at all. Three things fall out of it that the old
+     click-handler-only filter could not do: a category is linkable (an ad or a
+     campaign can land straight on it), it is shareable (a visitor can send
+     someone "our garages"), and the back button behaves — previously, entering
+     the gallery and filtering left Back pointing at the page you arrived from,
+     silently discarding the filtering you had done. It is also what lets a
+     category cover be an honest <a>: the destination exists.
+
+     HISTORY: PUSH, DELIBERATELY. Assigning location.hash pushes a history
+     entry, so this is what you get by writing no code at all — but it is a
+     choice with a real cost, not a freebie. Five filter clicks means five Back
+     presses to leave the gallery. history.replaceState would make Back always
+     exit the page in one press, at the cost of making the filter un-undoable.
+     Push wins HERE because browsing a gallery is exploratory: a visitor who
+     clicked into Garages from a cover card treats that as having gone
+     somewhere, and expects Back to return to the overview rather than to
+     whatever page preceded the gallery. Undoing a step you took on purpose is
+     worth more than a cheap exit. Revisit this if filters ever land on a page
+     where the filtering is incidental rather than the point of the visit.
+
+     Anything that is not a #category- fragment is ignored outright, so ordinary
+     in-page anchors elsewhere on the site never disturb a gallery. */
+  var HASH_PREFIX = 'category-';
+  var filterBtns  = document.querySelectorAll('.filter-btn');
+  var albumCards  = document.querySelectorAll('.album-card');
+  var emptyMsg    = document.getElementById('gallery-empty');
+  var filterBar   = document.querySelector('.filter-bar');
+  var coverGrid   = document.querySelector('.category-grid');
+
+  if (filterBtns.length) {
+    // The first tab is the "show everything" tab by convention (its value is
+    // "all"); read it rather than hard-coding, so a client that renames it does
+    // not lose its default view.
+    var defaultFilter = filterBtns[0].getAttribute('data-filter');
+
+    // Which category the URL is asking for — or the default when the fragment
+    // is absent, belongs to something else, or names a tab this gallery has no
+    // button for (a stale link after a category was retired should land on the
+    // overview, not on a blank grid).
+    function filterFromHash() {
+      var h = (window.location.hash || '').replace(/^#/, '');
+      if (h.indexOf(HASH_PREFIX) !== 0) return defaultFilter;
+      // The renderer percent-encodes the category (a `value` may be any string,
+      // e.g. "Custom Homes"), so decode before matching. A hand-mangled
+      // fragment can be malformed enough to throw — fall back rather than let
+      // one bad link break the whole page's scripting.
+      var want = h.slice(HASH_PREFIX.length);
+      try { want = decodeURIComponent(want); } catch (e) { return defaultFilter; }
+      var known = false;
+      filterBtns.forEach(function (b) { if (b.getAttribute('data-filter') === want) known = true; });
+      return known ? want : defaultFilter;
+    }
+
+    function applyFilter(f) {
+      filterBtns.forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-filter') === f);
+      });
+
+      // On the overview tab of a categories-mode gallery the album cards stay
+      // hidden: the covers ARE that tab. Everywhere else the covers go away and
+      // the albums filter exactly as they always have.
+      var overview = f === defaultFilter;
+      if (coverGrid) coverGrid.hidden = !overview;
+
       var visible = 0;
       albumCards.forEach(function (card) {
-        var show = f === 'all' || card.getAttribute('data-type') === f;
+        var show = (overview && !coverGrid) || (!overview && card.getAttribute('data-type') === f);
+        // A card revealed later is still observed by the fade-in observer
+        // above (it only unobserves cards it has already shown), so it fades in
+        // on reveal instead of arriving stuck at opacity 0.
         card.style.display = show ? '' : 'none';
         if (show) visible++;
       });
-      if (emptyMsg) emptyMsg.hidden = visible !== 0;
+
+      // "Nothing here" is only meaningful on a category tab. The overview of a
+      // categories-mode gallery legitimately shows no album cards at all.
+      if (emptyMsg) emptyMsg.hidden = visible !== 0 || (overview && !!coverGrid);
+    }
+
+    function syncFromHash(scroll) {
+      applyFilter(filterFromHash());
+      // A deep link — or a cover click from the top of a long page — must land
+      // ON the gallery, not at whatever scroll position the browser kept. Only
+      // scroll when the filter bar is actually out of view, so clicking a tab
+      // that is already on screen never yanks the page.
+      if (!scroll || !filterBar) return;
+      var box = filterBar.getBoundingClientRect();
+      if (box.top < 0 || box.bottom > (window.innerHeight || 0)) {
+        filterBar.scrollIntoView({ block: 'start' });
+      }
+    }
+
+    filterBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        // Setting the hash is the whole handler: the hashchange listener below
+        // does the work, so a tab click and a cover click and a pasted link all
+        // travel the identical path.
+        window.location.hash = HASH_PREFIX + encodeURIComponent(btn.getAttribute('data-filter'));
+        // Clicking the tab you are already on fires no hashchange — apply
+        // anyway so the first click on a fresh page (no fragment yet, default
+        // tab) is not a no-op.
+        syncFromHash(false);
+      });
     });
-  });
+    window.addEventListener('hashchange', function () { syncFromHash(true); });
+    syncFromHash(window.location.hash.indexOf('#' + HASH_PREFIX) === 0);
+  }
 
   /* ── Lightbox ───────────────────────────────────────────── */
   function openLightbox(images, title) {

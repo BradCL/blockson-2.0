@@ -193,6 +193,28 @@ const DEVELOPER_ONLY_FIELDS = {
   // the match below is on the LEAF name — the field is the same field wherever
   // the block chooses to put it.
   'hero-form':    new Set(['source']),
+  // Two gallery fields, both wiring rather than content.
+  //
+  // `value` is the JOIN KEY between a filter and its albums (an album belongs
+  // to the category whose `value` its `category` equals), and since gallery
+  // filters became addressable items it is the one field on them an owner must
+  // never reach: renaming "garages" orphans every album in the category at
+  // once, and the preview shows a tab that has simply gone empty with nothing
+  // to suggest why. The visible half — `label` — stays editable, so renaming
+  // the TAB is still a one-click edit; only the identity underneath is
+  // developer surface.
+  //
+  // `allShows` switches what the "All" tab is (every album, or one cover per
+  // category). It renders no element of its own, it re-plumbs the first thing
+  // every visitor sees, and flipping it to "categories" can make an album with
+  // an unmatched category reachable from no view at all — a break that is
+  // invisible in the preview and undiagnosable afterwards, which is this
+  // table's entire remit. It is a developer edit in content.json, where the
+  // build advisories fire and the diff is reviewable.
+  //
+  // Matching is on the LEAF name; neither `filters` nor `albums` carries
+  // another `value` or `allShows` leaf, so this costs the block nothing.
+  'gallery':      new Set(['value', 'allShows']),
 };
 
 // The developer-only field names for a block TYPE, as a Set — the one source

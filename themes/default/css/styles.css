@@ -571,6 +571,53 @@ section + section { border-top: var(--section-divider, none); }
 .album-link:hover, .album-link:focus-visible { text-decoration: underline; }
 .gallery-empty { text-align: center; color: var(--color-muted, #9aa1ab); padding: 2.5rem 0; }
 
+/* Category covers — the "All" tab of a gallery in `categories` mode: one card
+   per category, each a LINK to that category's tab (#category-<value>), not a
+   lightbox trigger. Styled deliberately apart from .album-card so the two never
+   read as the same control: a cover is wider-format, names a category rather
+   than a project, and carries a count plus a directional arrow. The shared
+   surface treatment keeps them family; the differences keep them distinct. */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.4rem;
+}
+/* The renderer emits this grid always in categories mode and main.js toggles
+   `hidden` to swap tabs — so the display rule above MUST yield to it, or the
+   attribute would be silently outranked and the covers would sit on top of
+   every category tab. */
+.category-grid[hidden] { display: none; }
+.category-card {
+  position: relative;
+  display: block;
+  background: var(--color-surface, #181b22);
+  border: 1px solid rgba(127, 127, 127, 0.16);
+  border-radius: var(--radius, 10px);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease;
+}
+.category-card:hover, .category-card:focus-visible { transform: translateY(-4px); outline: none; }
+.category-card:focus-visible { box-shadow: 0 0 0 2px var(--color-primary, #ffb703); }
+.category-card-img { display: block; aspect-ratio: 3 / 2; overflow: hidden; background: rgba(127,127,127,0.12); }
+.category-card-img img { width: 100%; height: 100%; object-fit: cover; }
+.category-card-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 1.1rem 1.2rem 1.3rem;
+}
+.category-name { font-size: 1.15rem; font-weight: 700; }
+.category-count { font-size: 0.85rem; color: var(--color-muted, #9aa1ab); }
+.category-cue-arrow {
+  margin-left: auto;
+  color: var(--color-primary, #ffb703);
+  font-weight: 700;
+  transition: transform 0.18s ease;
+}
+.category-card:hover .category-cue-arrow { transform: translateX(3px); }
+
 /* Photo strip — full-bleed banner of finished-work photos (no titles/filter/
    lightbox). The class selector overrides the mobile `section` padding rule
    so the strip stays edge-to-edge at every width. */
@@ -1162,7 +1209,7 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .services-grid, .album-grid { grid-template-columns: repeat(2, 1fr); }
+  .services-grid, .album-grid, .category-grid { grid-template-columns: repeat(2, 1fr); }
   /* A strip narrows by a factor that DIVIDES its column count, so the last row
      is never left half-empty — the whole point of a configurable count. Even
      counts (including the unset 4-wide default) halve as they always have; 3
@@ -1217,7 +1264,7 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
     border-radius: 0;
   }
   .nav-item.nav-item--closed .nav-sub { display: flex; }
-  .services-grid, .album-grid { grid-template-columns: 1fr; }
+  .services-grid, .album-grid, .category-grid { grid-template-columns: 1fr; }
   .mission-list { grid-template-columns: 1fr; }
   .area-list { columns: 1; }
   .form-row { grid-template-columns: 1fr; }
