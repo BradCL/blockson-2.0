@@ -663,6 +663,23 @@ section + section { border-top: var(--section-divider, none); }
 .stars { color: var(--color-primary, #ffb703); letter-spacing: 0.15em; margin-bottom: 0.8rem; }
 .testimonial-card blockquote { font-size: 1.02rem; margin-bottom: 0.9rem; }
 .attribution { color: var(--color-muted, #9aa1ab); font-size: 0.9rem; }
+/* A quote that links back to the review it came from ends in a real,
+   always-visible anchor — the card-grid cue, same shape and same reasons.
+   Column layout pins it to the card's foot so a row of quotes of uneven length
+   still lines its links up. Link-less quotes never match these rules. */
+.testimonial-card--link { display: flex; flex-direction: column; }
+.testimonial-card--link .testimonial-cue { margin-top: auto; padding-top: 1.1rem; }
+.testimonial-cue {
+  display: inline-block;
+  align-self: flex-start;
+  color: var(--color-primary, #ffb703);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.testimonial-cue:hover, .testimonial-cue:focus-visible { text-decoration: underline; }
+.testimonial-cue-arrow { display: inline-block; transition: transform 0.18s ease; }
+.testimonial-cue:hover .testimonial-cue-arrow { transform: translateX(3px); }
 
 /* ── List panel / mission pillars ─────────────────────────── */
 /* The list-panel heading sat flush against its card (global reset zeroes the

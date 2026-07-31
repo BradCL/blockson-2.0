@@ -567,6 +567,13 @@
                 "stars": 5,
                 "quote": "They showed up on time, finished early, and left the site spotless. We could not be happier.",
                 "attribution": "Dana M., Riverbend"
+              },
+              {
+                "id": "quote-2",
+                "stars": 5,
+                "quote": "They showed up on time, finished early, and left the site spotless. We could not be happier.",
+                "attribution": "Dana M., Riverbend",
+                "link": "https://g.co/kgs/example"
               }
             ],
             "hidden": false

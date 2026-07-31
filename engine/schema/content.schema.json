@@ -492,7 +492,9 @@
               "id":          { "type": "string" },
               "stars":       { "type": "integer", "minimum": 1, "maximum": 5 },
               "quote":       { "type": "string" },
-              "attribution": { "type": "string" }
+              "attribution": { "type": "string" },
+              "link":        { "$ref": "#/$defs/safeHref" },
+              "linkLabel":   { "type": "string" }
             }
           }
         }

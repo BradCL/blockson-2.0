@@ -1,16 +1,21 @@
 {
   "name": "Quote",
-  "purpose": "One more customer quote in a testimonials section.",
+  "purpose": "One more customer quote in a testimonials section. If the quote is copied from a review someone left you online, use the linked variant and paste the link to it — a reader can then click through and check it on the listing itself.",
   "kind": "item",
   "target": { "blockType": "testimonials", "field": "quotes" },
   "variants": [
-    { "key": "standard", "label": "Quote + who said it (five stars)" }
+    { "key": "standard", "label": "Quote + who said it (five stars)" },
+    { "key": "linked", "label": "Same, but linked to the review it came from" }
   ],
   "inputs": [
     { "key": "quote", "label": "What the customer said", "type": "textarea", "required": true, "maxLength": 400,
       "example": "They showed up on time, finished early, and left the site spotless. We could not be happier." },
     { "key": "attribution", "label": "Who said it (name, or name and neighbourhood)", "type": "text", "required": true, "maxLength": 60,
-      "example": "Dana M., Riverbend" }
+      "example": "Dana M., Riverbend" },
+    { "key": "link", "label": "Link to the review", "type": "text", "required": true, "maxLength": 200,
+      "variants": ["linked"], "pattern": "^https://\\S+$",
+      "hint": "paste the review's own https:// address; on Google, the Share button on the review gives you a short one",
+      "example": "https://g.co/kgs/example" }
   ],
   "template": {
     "standard": {
@@ -18,6 +23,13 @@
       "stars": 5,
       "quote": "{{quote}}",
       "attribution": "{{attribution}}"
+    },
+    "linked": {
+      "id": "quote",
+      "stars": 5,
+      "quote": "{{quote}}",
+      "attribution": "{{attribution}}",
+      "link": "{{link}}"
     }
   }
 }

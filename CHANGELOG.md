@@ -10,6 +10,16 @@ the major version.
 ## [Unreleased]
 
 ### Added
+- **Testimonial quotes can link back to the review they came from** (optional
+  `link` / `linkLabel` on a `testimonials` quote — the pair `card-grid` cards and
+  `photo-strip` photos already carried). It was the last card-shaped block whose
+  items couldn't link out, and the one where it matters most: an unlinkable
+  review is just a claim. The expected case is several cards pointing at ONE
+  listing, which is the shape that once made four photo-strip doorways announce
+  identically — so each link's accessible name is its cue text plus a
+  screen-reader-only attribution ("Read the review · Kreesta M."). A link-less
+  quote is byte-identical to before. The shipped `testimonial-quote` blueprint
+  gains a `linked` variant, so an owner adding a new review can paste its URL.
 - **contact-form `source` tag** (optional, developer-tier): a hidden `source`
   input rendered in both delivery modes, so two forms on one site can share a
   single inbox and still be told apart — the attribution a marketing company

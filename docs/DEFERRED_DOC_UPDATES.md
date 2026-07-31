@@ -46,13 +46,13 @@ Pending:
   content may reference a third party where a developer puts one there. The
   teaching point is the distinction the old wording hid — a scheme check is a
   security boundary, a host allowlist is a typo-catcher.
-- **Proof count 29 → 40** (2026-07-29) — proofs 30 (hostile content values
+- **Proof count 29 → 41** (2026-07-31) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
   (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
-  icons), 38 (contact-form source tag), 39 (reviews-link creatable fields) and 40
-  (hero-form) added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still
-  read 29.
+  icons), 38 (contact-form source tag), 39 (reviews-link creatable fields), 40
+  (hero-form) and 41 (testimonial review links) added; `01-system-map.md` and
+  `02-atlas/12-testing-proofs.md` still read 29.
 - **Two new field classes in the write allowlist** (2026-07-29) — wherever the
   atlas teaches `CREATABLE_FIELDS` and how the edit map is derived from it
   (`02-atlas/05-patch-resolver.md` / the edit-map chapter), there are now three
@@ -70,10 +70,22 @@ Pending:
   (CSS-only disclosure, parent stays a real link). The block-type count is
   unchanged at 23; `02-atlas/03-blocks-and-render.md` and the DOM/events chapter
   should pick up the new fields and the nav submenu's `:focus-within` model.
-- **Accessible-name discipline for repeated links** (2026-07-28) — the
-  photo-strip cue is no longer `aria-hidden` and its image is decorative inside
-  the link. Worth a paragraph wherever the atlas teaches how renderers emit
-  links.
+- **Accessible-name discipline for repeated links** (2026-07-28, extended
+  2026-07-31) — the photo-strip cue is no longer `aria-hidden` and its image is
+  decorative inside the link. A `testimonials` quote now takes the same optional
+  `link`/`linkLabel` pair, and it is the sharpest teaching case the engine has:
+  several review cards are *expected* to point at one listing, so a distinct
+  href can't be what distinguishes them — the screen-reader-only attribution
+  suffix is. Worth a paragraph wherever the atlas teaches how renderers emit
+  links, with the three cue-bearing blocks (photo-strip, card-grid,
+  testimonials) named as one pattern rather than three.
+- **Blueprint variants can gate a whole field** (2026-07-31) — the
+  `testimonial-quote` blueprint gained a `linked` variant so an owner adding a
+  review can paste its URL. Wherever the atlas teaches blueprint variants
+  (`02-atlas/10-blueprints.md` or equivalent), this is the second use of
+  `inputs[].variants` after team-member's photo, and the reason for it is worth a
+  line: an optional input left blank writes an empty string, so a field the item
+  should simply not *have* belongs behind a variant, not behind `required:false`.
 
 Reconciled (prose/counts, 2026-06-30 pass):
 
@@ -118,9 +130,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 40** (2026-07-29) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 41** (2026-07-31) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 40, hero-form).
+  the next capture session (new last proof: 41, testimonial review links).
 - **Block-type count 23 → 24** (2026-07-29) — `README.md:77` and
   `term/02-new-client.txt` both say "all 23 block types" (the second is captured
   from `new-client.js` output, so it regenerates), and `term/01-proofs.txt:68`
@@ -147,6 +159,13 @@ Pending:
   editor and clicking the words opens the label editor (the same pattern as a
   photo-strip doorway). One line in "What else you can change"; no new
   screenshot needed — it reuses the existing text/link editors.
+- **A testimonial can link to the review it came from** (2026-07-31) — the same
+  click-to-edit pattern on a quote's "Read the review" cue, and the Add-a-quote
+  flow now offers a "linked to the review it came from" choice that asks for the
+  review's address (on Google, the Share button on the review gives a short one).
+  One line in "What else you can change" plus a clause in the add-an-item step;
+  no new screenshot needed — it reuses the existing text editor and the variant
+  picker already visible in the captures.
 - **Clearing an optional value no longer loses it** (2026-07-29) — on a reviews
   badge, the Section panel now offers "Add a rating / review count / badge label"
   once one is missing *or* has been cleared, so taking a stale review count out is

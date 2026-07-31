@@ -250,6 +250,17 @@
 //             a root-level one; the site hero image survives replacing a hero
 //             with a hero-form; and the narrow layout reads copy-first whichever
 //             side the form takes on a wide one.
+// Proof 41:   testimonial review links: a quote can point back at the review it
+//             was copied from, so a wall of claims becomes checkable on the
+//             listing the claims live on. The case under test is SEVERAL cards
+//             sharing ONE listing — the shape that produced the photo-strip
+//             a11y defect — so each link's accessible name is the cue text plus
+//             a screen-reader-only attribution, distinguishable even when the
+//             href is identical; the quote stays outside the anchor; a
+//             link-less quote is byte-identical to before; link and linkLabel
+//             are click-to-editable and owner-repointable; an owner can ADD a
+//             linked quote through the shipped blueprint; and a javascript:
+//             target is refused by the blueprint and by both validators.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -343,7 +354,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 40;
+const TOTAL = 41;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -5062,6 +5073,232 @@ console.log('\n═══ PROOF 40 — hero-form: the same form as the contact pa
     console.log('       copy, form heading and background focal point through the ordinary');
     console.log('       session to clean live HTML; and the narrow layout resets to copy-first');
     console.log('       whichever side the form takes wide.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 41 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 41 — testimonial quotes can link back to the review they came from ═══');
+{
+  const scaffold = require('./lib/scaffold');
+  const CLIENT  = '__proof-testilink';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  // The case that matters: SEVERAL cards linking to the SAME listing — the
+  // shape that produced the photo-strip a11y defect (four doorways, one
+  // accessible name). Two of these three quotes share a destination.
+  const GOOGLE = 'https://g.co/kgs/hive-listing';
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+
+    const base = readContent('example-contractor');
+    const block = {
+      id: 'proof-testimonials', type: 'testimonials',
+      fields: {
+        heading: 'What people say',
+        quotes: [
+          { id: 'tq-kreesta', stars: 5, quote: 'Finished early and left the site spotless.', attribution: 'Kreesta M.', link: GOOGLE },
+          { id: 'tq-dana',    stars: 5, quote: 'Fair quote, no surprises at the end.',       attribution: 'Dana M.',    link: GOOGLE, linkLabel: 'See it on Google' },
+          { id: 'tq-plain',   stars: 4, quote: 'Good crew, tidy work.',                      attribution: 'Sam O.' },
+        ],
+      },
+    };
+    const withBlock = () => {
+      const c = JSON.parse(JSON.stringify(base));
+      c.pages.find(p => p.slug === 'index').blocks.push(JSON.parse(JSON.stringify(block)));
+      return c;
+    };
+
+    writeContent(CLIENT, withBlock());
+    let r = build(CLIENT);
+    if (!r.ok) failures.push(`the testimonial-link build failed:\n${r.out}`);
+    let html = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+
+    // A card runs from its opening tag to the `</div>` that closes it — the one
+    // at the card's own indent, NOT the attribution's, which is what a bare
+    // indexOf('</div>') would find (and would slice the cue right off).
+    const cardOf = (attribution) => {
+      const i = html.indexOf(`>${attribution}<`);
+      if (i < 0) return null;
+      const start = html.lastIndexOf('<div class="testimonial-card', i);
+      const end   = html.indexOf('\n      </div>', i);
+      return start < 0 || end < 0 ? null : html.slice(start, end);
+    };
+
+    // (a) A LINK-LESS quote is byte-identical to the pre-feature markup: same
+    //     opening tag, no cue, no modifier class. The link surface is additive.
+    const plain = cardOf('Sam O.');
+    if (!plain) failures.push('the link-less quote did not render');
+    else {
+      if (!plain.startsWith('<div class="testimonial-card fade-in">')) failures.push(`a link-less quote's opening tag changed: ${plain.slice(0, 80)}`);
+      if (plain.includes('testimonial-cue')) failures.push('a link-less quote grew a link cue');
+    }
+
+    // (b) A LINKED quote carries exactly ONE anchor, pointing outward in a new
+    //     tab with rel="noopener noreferrer" — it is somebody else's listing.
+    const linked = cardOf('Kreesta M.');
+    if (!linked) failures.push('the linked quote did not render');
+    else {
+      const anchors = linked.match(/<a\s/g) || [];
+      if (anchors.length !== 1) failures.push(`a linked quote should carry exactly one anchor, found ${anchors.length}`);
+      if (!linked.includes('<div class="testimonial-card testimonial-card--link fade-in">')) failures.push('the linked quote is missing its --link modifier class');
+      if (!linked.includes(`href="${GOOGLE}"`)) failures.push('the review link href did not render');
+      if (!/target="_blank" rel="noopener noreferrer"/.test(linked)) failures.push('the outbound review link does not open safely in a new tab');
+      if (!linked.includes('>Read the review<')) failures.push('the default cue label did not render');
+      if (!/class="testimonial-cue-arrow" aria-hidden="true"/.test(linked)) failures.push('the decorative arrow is not aria-hidden');
+      // The quote itself stays OUTSIDE the anchor — a card-sized link would
+      // announce the whole testimonial as its name.
+      if (/<a\s[^>]*>[\s\S]*<blockquote/.test(linked)) failures.push('the quote is inside the anchor — the link would announce as the whole testimonial');
+    }
+
+    // (c) The defect this feature must not recreate: cards sharing ONE
+    //     destination must still announce distinguishably. The accessible name
+    //     is the visible cue text plus a screen-reader-only attribution, and
+    //     the visible label is a prefix of it (WCAG 2.5.3).
+    const cueNames = [];
+    for (const [attribution, expected] of [['Kreesta M.', 'Read the review'], ['Dana M.', 'See it on Google']]) {
+      const card = cardOf(attribution);
+      if (!card) { failures.push(`the linked quote for ${attribution} did not render`); continue; }
+      if (!card.includes(`>${expected}<`)) failures.push(`the cue label for ${attribution} is not "${expected}" — linkLabel did not take effect`);
+      if (!card.includes(`<span class="sr-only"> · ${attribution}</span>`)) {
+        failures.push(`the linked quote for ${attribution} has no screen-reader-only attribution — cards sharing a listing would announce alike`);
+      }
+      cueNames.push(`${expected} · ${attribution}`);
+    }
+    if (new Set(cueNames).size !== cueNames.length) failures.push('two linked quotes resolved to the same accessible name');
+    // Both linked cards point at the SAME url — the condition under test.
+    if ((html.match(new RegExp(`href="${GOOGLE}"`, 'g')) || []).length !== 2) {
+      failures.push('the fixture no longer has two cards sharing one destination — the a11y case is not being exercised');
+    }
+
+    // (d) Live build carries no annotations and no ids.
+    if (/data-bk-/.test(html)) failures.push('the live testimonial-link build carries data-bk-* attributes');
+    for (const q of block.fields.quotes) {
+      if (html.includes(`"${q.id}"`)) failures.push(`live HTML leaks the item id "${q.id}"`);
+    }
+
+    // (e) The ANNOTATED build makes link and linkLabel click-to-editable, and
+    //     the edit map agrees (the annotator is gated against it) — including
+    //     the negative: no link editor is offered on a quote that has none.
+    r = build(CLIENT, ['--annotate']);
+    if (!r.ok) failures.push(`the annotated testimonial-link build failed:\n${r.out}`);
+    else {
+      const ann = fs.readFileSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`, 'index.html'), 'utf8');
+      for (const [item, field] of [['tq-kreesta', 'link'], ['tq-dana', 'linkLabel'], ['tq-plain', 'quote']]) {
+        if (!ann.includes(`data-bk-item="${item}" data-bk-field="${field}"`)) {
+          failures.push(`the annotated build does not mark ${item}.${field} as editable`);
+        }
+      }
+      const desc = buildEditMap(readContent(CLIENT)).pages
+        .flatMap(p => p.blocks).find(b => b.id === 'proof-testimonials');
+      const items = desc.itemSets[0].items;
+      if (!items.find(i => i.id === 'tq-kreesta').fields.includes('link')) {
+        failures.push('the edit map does not report the review link as editable');
+      }
+      if (items.find(i => i.id === 'tq-plain').fields.includes('link')) {
+        failures.push('the edit map offers a link on a quote that has none — it would open an editor for a field the resolver refuses to create');
+      }
+    }
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+
+    // (f) The owner can REPOINT and REWORD an existing link through the
+    //     ordinary item path, and the site rebuilds. Each edit lands on a card
+    //     that HAS the field: an item field the content omits is not one the
+    //     resolver may invent (creation is a block-level allowlist), which is
+    //     why the catalog tells a developer to seed `linkLabel` alongside the
+    //     link if the wording should be owner-editable.
+    const edited = readContent(CLIENT);
+    for (const [item, field, value] of [
+      ['tq-kreesta', 'link',      'https://g.co/kgs/moved'],
+      ['tq-dana',    'linkLabel', 'Read it on Google'],
+    ]) {
+      const pr = applyPatch(edited, { action: 'set', block: 'proof-testimonials', item, field, value });
+      if (!pr.ok) failures.push(`editing a review ${field} was refused: ${pr.error}`);
+    }
+    const noInvent = applyPatch(readContent(CLIENT),
+      { action: 'set', block: 'proof-testimonials', item: 'tq-kreesta', field: 'linkLabel', value: 'Invented' });
+    if (noInvent.ok) failures.push('the resolver invented a linkLabel on a quote that has none — item fields are not creatable');
+    writeContent(CLIENT, edited);
+    if (!build(CLIENT).ok) failures.push('the site did not rebuild after a review link was edited');
+    else {
+      const after = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      if (!after.includes('href="https://g.co/kgs/moved"')) failures.push('the repointed review link did not reach the built page');
+      if (!after.includes('>Read it on Google<')) failures.push('the reworded cue did not reach the built page');
+    }
+
+    // (g) An owner can ADD a linked quote through the shipped blueprint —
+    //     otherwise a new review could never carry the link that verifies it.
+    //     A non-https paste is refused before it reaches content.
+    const reg = scaffold.loadBlueprints();
+    const quoteBp = (reg.blueprints.find(b => b.key === 'testimonial-quote') || {}).blueprint;
+    if (!quoteBp) failures.push('the testimonial-quote blueprint no longer loads');
+    else {
+      const c = readContent(CLIENT);
+      const vals = { quote: 'Cleaned up better than they found it.', attribution: 'Rae T.', link: 'https://g.co/kgs/rae' };
+      const add = scaffold.instantiate(c, quoteBp, 'linked', vals, { targetBlock: 'proof-testimonials' });
+      if (!add.ok) failures.push(`adding a linked quote was refused: ${add.errors.join('; ')}`);
+      else {
+        const added = c.pages.find(p => p.slug === 'index').blocks
+          .find(b => b.id === 'proof-testimonials').fields.quotes.slice(-1)[0];
+        if (added.link !== vals.link) failures.push('the added quote did not carry its review link');
+        writeContent(CLIENT, c);
+        if (!build(CLIENT).ok) failures.push('the site did not build after a linked quote was added');
+        else if (!fs.readFileSync(path.join(distDir, 'index.html'), 'utf8').includes(`href="${vals.link}"`)) {
+          failures.push('the added quote\'s review link did not reach the built page');
+        }
+      }
+      const bad = scaffold.instantiate(readContent(CLIENT), quoteBp, 'linked',
+        { ...vals, link: 'javascript:alert(1)' }, { targetBlock: 'proof-testimonials' });
+      if (bad.ok) failures.push('the blueprint accepted a javascript: review link');
+      // The plain variant still adds a quote with no link at all.
+      const plainAdd = scaffold.instantiate(readContent(CLIENT), quoteBp, 'standard',
+        { quote: 'Solid work.', attribution: 'Lee K.' }, { targetBlock: 'proof-testimonials' });
+      if (!plainAdd.ok) failures.push(`the unlinked variant stopped working: ${plainAdd.errors.join('; ')}`);
+    }
+
+    // (h) The scheme guard holds on BOTH validators — AJV via $defs/safeHref,
+    //     and the no-AJV fallback (which scans keys named `link`).
+    const hostile = withBlock();
+    hostile.pages.find(p => p.slug === 'index').blocks
+      .find(b => b.id === 'proof-testimonials').fields.quotes[0].link = 'javascript:alert(1)';
+    fs.rmSync(distDir, { recursive: true, force: true });
+    writeContent(CLIENT, hostile);
+    if (build(CLIENT).ok) failures.push('a javascript: review link passed validation');
+    if (fs.existsSync(path.join(distDir, 'index.html'))) failures.push('the refused javascript: review link still wrote output');
+
+    const { fallbackValidate } = require('./lib/validate');
+    if (typeof fallbackValidate === 'function') {
+      if (fallbackValidate(hostile).ok) failures.push('the no-AJV fallback validator accepted a javascript: review link');
+      if (!fallbackValidate(withBlock()).ok) failures.push('the no-AJV fallback validator rejected a legitimate review link');
+    } else {
+      failures.push('validate.js no longer exports fallbackValidate — the degraded path cannot be probed');
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', `${CLIENT}__annotated`), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a quote can carry an optional link back to the review it was copied from,');
+    console.log('       so a wall of claims becomes a wall a reader can check on the listing the');
+    console.log('       claims live on; several cards may point at ONE listing without recreating');
+    console.log('       the photo-strip defect, because each link\'s accessible name is the cue');
+    console.log('       text plus a screen-reader-only attribution ("Read the review · Kreesta');
+    console.log('       M."), with the visible label a prefix of it and the quote left outside the');
+    console.log('       anchor; a link-less quote is byte-identical to before; link and linkLabel');
+    console.log('       are click-to-editable and owner-repointable through the ordinary item');
+    console.log('       path; an owner can ADD a linked quote through the shipped blueprint; and a');
+    console.log('       javascript: target is refused by the blueprint and by BOTH validators.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

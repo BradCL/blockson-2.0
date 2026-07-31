@@ -249,10 +249,34 @@ Filters themselves: developer.
 ### `testimonials`
 Two-column quote cards with a star row.
 - `tag?` string, `heading?` string
-- `quotes` Repeats: `{id, stars? 1–5 (default 5), quote, attribution}`
-CSS: `.testimonials`, `.testimonials-grid`, `.testimonial-card`, `.stars`, `.attribution`.
-**Maintenance:** quote text/attribution/stars editable by item id. Owners add quotes
-through the shipped `testimonial-quote` item blueprint and remove any but the last.
+- `quotes` Repeats:
+  - `id` string, `stars?` 1–5 (default 5), `quote` string, `attribution` string
+  - `link?` url — optional link to the review this quote was copied from, on the
+    listing it lives on (a Google review's own share link, say). Renders a cue at the
+    card's foot that opens in a new tab. Scheme-guarded by `$defs/safeHref` like every
+    other link target.
+  - `linkLabel?` string — text for that link (defaults to "Read the review"); seed it
+    alongside the link so an owner can edit the wording (e.g. "See it on Google").
+CSS: `.testimonials`, `.testimonials-grid`, `.testimonial-card`, `.testimonial-card--link`,
+`.stars`, `.attribution`, `.testimonial-cue`, `.testimonial-cue-arrow`, `.sr-only`.
+
+A linked quote is what turns a wall of claims into a wall a reader can **check** — the
+same honesty the `reviews-link` block is built on, applied one card at a time. The link
+renders as a real, always-visible anchor at the card's foot (the card-grid cue shape),
+never a hit area over the whole card: a card-sized anchor would announce the entire
+quote as its name, and a stretched `::after` would swallow every click in the annotated
+preview. The expected case is **several cards pointing at one listing**, which is exactly
+the shape that made four photo-strip doorways announce identically — so the link's
+accessible name is the visible cue text plus a screen-reader-only `· <attribution>`
+suffix ("Read the review · Kreesta M.", "Read the review · Dana M."), distinguishable
+even when the href is the same, with the visible label a prefix of the accessible name
+(WCAG 2.5.3). **A link-less quote renders byte-identically to before.**
+
+**Maintenance:** quote text/attribution/stars editable by item id; a quote's `link` and
+`linkLabel` are click-to-edit so an owner can repoint or reword the doorway (the URL
+rides the anchor, the wording rides its own span). Owners add quotes through the shipped
+`testimonial-quote` item blueprint — its `linked` variant asks for the review's URL, so a
+new review can arrive already verifiable — and remove any but the last.
 
 ### `list-panel`
 A bordered panel containing a two-column dashed list. Hours, values, coverage,

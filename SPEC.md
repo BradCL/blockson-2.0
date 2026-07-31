@@ -110,7 +110,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (40 proofs)
+  _run-proofs.js        Proof suite (41 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -458,7 +458,14 @@ from the same spec (compared markup-to-markup, so the shared renderer is proven
 rather than asserted), leaves `hero` and its schema untouched, keeps the site
 hero image when it REPLACES a hero, keeps its nested origin tag as unreachable
 as a root-level one, and reads copy-first on a narrow screen whichever side the
-form takes on a wide one. All 40 must pass on a clean tree.
+form takes on a wide one, and (41) a testimonial quote can link back to the
+review it was copied from — with several cards allowed to point at ONE listing,
+because each link's accessible name is its cue text plus a screen-reader-only
+attribution, so the photo-strip defect cannot recur — while a link-less quote
+stays byte-identical, the owner can repoint and reword an existing link, an
+owner can ADD a linked quote through the shipped blueprint, and a `javascript:`
+target is refused by the blueprint and by both validators. All 41 must pass on a
+clean tree.
 
 ---
 
@@ -559,9 +566,9 @@ Guarantees, enforced in code and proved by proofs 9–10 and 19:
 
 Eight blueprints ship: three page blueprints — contact page, photo gallery page,
 generic content page — each with two layout variants, and five item blueprints —
-card (card-grid), FAQ pair (faq), quote (testimonials), team member (team-grid,
-with/without-photo variants), and CTA button (hero `actions`, filled/outline
-variants).
+card (card-grid), FAQ pair (faq), quote (testimonials, plain/linked-to-its-review
+variants), team member (team-grid, with/without-photo variants), and CTA button
+(hero `actions`, filled/outline variants).
 
 ### 10.1 Tier A / Tier B boundary
 
