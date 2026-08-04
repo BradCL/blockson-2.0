@@ -128,7 +128,11 @@ Pending:
   **no** engine changes beyond its own file, the registry, the schema, the
   stylesheet and the showcase — which is what "extend by addition" actually buys.
   The pull-quote-as-its-own-field decision is a good exercise: ask why the last
-  paragraph of `body` would not do.
+  paragraph of `body` would not do. Extend the example with the block's four
+  optional pull-quote style tokens and the Tier-B birth obligation they motivated:
+  a new block explicitly decides which distinctive registers a first client is
+  predictably likely to tune, exposing narrow developer/theme tokens without
+  widening the owner allowlist.
 
 Reconciled (prose/counts, 2026-06-30 pass):
 

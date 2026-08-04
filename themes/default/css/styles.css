@@ -1059,10 +1059,14 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
   margin: 1.7rem 0 0;
   padding-left: 1.1rem;
   border-left: 3px solid var(--color-primary, #ffb703);
-  font-family: var(--font-heading, 'Outfit', sans-serif);
-  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  /* A pull quote is a distinct register, but its exact volume is a client
+     decision. These opt-in, developer-tier tokens keep that register
+     reachable without repainting global heading/body typography. */
+  font-family: var(--founder-quote-font, var(--font-heading, 'Outfit', sans-serif));
+  font-size: var(--founder-quote-size, clamp(1.1rem, 2vw, 1.3rem));
+  font-style: var(--founder-quote-style, normal);
   line-height: 1.45;
-  color: var(--color-text, #f2f3f5);
+  color: var(--founder-quote-color, var(--color-text, #f2f3f5));
 }
 .founder-signature { margin-top: 1.2rem; font-style: italic; color: var(--color-muted, #9aa1ab); }
 

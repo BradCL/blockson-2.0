@@ -38,6 +38,12 @@ the major version.
   `quote` and `signature` are all creatable through the same guarded doorway a
   page-header subtitle uses, so dropping a stale job title is not a one-way door.
 
+  Four optional, developer-tier tokens expose the pull quote's register from
+  birth: `founder-quote-font`, `founder-quote-size`, `founder-quote-style`, and
+  `founder-quote-color`. Their fallbacks preserve the shipped design exactly;
+  none enters the owner `SAFE_TOKENS` allowlist or changes a client that sets
+  nothing.
+
   Which side the portrait takes is developer-tier `variant`
   (`portrait-left` | `portrait-right`), desktop only — a narrow screen always
   reads face → story, with the heading above both columns either way. The whole

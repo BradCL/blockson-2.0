@@ -478,6 +478,13 @@ italic sign-off) — which a renderer cannot infer from position; each is a stab
 target ("the signature") instead of an index-fragile "last line of body"; and each drops
 independently without disturbing the prose.
 
+**Pull-quote style tokens (developer/theme):** `--founder-quote-font`,
+`--founder-quote-size`, `--founder-quote-style`, and `--founder-quote-color`. They are
+optional tokens for a theme or a developer-written `site.themeOverrides`, not owner
+`set-token` surface. When absent, the quote keeps its original heading font, responsive
+size, normal style, and `--color-text`; `var(--font-body)` / `var(--color-muted)` make it
+share the surrounding prose's quieter register without changing either global token.
+
 **Degrading.** A missing portrait renders the neutral initial block in the same 3:4
 frame — never a broken `<img>`, and the placeholder carries no edit target because there
 is no portrait to replace yet. `role`, `quote` and `signature` each render nothing when

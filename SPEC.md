@@ -614,7 +614,12 @@ Two contribution tiers, split by what they can break:
      color/radius resolved through tokens, so all theme presets restyle it
      automatically (the work-order phrase "CSS in all themes" maps to this: one
      shared stylesheet IS all token-preset themes; any theme with its own `css/`
-     must add coverage too);
+     must add coverage too). A block also owes an explicit decision about the
+     distinctive registers a first client is predictably likely to tune — emphasis
+     text, dividers, and measure where the block has them. Expose those as narrowly
+     named, opt-in block tokens with fallbacks that preserve the canonical design;
+     they remain developer/theme surface unless they independently satisfy the much
+     stricter `SAFE_TOKENS` owner criterion;
   4. edit-map coverage (`engine/lib/sitemap.js` picks up scalars/items/text-lists by
      shape — verify the new block's editable surface appears) and annotation
      coverage in the annotated build;

@@ -270,7 +270,9 @@
 //             narrow layout always reads face → story whichever side the
 //             developer-tier variant picks; every paragraph is individually
 //             addressable and the portrait opens the image picker by path
-//             shape; both block contracts still refuse each other's fields.
+//             shape; the quote's four optional style tokens preserve the
+//             original register when absent and remain outside owner set-token;
+//             both block contracts still refuse each other's fields.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -5745,7 +5747,55 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
       }
     }
 
-    // (c) UGLY, NEVER BROKEN. A missing portrait degrades the way team-grid's
+    // (c) A NEW BLOCK OWES ITS FIRST CLIENT THE DISTINCTIVE REGISTERS THEY ARE
+    //     predictably likely to tune. The quote gets four narrow, opt-in tokens;
+    //     absent means the exact original font/size/style/color, while a
+    //     developer can retune the quote without touching global typography.
+    //     These are deliberately NOT maintenance-tier SAFE_TOKENS.
+    {
+      const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+      const rule = (css.match(/\.founder-quote\s*\{[^}]*\}/) || [''])[0];
+      const declarations = [
+        "font-family: var(--founder-quote-font, var(--font-heading, 'Outfit', sans-serif))",
+        'font-size: var(--founder-quote-size, clamp(1.1rem, 2vw, 1.3rem))',
+        'font-style: var(--founder-quote-style, normal)',
+        'color: var(--founder-quote-color, var(--color-text, #f2f3f5))',
+      ];
+      if (!rule) failures.push('the theme has no .founder-quote rule at all');
+      for (const declaration of declarations) {
+        if (!rule.includes(declaration)) failures.push(`the quote does not preserve its default through ${declaration}`);
+      }
+
+      const values = {
+        'founder-quote-font':  'var(--font-body)',
+        'founder-quote-size':  '0.98rem',
+        'founder-quote-style': 'italic',
+        'founder-quote-color': 'var(--color-muted)',
+      };
+      for (const name of Object.keys(values)) {
+        if (live.includes(`--${name}:`)) failures.push(`unset optional token --${name} was injected into an ordinary client`);
+      }
+
+      const styled = readContent(CLIENT);
+      styled.site.themeOverrides = { ...(styled.site.themeOverrides || {}), ...values };
+      writeContent(CLIENT, styled);
+      const styledBuild = build(CLIENT);
+      if (!styledBuild.ok) failures.push(`developer pull-quote overrides failed the build:\n${styledBuild.out}`);
+      else {
+        const styledHtml = fs.readFileSync(path.join(distDir, 'about.html'), 'utf8');
+        for (const [name, value] of Object.entries(values)) {
+          if (!styledHtml.includes(`--${name}: ${value};`)) failures.push(`--${name} did not reach the built :root block`);
+        }
+      }
+      const ownerProbe = applyPatch(styled, {
+        action: 'set-token', token: '--founder-quote-size', value: '2rem',
+      }, DEFAULT_TOKENS);
+      if (ownerProbe.ok) failures.push('an owner set-token patch reached the developer-only founder quote size');
+      writeContent(CLIENT, base);
+      build(CLIENT);
+    }
+
+    // (d) UGLY, NEVER BROKEN. A missing portrait degrades the way team-grid's
     //     does: a neutral initial in the same frame, and NO <img> at all.
     if (!bare.includes('founder-portrait-empty')) failures.push('a portrait-less founder note did not fall back to the initial block');
     if (/<img/.test(bare)) failures.push('a portrait-less founder note still emitted an <img> — the broken-image case this must never reach');
@@ -5756,11 +5806,11 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
     }
     if (/src=""|src="undefined"|src="null"/.test(live)) failures.push('the page carries an empty or undefined image source');
 
-    // (d) The side swap is a real, desktop-only class on the wrapper.
+    // (e) The side swap is a real, desktop-only class on the wrapper.
     if (!/founder-note-inner portrait-right/.test(right)) failures.push('variant "portrait-right" did not reach the markup');
     if (/portrait-right/.test(full)) failures.push('the default variant leaked the portrait-right class');
 
-    // (e) THE OWNER SURFACE FALLS OUT OF THE EXISTING DERIVATION — nothing in
+    // (f) THE OWNER SURFACE FALLS OUT OF THE EXISTING DERIVATION — nothing in
     //     annotate.js or sitemap.js was special-cased for this block. Every
     //     paragraph is INDIVIDUALLY addressable (its own data-bk-index), and the
     //     portrait is annotated so the image picker can reach it.
@@ -5787,7 +5837,7 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
     }
     if (live.includes('data-bk-')) failures.push('the live build leaked annotations');
 
-    // (f) Through the editor: the portrait opens the IMAGE picker (owner.js
+    // (g) Through the editor: the portrait opens the IMAGE picker (owner.js
     //     decides image-ness from the value's path shape, not the field name),
     //     a paragraph opens as one line of its list, and the three optional
     //     trimmings a bare note omits are offered as guarded doorways.
@@ -5827,7 +5877,7 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
       if ((d2.scalars || []).some(s => s.field === 'quote')) failures.push('a cleared pull quote stayed a scalar with nothing rendered to click');
     }
 
-    // (g) SPEC §2.6 — adding a block changed no existing block. Each contract
+    // (h) SPEC §2.6 — adding a block changed no existing block. Each contract
     //     still refuses the other's fields, in both directions.
     for (const [label, mutate] of [
       // A founder-note handed team-grid's roster.
@@ -5871,8 +5921,10 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
     console.log('       the narrow layout always reads face → story whichever side the developer-');
     console.log('       tier variant chooses on a wide one. The whole owner surface falls out of');
     console.log('       the existing derivation — every paragraph individually addressable, the');
-    console.log('       portrait opening the image picker by its path shape — and both block');
-    console.log('       contracts still refuse each other\'s fields (SPEC §2.6).');
+    console.log('       portrait opening the image picker by its path shape. Four optional tokens');
+    console.log('       let a developer retune the quote without changing global typography, while');
+    console.log('       the original register remains the default and owner set-token stays narrow;');
+    console.log('       both block contracts still refuse each other\'s fields (SPEC §2.6).');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

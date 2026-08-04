@@ -90,6 +90,10 @@ of these without shipping its own CSS:
 | `--area-list-divider-pad` | `0` | `padding-bottom` on those items when `--area-list-divider` is set. |
 | `--list-panel-heading-gap` | `1.1rem` | Gap below the list-panel (`.mission-pillars`) heading, before its card. |
 | `--list-panel-heading-size` | `1.5rem` | Font size of the list-panel heading — raise it for a larger panel heading. |
+| `--founder-quote-font` | `var(--font-heading)` | Font family of a `founder-note` pull quote; use `var(--font-body)` for a prose-like register. |
+| `--founder-quote-size` | `clamp(1.1rem, 2vw, 1.3rem)` | Font size of a `founder-note` pull quote. |
+| `--founder-quote-style` | `normal` | Font style of a `founder-note` pull quote — e.g. `italic`. |
+| `--founder-quote-color` | `var(--color-text)` | Pull-quote color independent of global text; use `var(--color-muted)` to match the founder prose. |
 | `--closing-statement-size` | `clamp(1.6rem, 3.5vw, 2.4rem)` | Font size of the closing-CTA statement. |
 | `--closing-statement-weight` | `700` | Font weight of the closing-CTA statement. |
 | `--closing-statement-width` | `760px` | Max width of the closing-CTA statement. |
