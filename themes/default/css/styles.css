@@ -1009,6 +1009,84 @@ a.contact-info-item:hover .contact-info-value { color: var(--color-primary, #ffb
 }
 .team-bio { color: var(--color-muted, #9aa1ab); font-size: 0.92rem; }
 
+/* ── founder-note: a portrait beside a personal story ──────── */
+.founder-note-inner {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+/* A PORTRAIT IS VERTICAL. 3:4 is the shape a phone shoots and the shape a
+   headshot is cropped to, so the frame is given that ratio and the photo fills
+   it — never squared, never circled, never letterboxed into a landscape band.
+   This is the whole reason the section could not be a team-grid with one member
+   (a 120px circle) or a photo-strip cell (4:3 landscape). */
+.founder-portrait {
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius, 10px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-primary, #ffb703) 14%, transparent);
+}
+.founder-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Missing portrait: the same neutral initial team-grid falls back to, in this
+   block's frame rather than a circle — ugly, never broken. */
+.founder-portrait-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--color-primary, #ffb703);
+}
+.founder-identity { margin-top: 1rem; }
+.founder-name { font-size: 1.12rem; }
+.founder-role {
+  color: var(--color-primary, #ffb703);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+}
+.founder-body { max-width: 62ch; }
+.founder-body p { margin-bottom: 1rem; color: var(--color-muted, #9aa1ab); font-size: 1.05rem; }
+.founder-body > p:last-child { margin-bottom: 0; }
+/* Set against a rule rather than in quotation marks: the value is the change of
+   register, and a rule survives a client whose copy already carries its own
+   punctuation. */
+.founder-quote {
+  margin: 1.7rem 0 0;
+  padding-left: 1.1rem;
+  border-left: 3px solid var(--color-primary, #ffb703);
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  line-height: 1.45;
+  color: var(--color-text, #f2f3f5);
+}
+.founder-signature { margin-top: 1.2rem; font-style: italic; color: var(--color-muted, #9aa1ab); }
+
+/* Desktop-only side swap (the `variant`). */
+@media (min-width: 901px) {
+  .founder-note-inner.portrait-right .founder-aside { order: 2; }
+  .founder-note-inner.portrait-right .founder-body  { order: 1; }
+}
+
+@media (max-width: 900px) {
+  .founder-note-inner { grid-template-columns: 1fr; gap: 1.8rem; }
+  /* Whichever side the portrait takes on a wide screen, a narrow one always
+     reads portrait → story: the section's heading is above both columns either
+     way, so meeting the face first is the natural order and the desktop-only
+     swap is reset here rather than being a second thing a client can get wrong.
+     (hero-form resets its swap for the opposite reason — its <h1> is in the copy
+     column, so THAT block must lead with copy. Same mechanism, different
+     content, and each block states its own.) */
+  .founder-note-inner.portrait-right .founder-aside,
+  .founder-note-inner.portrait-right .founder-body { order: 0; }
+  /* Capped so a 3:4 portrait does not fill a phone screen before a word is read. */
+  .founder-aside { max-width: 220px; }
+}
+
 /* ── v2: FAQ ──────────────────────────────────────────────── */
 .faq-list { max-width: 760px; }
 .faq-item {

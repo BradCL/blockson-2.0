@@ -33,7 +33,7 @@ proof 29 and the browser-demo host seam.
 
 Pending:
 
-- **Block-type count 23 → 24, and `hero-form` is the first block sharing a
+- **Block-type count 23 → 25, and `hero-form` is the first block sharing a
   renderer** (2026-07-29) — `01-system-map.md:126` reads "(23)". Two new lib
   modules to name there as well: `formfields.js` (the lead-form renderer that
   `contact-form` and `hero-form` both call, so neither owns the form) and
@@ -46,13 +46,13 @@ Pending:
   content may reference a third party where a developer puts one there. The
   teaching point is the distinction the old wording hid — a scheme check is a
   security boundary, a host allowlist is a typo-catcher.
-- **Proof count 29 → 42** (2026-07-31) — proofs 30 (hostile content values
+- **Proof count 29 → 43** (2026-07-31, extended 2026-08-03) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
   (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
   icons), 38 (contact-form source tag), 39 (reviews-link creatable fields), 40
-  (hero-form), 41 (testimonial review links) and 42 (gallery category covers)
-  added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+  (hero-form), 41 (testimonial review links) , 42 (gallery category covers) and 43
+  (founder-note) added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
   There is also a fourth browser test now (`npm run test:gallery`), wherever the
   testing chapter lists the standalone Playwright smokes alongside `npm test`.
 - **Two new field classes in the write allowlist** (2026-07-29) — wherever the
@@ -114,6 +114,21 @@ Pending:
   `inputs[].variants` after team-member's photo, and the reason for it is worth a
   line: an optional input left blank writes an empty string, so a field the item
   should simply not *have* belongs behind a variant, not behind `required:false`.
+- **`founder-note` — when a new block type is the right answer** (2026-08-03) —
+  the clearest worked example the engine has of SPEC §2.6 in practice, and worth
+  a section wherever the atlas teaches how to decide between extending a block
+  and adding one (`02-atlas/03-blocks-and-render.md`). The reasoning is
+  reconstructible from the block's header comment: `team-grid` was *nearly* right
+  and was still wrong, because its `bio` is one string (a data-shape limit, not a
+  styling one) and its grid makes one member a full-width card — so the fix was
+  not a CSS tweak or an option flag. Two more teaching points ride along: a
+  two-column layout can only live inside a single block's markup, because
+  `lib/render.js` emits blocks as flat siblings into `<body>` (the same
+  constraint `hero-form` and `service-area` work within); and the block needed
+  **no** engine changes beyond its own file, the registry, the schema, the
+  stylesheet and the showcase — which is what "extend by addition" actually buys.
+  The pull-quote-as-its-own-field decision is a good exercise: ask why the last
+  paragraph of `body` would not do.
 
 Reconciled (prose/counts, 2026-06-30 pass):
 
@@ -158,16 +173,16 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 42** (2026-07-31) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 43** (2026-07-31, extended 2026-08-03) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 42, gallery category covers).
+  the next capture session (new last proof: 43, founder-note).
 - **`example-contractor`'s gallery is now in `categories` mode** (2026-07-31) —
   the example client the tutorial builds has `allShows: "categories"` and covers
   seeded on its filters, so its `gallery.html` now opens on category cards rather
   than album cards. Any excerpt or capture showing that page's markup or output
   needs regenerating; the build also emits a new advisory line for the `exterior`
   category if album data ever changes under it.
-- **Block-type count 23 → 24** (2026-07-29) — `README.md:77` and
+- **Block-type count 23 → 25** (2026-07-29, extended 2026-08-03) — `README.md:77` and
   `term/02-new-client.txt` both say "all 23 block types" (the second is captured
   from `new-client.js` output, so it regenerates), and `term/01-proofs.txt:68`
   carries it inside the theme-validator proof line.
@@ -200,6 +215,13 @@ Pending:
   One line in "What else you can change" plus a clause in the add-an-item step;
   no new screenshot needed — it reuses the existing text editor and the variant
   picker already visible in the captures.
+- **Editing a founder note** (2026-08-03) — where a developer has put one on the
+  About page, each paragraph of the story edits on its own (click the paragraph,
+  not the section), the portrait swaps through the ordinary image picker, and the
+  section's "Add…" panel offers a job title, a pull quote and a signature if the
+  section is missing any of them — so an owner who has one taken out can put it
+  back. One line in "What else you can change"; no new screenshot needed, it
+  reuses the text and image editors already captured.
 - **Choosing the photo that represents a category** (2026-07-31) — on a gallery
   whose "All" tab shows one card per category, clicking that card's photo opens
   the ordinary image picker, and clicking the category's name (on the card or on

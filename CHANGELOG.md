@@ -10,6 +10,40 @@ the major version.
 ## [Unreleased]
 
 ### Added
+- **`founder-note` block** — an "about the founder" section: a vertical portrait
+  beside several paragraphs of prose, usually closing on a pull quote and a
+  signature. This is the single most common About-page shape for the businesses
+  Blockson targets, and the engine had no way to say it. `team-grid` is the
+  nearest thing but is a *roster*: its `bio` is one string rendered as one `<p>`,
+  so multi-paragraph prose cannot go in it, and a single member stretches to the
+  full container width as a wide centred card with a 120px circular photo — "a
+  team section that happens to have one person in it", which is a different
+  claim. Stacking `team-grid` + `text` gives the owner two disconnected edit
+  surfaces for one section. A new block type per SPEC §2.6: `team-grid` and
+  `teamGridFields` are untouched, and since blocks render as flat siblings into
+  `<body>`, the two-column layout lives in this block's own markup the way
+  `service-area`'s and `hero-form`'s do — nothing needed from `lib/render.js` or
+  `partials/head.js`.
+
+  A portrait is **vertical**: `.founder-portrait` is a 3:4 frame the photo fills,
+  never squared, circled, or letterboxed into a landscape band. That shape is the
+  reason the block exists, so proof 43 pins it rather than trusting the
+  stylesheet. A missing portrait degrades exactly the way `team-grid`'s does — a
+  neutral initial in the same frame, with no `<img>` emitted at all.
+
+  The pull quote and the signature are **their own fields**, not the last
+  paragraphs of `body`: they render in different registers (which a renderer
+  cannot infer from position), each is a stable edit target rather than an
+  index-fragile "last line of body", and each drops independently. `role`,
+  `quote` and `signature` are all creatable through the same guarded doorway a
+  page-header subtitle uses, so dropping a stale job title is not a one-way door.
+
+  Which side the portrait takes is developer-tier `variant`
+  (`portrait-left` | `portrait-right`), desktop only — a narrow screen always
+  reads face → story, with the heading above both columns either way. The whole
+  owner edit surface falls out of the existing derivation in `lib/sitemap.js`:
+  every paragraph is individually addressable, and the portrait opens the image
+  picker because `owner.js` decides image-ness from the value's path shape.
 - **A gallery's "All" tab can show one cover photo per category** (optional
   `allShows: "categories"` on a `gallery`, plus optional `id` and `cover` on each
   `filters[]` entry). "All" is the tab that loads first and the only view that

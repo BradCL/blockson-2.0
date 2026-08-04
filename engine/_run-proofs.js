@@ -261,6 +261,16 @@
 //             are click-to-editable and owner-repointable; an owner can ADD a
 //             linked quote through the shipped blueprint; and a javascript:
 //             target is refused by the blueprint and by both validators.
+// Proof 43:   founder-note — a portrait beside a real multi-paragraph story,
+//             the About-page shape team-grid cannot hold (its bio is one
+//             string; the workaround is refused by the schema, proven here).
+//             Quote and signature are their own fields and each is a guarded
+//             doorway; a missing portrait degrades to a neutral initial in the
+//             same 3:4 frame with no <img>; the frame is never circled and the
+//             narrow layout always reads face → story whichever side the
+//             developer-tier variant picks; every paragraph is individually
+//             addressable and the portrait opens the image picker by path
+//             shape; both block contracts still refuse each other's fields.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -354,7 +364,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 42;
+const TOTAL = 43;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -5621,6 +5631,248 @@ console.log('\n═══ PROOF 42 — a gallery\'s "All" tab can show one cover 
     console.log('       refused by the edit map AND applyPatch together; albums mode is');
     console.log('       byte-identical; and the two advisories no real client can trigger — an');
     console.log('       album reachable from no view, and a category with no albums — fire here.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 43 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real multi-paragraph story ═══');
+{
+  const owner = require('./lib/owner');
+  const CLIENT  = '__proof-founder-note';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const annDir  = path.join(ROOT, 'dist', CLIENT + '__annotated');
+  const failures = [];
+
+  const PARAS = [
+    'First paragraph of the story, in the owner’s own voice.',
+    'Second paragraph — the part a single-string bio field cannot hold.',
+    'Third paragraph, closing the story out.',
+  ];
+  // The section of one block's rendered HTML, by a marker unique to it.
+  const sectionOf = (html, marker) => {
+    const at = html.indexOf(marker);
+    if (at < 0) return '';
+    const start = html.lastIndexOf('<section', at);
+    const end   = html.indexOf('</section>', at);
+    return start < 0 || end < 0 ? '' : html.slice(start, end);
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const base = readContent('example-contractor');
+    const about = base.pages.find(p => p.slug === 'about');
+    about.blocks.push(
+      // Everything set — the ordinary case.
+      { id: 'founder-full', type: 'founder-note', fields: {
+        hidden: false, tag: 'Our story', heading: 'Meet the founder',
+        portrait: 'img/founder.jpg', name: 'Dana Reyes', role: 'Founder & Lead Carpenter',
+        variant: 'portrait-left', body: PARAS.slice(),
+        quote: 'We finish a job the way we would want it finished at home.',
+        signature: '— Dana' } },
+      // The DEGRADED state: no portrait, no role, no quote, no signature.
+      { id: 'founder-bare', type: 'founder-note', fields: {
+        hidden: false, name: 'Wes Okafor', body: ['One paragraph and nothing else.'] } },
+      // The same section with the portrait on the other side.
+      { id: 'founder-right', type: 'founder-note', fields: {
+        hidden: false, heading: 'The other side', name: 'Dana Reyes',
+        portrait: 'img/founder.jpg', variant: 'portrait-right', body: PARAS.slice(0, 2) } },
+    );
+    writeContent(CLIENT, base);
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Founder Proof', publish: 'none' }) + '\n', 'utf8');
+
+    const b1 = build(CLIENT);
+    const b2 = build(CLIENT, ['--annotate']);
+    if (!b1.ok) failures.push(`the live build refused the founder notes:\n${b1.out}`);
+    if (!b2.ok) failures.push(`the annotated build refused the founder notes:\n${b2.out}`);
+
+    const live = fs.readFileSync(path.join(distDir, 'about.html'), 'utf8');
+    const ann  = fs.readFileSync(path.join(annDir, 'about.html'), 'utf8');
+    const full  = sectionOf(live, 'Meet the founder');
+    const bare  = sectionOf(live, 'Wes Okafor');
+    const right = sectionOf(live, 'The other side');
+    for (const [label, s] of [['full', full], ['bare', bare], ['right', right]]) {
+      if (!s) failures.push(`the ${label} founder note is missing from the built page entirely`);
+    }
+
+    // (a) THE DEFECT THE BLOCK EXISTS TO FIX. The prose is several separate
+    //     paragraphs, not one. team-grid cannot express this at all: its `bio`
+    //     is a single string, so the workaround is not merely uglier — the
+    //     schema refuses the shape outright.
+    const pCount = (full.match(/<p[\s>]/g) || []).length;
+    if (pCount !== PARAS.length) {
+      failures.push(`the story rendered as ${pCount} paragraph(s), not ${PARAS.length}`);
+    }
+    for (const para of PARAS) {
+      if (!full.includes(para)) failures.push(`a paragraph is missing from the rendered story: "${para.slice(0, 40)}…"`);
+    }
+    {
+      const probe = readContent(CLIENT);
+      const team = { id: 'roster-probe', type: 'team-grid', fields: { hidden: false, members: [
+        { id: 'm-1', name: 'Dana Reyes', role: 'Founder', bio: PARAS.slice() },
+      ] } };
+      probe.pages.find(p => p.slug === 'about').blocks.push(team);
+      writeContent(CLIENT, probe);
+      if (build(CLIENT).ok) failures.push('team-grid accepted a multi-paragraph bio — the workaround this block replaces is not actually blocked');
+      writeContent(CLIENT, base);
+      build(CLIENT);
+    }
+
+    // (b) A PORTRAIT IS VERTICAL. The frame is a 3:4 box and never a circle or
+    //     a landscape band — the shape failure that rules out team-grid (a 120px
+    //     circle) and photo-strip (a 4:3 band) in the first place.
+    {
+      const css = fs.readFileSync(path.join(ROOT, 'themes', 'default', 'css', 'styles.css'), 'utf8');
+      const rule = (css.match(/\.founder-portrait\s*\{[^}]*\}/) || [''])[0];
+      if (!rule) failures.push('the theme has no .founder-portrait rule at all');
+      if (!/aspect-ratio:\s*3\s*\/\s*4/.test(rule)) {
+        failures.push(`.founder-portrait does not carry the 3:4 portrait frame: ${rule.replace(/\s+/g, ' ')}`);
+      }
+      if (/border-radius:\s*50%/.test(rule)) failures.push('.founder-portrait circles the photo — a portrait must not be cropped to a circle');
+      // The narrow layout resets the desktop-only side swap, so a phone always
+      // reads portrait → story whichever side `variant` gives it on a wide one.
+      const narrow = (css.match(/@media\s*\(max-width:\s*900px\)\s*\{[\s\S]*?\n\}/g) || [])
+        .find(blk => blk.includes('.founder-note-inner'));
+      if (!narrow || !/\.founder-note-inner\.portrait-right[\s\S]*order:\s*0/.test(narrow)) {
+        failures.push('the narrow layout does not reset the portrait-right swap — a phone could read the story before the face');
+      }
+    }
+
+    // (c) UGLY, NEVER BROKEN. A missing portrait degrades the way team-grid's
+    //     does: a neutral initial in the same frame, and NO <img> at all.
+    if (!bare.includes('founder-portrait-empty')) failures.push('a portrait-less founder note did not fall back to the initial block');
+    if (/<img/.test(bare)) failures.push('a portrait-less founder note still emitted an <img> — the broken-image case this must never reach');
+    if (!/founder-portrait-empty[^>]*aria-hidden="true"/.test(bare)) failures.push('the initial placeholder is not hidden from assistive tech');
+    if (!/<span>W<\/span>/.test(bare)) failures.push('the initial placeholder does not carry the name’s first letter');
+    for (const absent of ['founder-role', 'founder-quote', 'founder-signature']) {
+      if (bare.includes(absent)) failures.push(`a founder note that omits its ${absent} still rendered one`);
+    }
+    if (/src=""|src="undefined"|src="null"/.test(live)) failures.push('the page carries an empty or undefined image source');
+
+    // (d) The side swap is a real, desktop-only class on the wrapper.
+    if (!/founder-note-inner portrait-right/.test(right)) failures.push('variant "portrait-right" did not reach the markup');
+    if (/portrait-right/.test(full)) failures.push('the default variant leaked the portrait-right class');
+
+    // (e) THE OWNER SURFACE FALLS OUT OF THE EXISTING DERIVATION — nothing in
+    //     annotate.js or sitemap.js was special-cased for this block. Every
+    //     paragraph is INDIVIDUALLY addressable (its own data-bk-index), and the
+    //     portrait is annotated so the image picker can reach it.
+    const content = readContent(CLIENT);
+    const desc = buildEditMap(content, loadTokens(content))
+      .pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-full');
+    if (!(desc.textLists || []).some(t => t.field === 'body' && t.lines.length === PARAS.length)) {
+      failures.push('the story is not exposed as an editable text list of paragraphs');
+    }
+    for (const f of ['tag', 'heading', 'portrait', 'name', 'role', 'quote', 'signature', 'variant']) {
+      if (!(desc.scalars || []).some(s => s.field === f)) failures.push(`"${f}" is not an editable scalar on a fully-populated founder note`);
+    }
+    const present = presentAnnotations(ann);
+    PARAS.forEach((_, i) => {
+      if (!present.has(triKey('founder-full', null, 'body', i))) failures.push(`paragraph ${i} is not individually addressable in the preview`);
+    });
+    for (const f of ['portrait', 'name', 'role', 'quote', 'signature', 'variant']) {
+      if (!present.has(triKey('founder-full', null, f, null))) failures.push(`"${f}" carries no annotation in the preview`);
+    }
+    // The empty placeholder is deliberately NOT an edit target: there is no
+    // portrait to replace yet, and a dead annotation would fail proof 1.
+    if (present.has(triKey('founder-bare', null, 'portrait', null))) {
+      failures.push('the initial placeholder was annotated as an editable portrait');
+    }
+    if (live.includes('data-bk-')) failures.push('the live build leaked annotations');
+
+    // (f) Through the editor: the portrait opens the IMAGE picker (owner.js
+    //     decides image-ness from the value's path shape, not the field name),
+    //     a paragraph opens as one line of its list, and the three optional
+    //     trimmings a bare note omits are offered as guarded doorways.
+    const session = owner.createSession(CLIENT);
+    const dP = owner.describeField(session, { block: 'founder-full', field: 'portrait' });
+    if (!dP.ok || dP.kind !== 'image') failures.push(`the portrait did not open the image picker: ${JSON.stringify(dP)}`);
+    const dL = owner.describeField(session, { block: 'founder-full', field: 'body', index: 1 });
+    if (!dL.ok || dL.kind !== 'list-line' || dL.value !== PARAS[1]) {
+      failures.push(`a single paragraph did not open as its own line: ${JSON.stringify(dL)}`);
+    }
+    const sec = owner.describeSection(session, { block: 'founder-bare' });
+    if (!sec.ok) failures.push(`describeSection on a bare founder note failed: ${sec.error}`);
+    else for (const f of ['role', 'quote', 'signature']) {
+      if (!(sec.addable || []).some(a => a.field === f)) failures.push(`the Section panel did not offer to add the ${f}`);
+    }
+    const badQuote = owner.applyEdit(session, { action: 'set', block: 'founder-bare', field: 'quote', value: 'a\nsecond line' });
+    if (badQuote.ok) failures.push('a multi-line value was accepted as a pull quote');
+    const goodQuote = owner.applyEdit(session, { action: 'set', block: 'founder-bare', field: 'quote', value: 'Small crews, finished properly.' });
+    if (!goodQuote.ok) failures.push(`creating a pull quote through the editor failed: ${goodQuote.error}`);
+    else {
+      const cand = JSON.parse(fs.readFileSync(path.join(candDir, 'content.json'), 'utf8'));
+      const cf = cand.pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-bare').fields;
+      if (cf.quote !== 'Small crews, finished properly.') failures.push(`the candidate quote is not as created: ${JSON.stringify(cf.quote)}`);
+      const liveNow = JSON.parse(fs.readFileSync(path.join(liveDir, 'content.json'), 'utf8'));
+      if ('quote' in liveNow.pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-bare').fields) {
+        failures.push('creating a quote wrote into live content before publish');
+      }
+    }
+    // Cleared again → back to a doorway, not an unclickable field (the
+    // present-but-empty case sitemap.js treats as absent).
+    {
+      const cleared = readContent(CLIENT);
+      cleared.pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-bare').fields.quote = '';
+      const d2 = buildEditMap(cleared, loadTokens(cleared))
+        .pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-bare');
+      if (!(d2.creatable || []).some(c => c.field === 'quote')) failures.push('a cleared pull quote did not hand back its doorway');
+      if ((d2.scalars || []).some(s => s.field === 'quote')) failures.push('a cleared pull quote stayed a scalar with nothing rendered to click');
+    }
+
+    // (g) SPEC §2.6 — adding a block changed no existing block. Each contract
+    //     still refuses the other's fields, in both directions.
+    for (const [label, mutate] of [
+      // A founder-note handed team-grid's roster.
+      ['founder-note', probe => {
+        const blk = probe.pages.find(p => p.slug === 'about').blocks.find(b => b.id === 'founder-full');
+        blk.fields.members = [{ id: 'm-1', name: 'X', role: 'Y' }];
+      }],
+      // A team-grid handed this block's portrait and pull quote.
+      ['team-grid', probe => {
+        probe.pages.find(p => p.slug === 'about').blocks.push({
+          id: 'roster-crossover', type: 'team-grid', fields: { hidden: false,
+            portrait: 'img/founder.jpg', quote: 'no',
+            members: [{ id: 'm-1', name: 'Dana Reyes', role: 'Founder' }] } });
+      }],
+    ]) {
+      const probe = readContent(CLIENT);
+      mutate(probe);
+      writeContent(CLIENT, probe);
+      if (build(CLIENT).ok) failures.push(`${label} accepted a field belonging to the other block type`);
+      writeContent(CLIENT, base);
+    }
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(annDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'dist', CLIENT + '__candidate__annotated'), { recursive: true, force: true });
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — an owner-led business can say who is behind the work: a 3:4 portrait beside');
+    console.log('       SEVERAL paragraphs of prose, which is the one shape team-grid cannot hold');
+    console.log('       (its bio is a single string — the multi-paragraph workaround is refused by');
+    console.log('       the schema, proven here, not merely discouraged). The pull quote and the');
+    console.log('       signature are their own fields, so each is a stable edit target and each');
+    console.log('       can be dropped and put back through the same guarded doorway a page-header');
+    console.log('       subtitle uses. A missing portrait degrades to the neutral initial in the');
+    console.log('       same vertical frame with no <img> at all; the frame is never circled and');
+    console.log('       the narrow layout always reads face → story whichever side the developer-');
+    console.log('       tier variant chooses on a wide one. The whole owner surface falls out of');
+    console.log('       the existing derivation — every paragraph individually addressable, the');
+    console.log('       portrait opening the image picker by its path shape — and both block');
+    console.log('       contracts still refuse each other\'s fields (SPEC §2.6).');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

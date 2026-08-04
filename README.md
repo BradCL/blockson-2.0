@@ -157,6 +157,11 @@ Lead capture: `hero-form` — a hero whose call to action *is* the form (copy on
 side, a short form the other, above the fold), rendering the same form as
 `contact-form` through a shared renderer
 
+Owner's story: `founder-note` — a vertical portrait beside several paragraphs of
+prose, usually closing on a pull quote and a signature. The About-page shape an
+owner-led business actually needs, and the one `team-grid` cannot hold (it is a
+roster; its `bio` is a single string)
+
 `contact-form` has a selectable, subscription-free delivery mode: the default
 endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
 `extras/cloudflare-form-worker/`, or a relay), while `delivery: { "mode": "netlify" }`
@@ -389,7 +394,7 @@ npm run test:all               # proofs + the three Playwright browser smokes
 npm run doctor <client-name>   # build + pre-launch advisory checklist
 ```
 
-Runs 31 end-to-end proofs against the example clients and the full contribution
+Runs 43 end-to-end proofs against the example clients and the full contribution
 pipeline:
 1. live HTML carries no item ids and no `data-bk-*` attributes; an annotated
    build (`--annotate`) carries a `data-bk` annotation for every editable field
@@ -518,7 +523,7 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (42 proofs)
+  _run-proofs.js        End-to-end proof suite (43 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only);
                         ui/demo/ is the static browser-demo bootstrap

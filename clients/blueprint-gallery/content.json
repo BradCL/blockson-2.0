@@ -1029,6 +1029,25 @@
             },
             "hidden": false
           }
+        },
+        {
+          "id": "show-founder-note",
+          "type": "founder-note",
+          "fields": {
+            "tag": "Our story",
+            "heading": "A founder note",
+            "portrait": "img/sample-1.jpg",
+            "name": "Sam Person",
+            "role": "Founder",
+            "variant": "portrait-left",
+            "body": [
+              "First paragraph of the founder’s story, in the owner’s own voice.",
+              "Second paragraph, to show that this section carries real prose rather than a one-line bio."
+            ],
+            "quote": "The one sentence worth setting apart from the paragraphs.",
+            "signature": "— Sam, Founder",
+            "hidden": false
+          }
         }
       ]
     }

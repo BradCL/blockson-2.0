@@ -110,12 +110,12 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (42 proofs)
+  _run-proofs.js        Proof suite (43 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
                         the build-demo bundle is built from; ui.js drives both (§13)
-  blocks/               One template module per block type (see BLOCK_CATALOG.md, 24 types)
+  blocks/               One template module per block type (see BLOCK_CATALOG.md, 25 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
                         local-first — emits no external resource links)
@@ -349,7 +349,7 @@ decide how a field appears:
 node engine/_run-proofs.js
 ```
 
-Forty proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Forty-three proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -478,7 +478,16 @@ target, an empty category getting no doorway at all, `label` and `cover`
 owner-editable while the join key and the mode switch are refused by the edit map
 AND the resolver together, albums mode byte-identical, and the two advisories no
 real client can trigger — an album reachable from no view, and a category with no
-albums — firing on a fixture built for them. All 42 must pass on a clean tree.
+albums — firing on a fixture built for them, and (43) `founder-note` carries a
+portrait beside a real multi-paragraph story — the About-page shape `team-grid`
+cannot hold, its `bio` being a single string, so the workaround is refused by the
+schema rather than merely discouraged — with the pull quote and the signature as
+their own creatable fields, a missing portrait degrading to a neutral initial in
+the same 3:4 frame with no `<img>` at all, the frame never circled, the narrow
+layout always reading face → story whichever side the developer-tier `variant`
+picks, every paragraph individually addressable, the portrait opening the image
+picker by its path shape, and both block contracts still refusing each other's
+fields. All 43 must pass on a clean tree.
 
 ---
 

@@ -402,6 +402,21 @@ const SHOWCASE_BLOCKS = [
         { name: 'phone', label: 'Phone', type: 'tel', required: true, half: true },
         { name: 'detail', label: 'What do you need?', type: 'textarea', required: true },
       ] } } },
+  // Every optional field is present here on purpose: the showcase is what the
+  // theme validator measures class coverage against, so a variant, a portrait,
+  // a pull quote and a signature all have to render for their rules to be
+  // exercised. The degraded states (no portrait, no quote) are pinned by the
+  // proof suite instead.
+  { id: 'show-founder-note', type: 'founder-note', fields: {
+    tag: 'Our story', heading: 'A founder note',
+    portrait: 'img/sample-1.jpg', name: 'Sam Person', role: 'Founder',
+    variant: 'portrait-left',
+    body: [
+      'First paragraph of the founder’s story, in the owner’s own voice.',
+      'Second paragraph, to show that this section carries real prose rather than a one-line bio.',
+    ],
+    quote: 'The one sentence worth setting apart from the paragraphs.',
+    signature: '— Sam, Founder' } },
 ];
 
 // Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks

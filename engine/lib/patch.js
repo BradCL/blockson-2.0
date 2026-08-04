@@ -132,6 +132,20 @@ const CREATABLE_FIELDS = {
                       hint: 'a review count is a whole number — like "11" or "1,204"' },
                     label:       { kind: 'text', guard: TEXT_LINE_RE,    whenAbsent: 'omitted',
                       hint: 'a badge label is a single line of text, up to 200 characters; it replaces the rating and review count in the badge' } },
+  // A founder-note's three optional trimmings, on the same reasoning as
+  // reviews-link's: the block is BUILT to degrade as each goes absent (its
+  // header comment), each renders nothing when it is — hence 'omitted' — and
+  // without this an owner who drops a stale job title or an out-of-date pull
+  // quote could never put one back. The prose itself (`body`) is not creatable:
+  // it is schema-REQUIRED, so a founder-note always has paragraphs and they are
+  // already click-editable line by line. Nor is `portrait`: unlike a page-header
+  // background there is nothing for an absent one to inherit, so "current value"
+  // would have to be invented, and the initial-block placeholder is a deliberate
+  // resting state rather than a gap to be filled from the editor.
+  'founder-note': { role:      { kind: 'text', guard: TEXT_LINE_RE, whenAbsent: 'omitted' },
+                    quote:     { kind: 'text', guard: TEXT_LINE_RE, whenAbsent: 'omitted',
+                      hint: 'a pull quote is a single line of text, up to 200 characters — the one sentence worth setting apart from the paragraphs' },
+                    signature: { kind: 'text', guard: TEXT_LINE_RE, whenAbsent: 'omitted' } },
 };
 
 // The creatable-field descriptors for a block TYPE, as a flat list — the one

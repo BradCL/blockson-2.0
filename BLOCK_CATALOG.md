@@ -444,6 +444,56 @@ stylist"); photos replaceable through the click-to-edit image editor. Owners add
 members through the shipped `team-member` item blueprint (with or without a photo)
 and remove any but the last; reordering: developer.
 
+### `founder-note`
+One person's story beside their portrait — the "about the founder" section an owner-led
+business puts on its About page. Trades, solo operators, professional services: the place
+a small business says who is actually behind the work, in several paragraphs rather than
+a caption.
+- `tag?`, `heading?` — eyebrow + heading, rendered **above both columns**, so a narrow
+  screen reads heading → face → story
+- `portrait?` image, `name` (required), `role?` — the identity column
+- `body` string[] (min 1) — the prose, one array entry per paragraph
+- `quote?`, `signature?` — the pull quote and the sign-off that usually close the section
+- `variant?` ∈ `portrait-left` (default) | `portrait-right` — which side the portrait
+  takes on a **wide** screen only
+CSS: `.founder-note`, `.founder-note-inner`, `.founder-aside`, `.founder-portrait`,
+`.founder-portrait-empty`, `.founder-identity`, `.founder-name`, `.founder-role`,
+`.founder-body`, `.founder-quote`, `.founder-signature`.
+
+**Not a `team-grid` with one member, and not `team-grid` + `text` stacked.** team-grid is
+a *roster*: its `bio` is a single string rendered as one `<p>`, so multi-paragraph prose
+cannot go in it, and `.team-grid` is `repeat(auto-fit, minmax(220px, 1fr))` — one member
+stretches to the full width as a wide centred card with a 120px circular photo. Stacking
+team-grid + text does give prose, but hands the owner two disconnected edit surfaces for
+what is conceptually one section. Both block contracts refuse each other's fields.
+
+**A portrait is vertical.** `.founder-portrait` is a 3:4 frame the photo fills — never
+squared, never circled, never letterboxed into a landscape band. That shape is the reason
+the block exists, so it is pinned by proof 43 rather than left to the stylesheet's good
+behaviour.
+
+**The pull quote and the signature are their own fields, not the last paragraphs of
+`body`.** They render in different registers (a quote set large against a rule; a small
+italic sign-off) — which a renderer cannot infer from position; each is a stable edit
+target ("the signature") instead of an index-fragile "last line of body"; and each drops
+independently without disturbing the prose.
+
+**Degrading.** A missing portrait renders the neutral initial block in the same 3:4
+frame — never a broken `<img>`, and the placeholder carries no edit target because there
+is no portrait to replace yet. `role`, `quote` and `signature` each render nothing when
+absent.
+
+**Narrow screens always read portrait → story**, whichever side `variant` gives it on a
+wide one; the heading is above both columns either way. (`hero-form` resets its swap for
+the opposite reason — its `<h1>` is in the copy column — so each block states its own.)
+
+**Maintenance:** tag, heading, name, role, quote and signature editable; each paragraph
+of `body` editable as its own line; the portrait replaceable through the click-to-edit
+image picker. `role`, `quote` and `signature` are **creatable** (patch.js
+`CREATABLE_FIELDS`, one-line text guard) — dropping a stale job title or an out-of-date
+pull quote is not a one-way door back to a developer errand. `variant` is developer-tier
+layout config, reached through the Section panel.
+
 ### `faq`
 Expandable Q&A pairs rendered as native `<details>`/`<summary>` — a real accordion with
 zero JavaScript. list-panel cannot express question→answer pairing.

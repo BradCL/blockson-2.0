@@ -30,4 +30,6 @@ module.exports = {
   'reviews-link':  require('./reviews-link'),
   // lead-capture addition: a hero whose CTA is the form itself
   'hero-form':     require('./hero-form'),
+  // owner-story addition: a portrait beside several paragraphs of prose
+  'founder-note':  require('./founder-note'),
 };

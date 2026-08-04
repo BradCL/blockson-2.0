@@ -150,7 +150,7 @@
                     "contact-form","cta",
                     "pricing-table","team-grid","faq","hours-table","before-after",
                     "stats-bar","process-steps","video-embed","booking-cta",
-                    "photo-strip","reviews-link","hero-form"
+                    "photo-strip","reviews-link","hero-form","founder-note"
                   ]
                 },
                 "fields": { "type": "object" }
@@ -251,6 +251,10 @@
                 {
                   "if":   { "properties": { "type": { "const": "hero-form" } },     "required": ["type"] },
                   "then": { "properties": { "fields": { "$ref": "#/$defs/heroFormFields" } } }
+                },
+                {
+                  "if":   { "properties": { "type": { "const": "founder-note" } },  "required": ["type"] },
+                  "then": { "properties": { "fields": { "$ref": "#/$defs/founderNoteFields" } } }
                 }
               ]
             }
@@ -688,6 +692,27 @@
             }
           }
         }
+      }
+    },
+    "founderNoteFields": {
+      "type": "object",
+      "required": ["name", "body"],
+      "additionalProperties": false,
+      "properties": {
+        "hidden":    { "type": "boolean" },
+        "tag":       { "type": "string" },
+        "heading":   { "type": "string" },
+        "portrait":  { "type": "string" },
+        "name":      { "type": "string" },
+        "role":      { "type": "string" },
+        "body": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "quote":     { "type": "string" },
+        "signature": { "type": "string" },
+        "variant":   { "type": "string", "enum": ["portrait-left", "portrait-right"] }
       }
     },
     "faqFields": {
