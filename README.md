@@ -169,6 +169,13 @@ renders Netlify's native form attributes — nothing to deploy. Every form carri
 hidden honeypot. The per-host story is "Contact form delivery" in
 [OPERATOR.md](OPERATOR.md).
 
+Approved marketing/CRM work is an explicit developer opt-in through the closed
+`site.integrations` contract: validated Google/Meta ids generate fixed global
+tags, one verified client-local JS file is copied and loaded last, and both form
+blocks share checkbox, status, source, honeypot, and conditional-field hooks.
+There is no raw-tag escape hatch, owner previews execute no integration code,
+and a client that omits the object follows the historical build path.
+
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
 
 Structure owners can add themselves comes from **blueprints** (`blueprints/`) —
@@ -523,12 +530,13 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (43 proofs)
+  _run-proofs.js        End-to-end proof suite (44 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only);
                         ui/demo/ is the static browser-demo bootstrap
   blocks/               One module per block type (24 total)
   partials/             head, nav, footer
+  lib/integrations.js   Allowlisted opt-in marketing + client-script renderer
   lib/                  render, validate, escape, icons, patch (allowlist + token
                         guards), sitemap (edit map), annotate (preview-build
                         data-bk-* stamping), owner (editor request handlers),

@@ -19,6 +19,7 @@
 // .hero-form only overrides what differs.
 const { esc } = require('../lib/escape');
 const { renderForm } = require('../lib/formfields');
+const { hasClientScript } = require('../lib/integrations');
 
 module.exports = function heroForm(fields, site, bk) {
   const form = (fields.form && typeof fields.form === 'object') ? fields.form : {};
@@ -55,6 +56,7 @@ module.exports = function heroForm(fields, site, bk) {
       <div class="hero-form-panel">
         ${formHeading}${renderForm(form, bk, {
           className: 'contact-form hero-lead-form', prefix: 'form.', indent: 10,
+          enhanced: hasClientScript(site),
         })}
       </div>
     </div>

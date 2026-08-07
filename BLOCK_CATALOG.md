@@ -126,7 +126,8 @@ before they can act. The layout ad traffic lands on.
     the `contact-form` shapes, because they are the same schema definitions
     (`$defs/formField`, `$defs/formDelivery`) and the same renderer
 - **The form is `contact-form`'s form.** Field markup, escaping, the half-width row
-  grouping, delivery modes, the honeypot and the origin tag all come from
+  grouping, delivery modes, the honeypot, origin tag, consent checkbox,
+  conditional hooks, and configured CRM status all come from
   `engine/lib/formfields.js`, which both blocks render through — so a hero form
   and a contact-page form cannot drift apart, and there is one escaping path and
   one honeypot rather than two of each.
@@ -395,10 +396,24 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
   means "not wired up yet". It passes the schema's `https://` guard so the site
   still builds, and every build warns loudly until it is replaced (warn, never
   fail). The contact-page blueprint's example uses it.
-- `fields` Repeats: `{name, label, type ∈ text|email|tel|textarea|select, required?,
-  placeholder?, options?[], half?}`
+- `fields` Repeats: `{name, label, type ∈ text|email|tel|url|number|date|textarea|select|checkbox,
+  required?, placeholder?, autocomplete?, value?, options?[], half?, showWhen?}`.
+  On a CRM-configured client, names begin with a letter and are unique within
+  the form. `value` supplies a checkbox's submitted value (default `yes`); a
+  required checkbox is the consent control. `showWhen` is `{field, equals}` and
+  emits progressive-enhancement data hooks on the wrapper. The named sibling
+  must exist; when it is a select,
+  `equals` must be one of its options. Conditional sales fields stay visible
+  without JavaScript — ugly but usable rather than silently missing.
+- When `site.integrations.clientScript` is configured, the form also carries
+  `data-crm-form` and one empty `.form-status[data-form-status]` live region for
+  the client script. The client asset and provider tags are global developer
+  configuration described in OPERATOR.md; neither this status nor the integration
+  object is emitted for an unconfigured client.
 CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
-`.form-hp`, `.btn-primary`.
+`.form-hp`, `.btn-primary`. Integration markup hooks: `.form-consent`,
+`.form-status`, `[data-crm-form]`, `[data-form-status]`, and
+`[data-show-when-field]`.
 **Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields and the
 delivery wiring (`formAction`, `delivery.*`): developer (fields carry no ids —
 structural by design). `source`: developer only, and unreachable from the owner

@@ -28,7 +28,9 @@
    tokens.json (token-preset themes), falling back to default.
    JS is always loaded from themes/default/js/ as the shared base,
    then overlaid with themes/<theme>/js/ overrides if that directory
-   exists. This keeps theme directories clean of duplicate JS.
+   exists. An explicitly configured client script is then copied from the
+   client directory as one separately named asset. This keeps theme
+   directories clean of duplicate or client-specific JS.
    ============================================================ */
 'use strict';
 
@@ -94,6 +96,28 @@ if (idErrors.length) {
   console.error('Content has duplicate item ids:');
   idErrors.forEach(e => console.error(`  ✗ ${e}`));
   process.exit(1);
+}
+
+// A configured client script is a single allowlisted in-repo asset, never a
+// remote URL and never arbitrary markup. Resolve and verify it before any
+// output is assembled or dist/ is touched, preserving the safe-failure gate.
+let clientScriptAsset = null;
+if (content.site && content.site.integrations && content.site.integrations.clientScript) {
+  const rel = content.site.integrations.clientScript;
+  const requested = path.resolve(clientDir, rel);
+  const clientRoot = fs.realpathSync(clientDir);
+  if (!requested.startsWith(path.resolve(clientDir) + path.sep)
+      || !fs.existsSync(requested)
+      || !fs.statSync(requested).isFile()) {
+    console.error(`Integration validation failed:\n  ✗ site.integrations.clientScript does not name a client file: ${rel}`);
+    process.exit(1);
+  }
+  const realSource = fs.realpathSync(requested);
+  if (!realSource.startsWith(clientRoot + path.sep)) {
+    console.error(`Integration validation failed:\n  ✗ site.integrations.clientScript must stay inside clients/${clientName}: ${rel}`);
+    process.exit(1);
+  }
+  clientScriptAsset = { rel, src: realSource };
 }
 
 // ── Step 2: Assemble HTML into memory (no partial writes) ──────
@@ -196,6 +220,14 @@ if (fs.existsSync(themeCssDir)) {
 copyDir(path.join(ROOT, 'themes', 'default', 'js'), path.join(distDir, 'js'));
 if (theme !== 'default') {
   copyDir(path.join(themeDir, 'js'), path.join(distDir, 'js'));
+}
+
+// Overlay exactly the configured client asset after the shared/theme JS. The
+// schema forbids js/main.js, so this cannot replace Blockson's runtime.
+if (clientScriptAsset) {
+  const dest = path.join(distDir, clientScriptAsset.rel);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(clientScriptAsset.src, dest);
 }
 
 // Copy client img/

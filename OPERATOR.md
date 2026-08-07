@@ -300,15 +300,16 @@ always paints its layer, so it is never a doorway.
 
 **Developer-only fields.** The mirror image of a creatable field: rendered markup
 *configuration* that needs a per-site value but must never reach the owner tier.
-A contact-form's `source` tag is the one today — the hidden field that lets two
+A contact-form's `source` tag is one example — the hidden field that lets two
 forms share one inbox and still be told apart, which is how ad spend gets
-attributed. It is omitted from the edit map, carries no annotation, and is
-refused by both the resolver and the editor's read path, so it cannot be opened,
-described, or written from the editor at all. An owner who retargeted it would
+attributed. Global integration wiring is the other. Both are omitted from the
+edit map, carry no annotation, and are refused by both the resolver and the
+editor's read path, so they cannot be opened,
+described, or written from the editor at all. An owner who retargeted either would
 break attribution with no visible symptom; a developer changes it in
-`content.json`, where the diff shows it. (This is `DEVELOPER_ONLY_FIELDS` in
-`engine/lib/patch.js`, read by the same edit map that reads the creatable
-allowlist, so the two gates cannot drift apart.)
+`content.json`, where the diff shows it. (These are `DEVELOPER_ONLY_FIELDS` and
+`DEVELOPER_ONLY_SITE_FIELDS` in `engine/lib/patch.js`, read by the same edit map
+that reads the creatable allowlist, so the gates cannot drift apart.)
 
 **Image uploads are compressed in the browser.** When the owner picks a photo, the
 editor scales it to at most 2400 px on the longest edge and re-encodes it (PNG →
@@ -417,6 +418,55 @@ Netlify, the Worker, and common relays all drop submissions that fill it.
 Until delivery is decided, set `formAction` to the documented placeholder
 `https://UNCONFIGURED` — the site builds (so form delivery never blocks a
 handover) and every build warns loudly until it's replaced.
+
+### Developer-controlled marketing and CRM integration
+
+`site.integrations` is an optional, closed allowlist for a client that has
+approved tracking and a developer-authored CRM bridge. Omitting the object takes
+the historical build path: no marketing tag, fallback, CRM status hook, client
+asset copy, or client script load is emitted. It is unavailable through ordinary
+owner editing; change it only in `content.json`.
+
+```json
+"integrations": {
+  "googleTagId": "G-EXAMPLE123",
+  "metaPixelId": "123456789012345",
+  "clientScript": "js/crm-bridge.js"
+}
+```
+
+- `googleTagId` accepts a Google tag beginning `G-`, `GT-`, `AW-`, or `DC-`.
+  Blockson generates the fixed loader/config tags in `<head>`; raw tags are not
+  accepted.
+- `metaPixelId` accepts 5–20 digits. Blockson generates the fixed Meta script in
+  `<head>` and its noscript image as the first node after `<body>`.
+- `clientScript` is one relative `js/*.js` path inside that client's directory.
+  The build verifies the file before touching `dist/`, copies only that file,
+  forbids replacing shared `js/main.js`, and loads it after the shared runtime as
+  the final script before `</body>`. Remote script URLs and traversal fail the
+  build.
+
+Live pages alone execute integrations. Annotated owner previews retain the form
+markup but omit all Google/Meta/client script tags, so preview visits cannot be
+counted and preview submissions cannot cross the CRM bridge.
+
+When `clientScript` is configured, every `contact-form` and `hero-form` receives
+the same `data-crm-form` hook and one empty live region
+`[data-form-status][role=status]`. The shared `fields` contract accepts
+`text`, `email`, `tel`, `url`, `number`, `date`, `textarea`, `select`, and
+`checkbox`; a required checkbox is the consent control. A field may add:
+
+```json
+"showWhen": { "field": "enquiry", "equals": "Sales" }
+```
+
+That emits `data-show-when-field` / `data-show-when-value` on the field wrapper.
+The named field must exist in the same form (and a selected value must be one of
+its options). Conditional fields remain visible and submittable in plain HTML;
+the client script progressively hides/disables them. If that script fails, the
+form is longer and less polished, but no sales field or lead becomes unreachable.
+The existing `_gotcha` honeypot and optional developer-only `source` input remain
+part of the same shared renderer in both block types.
 
 ---
 

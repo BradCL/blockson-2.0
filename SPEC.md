@@ -60,9 +60,10 @@ session, and ships the whole session with one explicit Publish (§13).
    `dist/`. The deployed site has no server, no database, and no client-side fetching
    of content. SEO-complete (canonical tags, meta, sitemap, OG tags). Three separate
    rules govern reaching a third party, and only the first two are absolute:
-   - **The engine adds nothing of its own.** No partial or block renderer emits a
-     link to an external host, and the engine never inserts tracking
-     (`partials/head.js` emits no external resource links — §3).
+   - **The engine opts nobody in.** No partial or block renderer emits a link to
+     an external host unless a developer adds the closed, schema-validated
+     `site.integrations` object. That object accepts provider ids, never raw
+     markup or a remote script URL; annotated owner previews suppress it.
    - **Themes are self-contained**: no CDN fonts, no remote scripts, no off-site
      `@import`; font tokens are self-contained stacks and a theme needing a specific
      face self-hosts it. Machine-enforced by `lib/themecheck.js`, so it cannot drift.
@@ -110,7 +111,7 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (43 proofs)
+  _run-proofs.js        Proof suite (44 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
@@ -118,7 +119,7 @@ engine/
   blocks/               One template module per block type (see BLOCK_CATALOG.md, 25 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
-                        local-first — emits no external resource links)
+                        allowlisted opt-in marketing tags)
     nav.js              Global navigation (driven by site.nav)
     footer.js           Global footer (driven by site.footer + site contact data)
   lib/
@@ -126,8 +127,10 @@ engine/
     validate.js         Validates content.json against the schema; clear error messages
     escape.js           HTML-escaping helpers
     formfields.js       Shared lead-form renderer (fields + escaping, half-width
-                        rows, delivery modes, honeypot, origin tag) — rendered by
+                        rows, delivery modes, honeypot, origin tag, CRM hooks) — rendered by
                         BOTH contact-form and hero-form so the two cannot drift
+    integrations.js     Fixed Google/Meta tag renderers + global body/script positions;
+                        accepts validated ids/one local client asset, never raw tags
     heroimage.js        The site hero image, derived once: which block types can
                         supply it, read by build.js + owner.js + host-browser.js
     icons.js            Named inline-SVG set (icon blocks reference these by name)
@@ -165,6 +168,8 @@ clients/
   <client-name>/
     content.json        The entire site as data
     img/                Client images (logos, hero, gallery photos)
+    js/                 Optional developer-authored integration asset (copied only
+                        when site.integrations.clientScript names the exact file)
     owner-config.json   Optional owner-editor config (§13): display name, publish
                         command, contact, host/port, access token
     edits.log.jsonl     Maintenance ledger (§13) — one JSONL line per owner attempt
@@ -199,7 +204,8 @@ SPEC.md                 This file
 Contract:
 
 - **Input:** a client name (e.g. `node build.js example-contractor`). Reads
-  `clients/<name>/content.json` and `clients/<name>/img/`.
+  `clients/<name>/content.json`, `clients/<name>/img/`, and the single client JS
+  file named by `site.integrations.clientScript` when configured.
 - **Step 1 — Validate.** Validate `content.json` against `schema/content.schema.json`.
   On failure, print the failing path and exit non-zero. Do not write any output.
   Also verify block-id and item-id uniqueness. The schema scheme-checks every link
@@ -208,11 +214,12 @@ Contract:
   `formAction` and `mapEmbedUrl` must be `https://`. The stdlib fallback validator
   (used only when AJV is absent) enforces the same scheme rules.
 - **Step 2 — Assemble.** For each page, build a full HTML document: `head` partial
-  (including the `:root` token block from `tokens.json` ⊕ `site.themeOverrides`) → `nav`
-  → each block in order → `footer`.
+  (including the `:root` token block from `tokens.json` ⊕ `site.themeOverrides`, and
+  configured marketing tags) → optional Meta fallback as the first body node → `nav`
+  → each block in order → `footer` → optional client script as the last body node.
 - **Step 3 — Emit.** Write pages to `dist/<name>/`, plus `sitemap.xml`, `robots.txt`;
   copy theme CSS (theme's own css/ or its cssBase's), shared JS (default base + theme
-  overlay), and client `img/`.
+  overlay), the configured client JS file, and client `img/`.
 - **No partial writes.** Either the whole site builds or nothing is written.
 - **`--annotate` (preview only).** Emits an annotated build to a separate directory
   `dist/<name>__annotated/` (§12). Live builds (no flag) are byte-identical to pre-v4
@@ -224,7 +231,8 @@ Contract:
 
 `content.json` has a top-level `site` object holding everything global and repeated:
 business name, contact details, logo paths, social links, nav items, footer columns,
-theme name, `baseUrl`, and optional `themeOverrides`. Per-page content lives under
+theme name, `baseUrl`, optional `themeOverrides`, and optional developer-only
+`integrations`. Per-page content lives under
 `pages[]`: a `slug`, a `meta` object, and an ordered `blocks[]` array. Each block has a
 stable `id`, a `type` (must exist in the block registry), and a `fields` object whose
 shape is defined by that block type in BLOCK_CATALOG.md.
@@ -314,6 +322,10 @@ Safety invariants enforced in code:
   key its albums match on — renaming it orphans a whole category silently); and a
   gallery's `allShows` (which switches what the first tab shows, renders no
   element of its own, and can strand an album in no view at all).
+- `DEVELOPER_ONLY_SITE_FIELDS` applies the same three closed doors to global build
+  wiring. `site.integrations` is omitted from the edit map, refused by the patch
+  resolver, and refused by the editor read path as one container, so new leaves
+  cannot accidentally become owner text fields.
 
 ### 8.3 Production apply CLI (`engine/apply-patch.js`)
 
@@ -349,7 +361,7 @@ decide how a field appears:
 node engine/_run-proofs.js
 ```
 
-Forty-three proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
+Forty-four proofs run in sequence: (1) live builds carry no block/item ids and no `data-bk-*`
 attributes, while an annotated build (§12) carries a `data-bk` annotation for every
 editable field the edit map reports and none it does not (all three clients),
 (2) a real field edit applies and rebuilds, (3) a forbidden
@@ -487,7 +499,13 @@ the same 3:4 frame with no `<img>` at all, the frame never circled, the narrow
 layout always reading face → story whichever side the developer-tier `variant`
 picks, every paragraph individually addressable, the portrait opening the image
 picker by its path shape, and both block contracts still refusing each other's
-fields. All 43 must pass on a clean tree.
+fields, and (44) the opt-in integration contract: validated Google/Meta ids render
+only in their global live-document positions, Meta's noscript fallback is the
+first body node, one verified client-local asset is copied and loaded last, both
+form blocks share checkbox/status/conditional CRM markup, owner previews execute
+no integrations, the config is absent from every owner door, and malformed or
+unconfigured clients fail safely or remain unchanged respectively. All 44 must
+pass on a clean tree.
 
 ---
 

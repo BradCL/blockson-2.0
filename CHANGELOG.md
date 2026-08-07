@@ -10,6 +10,24 @@ the major version.
 ## [Unreleased]
 
 ### Added
+- **Developer-controlled marketing and CRM integrations** — an optional,
+  schema-closed `site.integrations` object accepts validated Google/Meta ids and
+  one client-local `js/*.js` asset, never raw markup or a remote script URL. The
+  engine owns the global positions: provider scripts in `<head>`, Meta's
+  noscript fallback first in `<body>`, and the copied client asset after shared
+  `main.js` as the last script before `</body>`. Missing/malformed assets fail
+  before `dist/` is touched; annotated owner previews execute no integration
+  code; omission emits and copies nothing.
+
+  The shared lead-form contract now accepts checkbox/url/number/date fields,
+  autocomplete and submitted checkbox values, plus validated `showWhen` hooks
+  for conditional sales fields. A configured client script gives both
+  `hero-form` and `contact-form` the same scoped CRM hook and live status region,
+  alongside their existing honeypot and developer-only hidden source. Conditions
+  are progressive enhancement: fields stay visible if client JS fails. The
+  entire integration container is absent from the owner edit map and refused by
+  the read and write paths. Proof 44 covers configured, malformed, missing-asset,
+  annotated-preview, owner-boundary, no-AJV, and unconfigured cases.
 - **`founder-note` block** — an "about the founder" section: a vertical portrait
   beside several paragraphs of prose, usually closing on a pull quote and a
   signature. This is the single most common About-page shape for the businesses

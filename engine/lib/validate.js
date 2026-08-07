@@ -68,6 +68,8 @@ function validate(content) {
   if (!valid) {
     return { ok: false, errors: formatErrors(ajv.errors) };
   }
+  const contractErrors = validateExtendedContracts(content);
+  if (contractErrors.length) return { ok: false, errors: contractErrors };
   return { ok: true, errors: [] };
 }
 
@@ -83,6 +85,87 @@ const SAFE_HREF_KEYS = new Set(['href', 'link']);
 // `url` is the reviews-link outbound profile link — an external listing must
 // be https (the schema enforces the same pattern on the AJV path).
 const HTTPS_ONLY_KEYS = new Set(['formAction', 'mapEmbedUrl', 'videoUrl', 'url']);
+const FORM_FIELD_TYPES = new Set([
+  'text', 'email', 'tel', 'url', 'number', 'date', 'textarea', 'select', 'checkbox',
+]);
+const GOOGLE_TAG_RE = /^(?:G|GT|AW|DC)-[A-Z0-9]+$/;
+const META_PIXEL_RE = /^[0-9]{5,20}$/;
+const CLIENT_SCRIPT_RE = /^js\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.js$/;
+const FORM_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+
+// The AJV-free build path still renders integrations and enhanced forms, so
+// their narrow allowlists cannot depend on AJV being installed. These checks
+// also add the cross-field facts JSON Schema cannot express cleanly: unique
+// field names and conditional hooks that point at a real sibling field.
+function validateExtendedContracts(content) {
+  const errors = [];
+  const integrations = content && content.site && content.site.integrations;
+  if (integrations !== undefined) {
+    if (!integrations || typeof integrations !== 'object' || Array.isArray(integrations)) {
+      errors.push('site.integrations must be an object');
+    } else {
+      const allowed = new Set(['googleTagId', 'metaPixelId', 'clientScript']);
+      const keys = Object.keys(integrations);
+      if (!keys.length) errors.push('site.integrations must configure at least one integration');
+      for (const key of keys) {
+        if (!allowed.has(key)) errors.push(`site.integrations has unknown property "${key}"`);
+      }
+      if (integrations.googleTagId !== undefined
+          && (typeof integrations.googleTagId !== 'string' || !GOOGLE_TAG_RE.test(integrations.googleTagId))) {
+        errors.push('site.integrations.googleTagId must be a Google tag id beginning G-, GT-, AW-, or DC-');
+      }
+      if (integrations.metaPixelId !== undefined
+          && (typeof integrations.metaPixelId !== 'string' || !META_PIXEL_RE.test(integrations.metaPixelId))) {
+        errors.push('site.integrations.metaPixelId must be 5–20 digits');
+      }
+      if (integrations.clientScript !== undefined
+          && (typeof integrations.clientScript !== 'string'
+            || !CLIENT_SCRIPT_RE.test(integrations.clientScript)
+            || integrations.clientScript === 'js/main.js')) {
+        errors.push('site.integrations.clientScript must be a safe js/*.js path other than js/main.js');
+      }
+    }
+  }
+
+  for (const [pi, page] of (content.pages || []).entries()) {
+    for (const [bi, block] of (page.blocks || []).entries()) {
+      if (!block || (block.type !== 'contact-form' && block.type !== 'hero-form')) continue;
+      const spec = block.type === 'hero-form'
+        ? block.fields && block.fields.form
+        : block.fields;
+      const fields = spec && Array.isArray(spec.fields) ? spec.fields : [];
+      const where = `pages[${pi}].blocks[${bi}].fields${block.type === 'hero-form' ? '.form' : ''}.fields`;
+      const names = new Map();
+      const crmConfigured = !!(integrations && integrations.clientScript);
+      for (const [fi, field] of fields.entries()) {
+        if (!field || typeof field !== 'object') continue;
+        if (crmConfigured && (typeof field.name !== 'string' || !FORM_NAME_RE.test(field.name))) {
+          errors.push(`${where}[${fi}].name must begin with a letter and contain only letters, digits, _ or -`);
+        } else if (crmConfigured && names.has(field.name)) {
+          errors.push(`${where}[${fi}].name duplicates "${field.name}"`);
+        } else {
+          names.set(field.name, field);
+        }
+        if (typeof field.type === 'string' && !FORM_FIELD_TYPES.has(field.type)) {
+          errors.push(`${where}[${fi}].type is not an allowed form field type`);
+        }
+      }
+      for (const [fi, field] of fields.entries()) {
+        if (!field || !field.showWhen || typeof field.showWhen !== 'object') continue;
+        const target = names.get(field.showWhen.field);
+        if (!target) {
+          errors.push(`${where}[${fi}].showWhen.field must name another field in the same form`);
+        } else if (target === field) {
+          errors.push(`${where}[${fi}].showWhen.field cannot refer to itself`);
+        } else if (target.type === 'select' && Array.isArray(target.options)
+            && !target.options.includes(field.showWhen.equals)) {
+          errors.push(`${where}[${fi}].showWhen.equals must match an option on "${field.showWhen.field}"`);
+        }
+      }
+    }
+  }
+  return errors;
+}
 
 function scanLinkTargets(node, where, errors) {
   if (Array.isArray(node)) {
@@ -132,6 +215,7 @@ function fallbackValidate(content) {
 
   if (content.site) scanLinkTargets(content.site, 'site', errors);
   scanLinkTargets(content.pages || [], 'pages', errors);
+  errors.push(...validateExtendedContracts(content));
 
   return errors.length ? { ok: false, errors } : { ok: true, errors: [] };
 }
@@ -139,4 +223,4 @@ function fallbackValidate(content) {
 // fallbackValidate is exported so the reduced, AJV-free guard can be probed
 // directly (proof 33) instead of only through a build with the packages made
 // unresolvable — its scheme checks are the last line when AJV is absent.
-module.exports = { validate, setSchema, fallbackValidate };
+module.exports = { validate, setSchema, fallbackValidate, validateExtendedContracts };

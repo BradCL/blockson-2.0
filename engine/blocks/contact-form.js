@@ -7,6 +7,7 @@
 // the section wrapper around it.
 const { esc } = require('../lib/escape');
 const { renderForm } = require('../lib/formfields');
+const { hasClientScript } = require('../lib/integrations');
 
 module.exports = function contactForm(fields, site, bk) {
   const tag     = fields.tag     ? `<div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>` : '';
@@ -14,7 +15,9 @@ module.exports = function contactForm(fields, site, bk) {
 
   // The form spec sits at this block's root, so annotation paths need no
   // prefix and the historical 6-space body indent is the default.
-  const form = renderForm(fields, bk, { className: 'contact-form' });
+  const form = renderForm(fields, bk, {
+    className: 'contact-form', enhanced: hasClientScript(site),
+  });
 
   return `<section class="contact-form-section">
   <div class="container">

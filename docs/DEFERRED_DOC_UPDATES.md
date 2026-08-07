@@ -46,13 +46,15 @@ Pending:
   content may reference a third party where a developer puts one there. The
   teaching point is the distinction the old wording hid — a scheme check is a
   security boundary, a host allowlist is a typo-catcher.
-- **Proof count 29 → 43** (2026-07-31, extended 2026-08-03) — proofs 30 (hostile content values
+- **Proof count 29 → 44** (2026-07-31, extended 2026-08-07) — proofs 30 (hostile content values
   render inert in every block type), 31 (no-AJV fallback exercised), 32
   (photo-strip doorway accessible name), 33 (photo-strip column count) and 34
   (card-grid card links), 35 (nav submenus), 36 (footer column count), 37 (trade
   icons), 38 (contact-form source tag), 39 (reviews-link creatable fields), 40
   (hero-form), 41 (testimonial review links) , 42 (gallery category covers) and 43
-  (founder-note) added; `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
+  (founder-note), and 44 (opt-in marketing/CRM integration: global tag positions,
+  client-local script, shared expanded form contract, closed owner boundary) added;
+  `01-system-map.md` and `02-atlas/12-testing-proofs.md` still read 29.
   There is also a fourth browser test now (`npm run test:gallery`), wherever the
   testing chapter lists the standalone Playwright smokes alongside `npm test`.
 - **Two new field classes in the write allowlist** (2026-07-29) — wherever the
@@ -133,6 +135,15 @@ Pending:
   a new block explicitly decides which distinctive registers a first client is
   predictably likely to tune, exposing narrow developer/theme tokens without
   widening the owner allowlist.
+- **Approved marketing/CRM integration without a raw-markup escape hatch**
+  (2026-08-07) — the system map, validation, rendering, and forms chapters should
+  add `site.integrations` / `lib/integrations.js`: fixed tags generated from
+  provider-id allowlists, Meta's first-body fallback, one verified client-local
+  script loaded last, live-only execution, and a site-level developer-only
+  container. The forms chapter should add checkbox/url/number/date,
+  autocomplete/value, the status live region, and validated progressive
+  `showWhen` hooks shared by contact-form and hero-form. The teaching point is
+  why visible-by-default conditional fields satisfy “ugly, never broken.”
 
 Reconciled (prose/counts, 2026-06-30 pass):
 
@@ -177,9 +188,9 @@ Pending:
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next
   capture session.
-- **Proof count 29 → 43** (2026-07-31, extended 2026-08-03) — `term/01-proofs.txt` and the README's
+- **Proof count 29 → 44** (2026-07-31, extended 2026-08-07) — `term/01-proofs.txt` and the README's
   proof excerpt still show `29/29` with proof 29 as the last; regenerate with
-  the next capture session (new last proof: 43, founder-note).
+  the next capture session (new last proof: 44, opt-in marketing/CRM integration).
 - **`example-contractor`'s gallery is now in `categories` mode** (2026-07-31) —
   the example client the tutorial builds has `allShows: "categories"` and covers
   seeded on its filters, so its `gallery.html` now opens on category cards rather

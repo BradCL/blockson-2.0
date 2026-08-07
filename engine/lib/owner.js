@@ -87,7 +87,7 @@
 const path = require('path');
 
 const { applyPatch, SAFE_TOKENS, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
-        isDeveloperOnlyField } = require('./patch');
+        isDeveloperOnlyField, isDeveloperOnlySiteField } = require('./patch');
 const { buildEditMap } = require('./sitemap');
 // What a page-header that omits its background inherits — one definition,
 // shared with build.js + lib/host-browser.js (see lib/heroimage.js).
@@ -416,6 +416,9 @@ function describeFieldValue(session, ref) {
   // edit map omits it (so the UI never asks) and applyPatch refuses to write it,
   // and this closes the read half so /api/field cannot describe one either —
   // "not editable" and "not even shown" should not depend on which door is used.
+  if (ref.block === 'site' && isDeveloperOnlySiteField(ref.field)) {
+    return { ok: false, error: `"${ref.field}" is part of how this site is wired up, not content` };
+  }
   const devBlockType = blockTypeById(content, ref.block);
   if (devBlockType && isDeveloperOnlyField(devBlockType, ref.field)) {
     return { ok: false, error: `"${ref.field}" is part of how this site is wired up, not content` };

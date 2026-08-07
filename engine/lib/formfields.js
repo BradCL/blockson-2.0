@@ -44,21 +44,40 @@ function renderField(f, base) {
   const close    = pad(base);
   const req      = f.required ? ' required' : '';
   const phAttr   = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : '';
+  const acAttr   = f.autocomplete ? ` autocomplete="${esc(f.autocomplete)}"` : '';
   const reqMark  = f.required
     ? ' <span class="form-required" aria-hidden="true">*</span>'
     : ' <span class="form-optional">(optional)</span>';
 
   let input;
   if (f.type === 'textarea') {
-    input = `<textarea name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${req} rows="6"></textarea>`;
+    input = `<textarea name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${acAttr}${req} rows="6"></textarea>`;
   } else if (f.type === 'select') {
     const opts = (f.options || []).map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-    input = `<select name="${esc(f.name)}" id="field-${esc(f.name)}"${req}><option value="">Select…</option>${opts}</select>`;
+    input = `<select name="${esc(f.name)}" id="field-${esc(f.name)}"${acAttr}${req}><option value="">Select…</option>${opts}</select>`;
+  } else if (f.type === 'checkbox') {
+    const value = f.value || 'yes';
+    const condition = f.showWhen
+      ? ` data-show-when-field="${esc(f.showWhen.field)}" data-show-when-value="${esc(f.showWhen.equals)}"`
+      : '';
+    // Not a .form-group: the historical theme gives every .form-group input
+    // width:100%, which is right for text controls and wrong for a checkbox.
+    // Native checkbox layout is intentionally enough here; client styling can
+    // enhance it, while old theme assets remain byte-identical.
+    return `<div class="form-consent"${condition}>
+${inner}<label for="field-${esc(f.name)}"><input type="checkbox" name="${esc(f.name)}" id="field-${esc(f.name)}" value="${esc(value)}"${acAttr}${req}> <span>${esc(f.label)}${reqMark}</span></label>
+${close}</div>`;
   } else {
-    input = `<input type="${esc(f.type)}" name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${req}>`;
+    input = `<input type="${esc(f.type)}" name="${esc(f.name)}" id="field-${esc(f.name)}"${phAttr}${acAttr}${req}>`;
   }
 
-  return `<div class="form-group">
+  // Conditional fields are visible in plain HTML. The configured client
+  // script may progressively enhance these hooks by hiding/disabling them;
+  // if that script ever fails, every sales field remains usable.
+  const condition = f.showWhen
+    ? ` data-show-when-field="${esc(f.showWhen.field)}" data-show-when-value="${esc(f.showWhen.equals)}"`
+    : '';
+  return `<div class="form-group"${condition}>
 ${inner}<label for="field-${esc(f.name)}">${esc(f.label)}${reqMark}</label>
 ${inner}${input}
 ${close}</div>`;
@@ -97,6 +116,7 @@ function renderForm(spec, bk, opts) {
   const inner     = pad(base + 2);
   const closeForm = pad(base - 2);
   const at        = (field) => bk.f(prefix + field);
+  const enhanced  = o.enhanced === true;
 
   const subject = spec.subjectLine
     ? `<input type="hidden" name="_subject" value="${esc(spec.subjectLine)}"${at('subjectLine')}>` : '';
@@ -116,10 +136,10 @@ function renderForm(spec, bk, opts) {
     // action so Netlify redirects there after a submission; without one,
     // Netlify's built-in success page answers the POST.
     const action = delivery.successPath ? ` action="${esc(delivery.successPath)}"` : '';
-    formOpen = `<form class="${className}" method="POST" name="${esc(formName)}" data-netlify="true" netlify-honeypot="${HONEYPOT_NAME}"${action}>`;
+    formOpen = `<form class="${className}" method="POST" name="${esc(formName)}" data-netlify="true" netlify-honeypot="${HONEYPOT_NAME}"${action}${enhanced ? ' data-crm-form' : ''}>`;
     netlifyName = `<input type="hidden" name="form-name" value="${esc(formName)}">\n${body}`;
   } else {
-    formOpen = `<form class="${className}" method="POST" action="${esc(spec.formAction)}"${at('formAction')}>`;
+    formOpen = `<form class="${className}" method="POST" action="${esc(spec.formAction)}"${at('formAction')}${enhanced ? ' data-crm-form' : ''}>`;
   }
 
   // Visually hidden honeypot, rendered in BOTH modes: offscreen via
@@ -144,6 +164,9 @@ function renderForm(spec, bk, opts) {
     ? `<input type="hidden" name="source" value="${esc(spec.source)}">\n${body}` : '';
 
   const rows = renderRows(spec.fields || [], base);
+  const status = enhanced
+    ? `\n${body}<div class="form-status" data-form-status role="status" aria-live="polite"></div>`
+    : '';
 
   return `${formOpen}
 ${body}${subject}
@@ -151,7 +174,7 @@ ${body}${source}${honeypot}
 ${body}${rows.join('\n' + body)}
 ${body}<div class="form-submit">
 ${inner}<button type="submit" class="btn btn-primary"${at('submitLabel')}>${esc(submitLabel)}</button>
-${body}</div>
+${body}</div>${status}
 ${closeForm}</form>`;
 }
 

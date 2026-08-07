@@ -273,6 +273,16 @@
 //             shape; the quote's four optional style tokens preserve the
 //             original register when absent and remain outside owner set-token;
 //             both block contracts still refuse each other's fields.
+// Proof 44:   opt-in marketing + CRM integration: a schema-closed site object
+//             renders fixed Google/Meta tags from validated ids, Meta's
+//             noscript image first in body, and one verified client-local JS
+//             asset last; annotated previews execute none of them. The shared
+//             form renderer supplies checkbox/url/number/date fields, consent,
+//             status, source, honeypot and validated visible-by-default
+//             conditional hooks to BOTH form blocks. The global config is
+//             omitted/refused at every owner door; malformed ids, paths,
+//             missing assets and conditions leave dist untouched; omission
+//             emits and copies nothing.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -366,7 +376,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 43;
+const TOTAL = 44;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -5925,6 +5935,226 @@ console.log('\n═══ PROOF 43 — founder-note: a portrait beside a real mul
     console.log('       let a developer retune the quote without changing global typography, while');
     console.log('       the original register remains the default and owner set-token stays narrow;');
     console.log('       both block contracts still refuse each other\'s fields (SPEC §2.6).');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 44 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays validated, global, and developer-only ═══');
+{
+  const owner = require('./lib/owner');
+  const { fallbackValidate } = require('./lib/validate');
+  const CLIENT = '__proof-integrations';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const candDir = path.join(ROOT, 'clients', CLIENT + '__candidate');
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const annDir = path.join(ROOT, 'dist', CLIENT + '__annotated');
+  const failures = [];
+  const GOOGLE_ID = 'G-PROOF123';
+  const META_ID = '123456789012345';
+  const SCRIPT = 'js/crm-bridge.js';
+
+  const formSpec = (source) => ({
+    formAction: 'https://forms.example.test/leads',
+    subjectLine: 'Website lead', submitLabel: 'Send request', source,
+    fields: [
+      { name: 'name', label: 'Name', type: 'text', autocomplete: 'name', required: true, half: true },
+      { name: 'email', label: 'Email', type: 'email', autocomplete: 'email', required: true, half: true },
+      { name: 'phone', label: 'Phone', type: 'tel', autocomplete: 'tel' },
+      { name: 'website', label: 'Website', type: 'url' },
+      { name: 'enquiry', label: 'How can we help?', type: 'select', required: true,
+        options: ['Sales', 'Support'] },
+      { name: 'budget', label: 'Budget', type: 'number',
+        showWhen: { field: 'enquiry', equals: 'Sales' } },
+      { name: 'startDate', label: 'Preferred start', type: 'date',
+        showWhen: { field: 'enquiry', equals: 'Sales' } },
+      { name: 'details', label: 'Project details', type: 'textarea', required: true },
+      { name: 'consent', label: 'I agree to be contacted about this request', type: 'checkbox',
+        value: 'accepted', required: true },
+    ],
+  });
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(liveDir, 'js'), { recursive: true });
+    fs.writeFileSync(path.join(liveDir, SCRIPT), 'window.__crmProof = true;\n', 'utf8');
+    fs.writeFileSync(path.join(liveDir, 'owner-config.json'),
+      JSON.stringify({ clientName: 'Integration Proof', publish: 'none' }) + '\n', 'utf8');
+
+    const base = readContent('example-contractor');
+    const index = base.pages.find(p => p.slug === 'index');
+    const oldHero = index.blocks.find(b => b.type === 'hero');
+    index.blocks[index.blocks.indexOf(oldHero)] = {
+      id: 'home-crm', type: 'hero-form', fields: {
+        tag: oldHero.fields.tag, headline: oldHero.fields.headline,
+        subhead: oldHero.fields.subhead, background: oldHero.fields.background,
+        form: formSpec('hero'),
+      },
+    };
+    const contact = base.pages.flatMap(p => p.blocks).find(b => b.type === 'contact-form');
+    Object.assign(contact.fields, formSpec('contact'));
+
+    // (a) UNCONFIGURED IS THE OLD PATH. Even a client-local script sitting in
+    //     the directory is inert until content.json explicitly opts in: it is
+    //     neither copied nor loaded, no external tag appears, and the shared
+    //     form gets no CRM status/hook. Existing form golden proofs still pin
+    //     the byte-level unconfigured renderer separately (proofs 15 and 40).
+    writeContent(CLIENT, base);
+    const plainBuild = build(CLIENT);
+    if (!plainBuild.ok) failures.push(`the unconfigured client failed to build:\n${plainBuild.out}`);
+    else {
+      const plain = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      for (const marker of ['googletagmanager.com', 'connect.facebook.net', 'facebook.com/tr?',
+        'data-crm-form', 'data-form-status', SCRIPT]) {
+        if (plain.includes(marker)) failures.push(`an unconfigured client emitted integration marker ${marker}`);
+      }
+      if (fs.existsSync(path.join(distDir, SCRIPT))) failures.push('an unconfigured client copied the dormant client script');
+    }
+
+    // (b) CONFIGURED LIVE OUTPUT. Provider ids choose fixed allowlisted tags;
+    //     they are not raw markup. Head tags appear on every page, the Meta
+    //     fallback is literally the first body node, and the one local client
+    //     asset loads after main.js and immediately before </body>.
+    const configured = JSON.parse(JSON.stringify(base));
+    configured.site.integrations = {
+      googleTagId: GOOGLE_ID, metaPixelId: META_ID, clientScript: SCRIPT,
+    };
+    writeContent(CLIENT, configured);
+    const liveBuild = build(CLIENT);
+    if (!liveBuild.ok) failures.push(`the configured integration failed to build:\n${liveBuild.out}`);
+    else {
+      for (const page of configured.pages) {
+        const html = fs.readFileSync(path.join(distDir, pageFile(page.slug)), 'utf8');
+        if (!html.includes(`gtag/js?id=${GOOGLE_ID}`) || !html.includes(`gtag('config', "${GOOGLE_ID}")`)) {
+          failures.push(`${page.slug}: the validated Google tag is missing from <head>`);
+        }
+        if (!html.includes('connect.facebook.net/en_US/fbevents.js') || !html.includes(`fbq('init', "${META_ID}")`)) {
+          failures.push(`${page.slug}: the validated Meta script is missing from <head>`);
+        }
+        if (!new RegExp(`<body>\\n<noscript><img[^>]+tr\\?id=${META_ID}`).test(html)) {
+          failures.push(`${page.slug}: the Meta noscript fallback is not immediately after <body>`);
+        }
+        if (!html.includes(`<script src="js/main.js"></script>\n<script src="${SCRIPT}"></script>\n</body>`)) {
+          failures.push(`${page.slug}: the client script is not last, immediately before </body>`);
+        }
+        if (html.indexOf('googletagmanager.com') > html.indexOf('</head>')
+            || html.indexOf('connect.facebook.net') > html.indexOf('</head>')) {
+          failures.push(`${page.slug}: a marketing script escaped the global <head>`);
+        }
+      }
+      const copied = path.join(distDir, SCRIPT);
+      if (!fs.existsSync(copied)) failures.push('the configured client script was not copied');
+      else if (fs.readFileSync(copied, 'utf8') !== 'window.__crmProof = true;\n') failures.push('the copied client script changed bytes');
+
+      // Both form blocks travel the SAME renderer. Each gets the CRM hook and
+      // live status, while the established honeypot/source remain one apiece.
+      for (const [file, source] of [['index.html', 'hero'], ['contact.html', 'contact']]) {
+        const html = fs.readFileSync(path.join(distDir, file), 'utf8');
+        const start = html.indexOf('data-crm-form');
+        const form = start === -1 ? '' : html.slice(html.lastIndexOf('<form ', start), html.indexOf('</form>', start) + 7);
+        if (!form) { failures.push(`${file}: no enhanced form rendered`); continue; }
+        for (const marker of ['type="text"', 'type="email"', 'type="tel"', 'type="url"',
+          'type="number"', 'type="date"', '<textarea ', '<select ', 'type="checkbox"']) {
+          if (!form.includes(marker)) failures.push(`${file}: missing required field shape ${marker}`);
+        }
+        if ((form.match(/name="_gotcha"/g) || []).length !== 1) failures.push(`${file}: honeypot count is not one`);
+        if ((form.match(new RegExp(`name="source" value="${source}"`, 'g')) || []).length !== 1) failures.push(`${file}: hidden source count is not one`);
+        if ((form.match(/data-form-status/g) || []).length !== 1
+            || !form.includes('role="status" aria-live="polite"')) failures.push(`${file}: live form status is missing or duplicated`);
+        if (!form.includes('data-show-when-field="enquiry" data-show-when-value="Sales"')) failures.push(`${file}: conditional sales hooks are missing`);
+        if (!form.includes('value="accepted"') || !/type="checkbox"[^>]+ required/.test(form)) failures.push(`${file}: required consent checkbox contract is missing`);
+        if (/data-show-when[^>]+ hidden/.test(form)) failures.push(`${file}: conditional fields are hidden before progressive enhancement`);
+      }
+    }
+
+    // Annotated owner previews never fire marketing or CRM code. The enhanced
+    // markup remains visible for editing, but no provider/client script loads.
+    const annBuild = build(CLIENT, ['--annotate']);
+    if (!annBuild.ok) failures.push(`the annotated configured client failed to build:\n${annBuild.out}`);
+    else {
+      const ann = fs.readFileSync(path.join(annDir, 'index.html'), 'utf8');
+      for (const marker of ['googletagmanager.com', 'connect.facebook.net', 'facebook.com/tr?', SCRIPT]) {
+        if (ann.includes(marker)) failures.push(`the owner preview executes integration marker ${marker}`);
+      }
+      if (!ann.includes('data-crm-form') || !ann.includes('data-form-status')) failures.push('the owner preview lost the enhanced form markup');
+    }
+
+    // (c) DEVELOPER-ONLY IN BOTH DIRECTIONS. One shared site-container
+    //     allowlist drives map omission and write/read refusal, including
+    //     dotted leaves; form field arrays/conditions remain structural.
+    const map = buildEditMap(configured, loadTokens(configured));
+    if (JSON.stringify(map.site).includes('integrations') || JSON.stringify(map.site).includes(GOOGLE_ID)
+        || JSON.stringify(map.site).includes(META_ID) || JSON.stringify(map.site).includes(SCRIPT)) {
+      failures.push('integration wiring leaked into the owner edit map');
+    }
+    for (const field of ['integrations', 'integrations.googleTagId', 'integrations.clientScript']) {
+      const probe = JSON.parse(JSON.stringify(configured));
+      const before = JSON.stringify(probe);
+      const r = applyPatch(probe, { action: 'set', block: 'site', field, value: 'G-CHANGED' });
+      if (r.ok) failures.push(`the owner resolver changed developer-only site field ${field}`);
+      if (JSON.stringify(probe) !== before) failures.push(`a refused integration write modified ${field}`);
+    }
+    const session = owner.createSession(CLIENT);
+    if (owner.describeField(session, { block: 'site', field: 'integrations.metaPixelId' }).ok) {
+      failures.push('the owner read API described the Meta pixel id');
+    }
+
+    // (d) MALFORMED CONFIGURATION FAILS BEFORE DIST IS TOUCHED. Cover provider
+    //     ids, script traversal/missing files, and conditional field references;
+    //     the reduced no-AJV validator carries the same guards.
+    const sentinel = path.join(distDir, 'proof-sentinel.txt');
+    fs.writeFileSync(sentinel, 'keep', 'utf8');
+    const malformedCases = [
+      ['Google id', c => { c.site.integrations.googleTagId = '\"><script>alert(1)</script>'; }],
+      ['Meta id', c => { c.site.integrations.metaPixelId = '12&bad'; }],
+      ['script path', c => { c.site.integrations.clientScript = 'js/../escape.js'; }],
+      ['duplicate field name', c => {
+        c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form')
+          .fields.form.fields.find(f => f.name === 'consent').name = 'email';
+      }],
+      ['condition target', c => {
+        c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form')
+          .fields.form.fields.find(f => f.name === 'budget').showWhen.field = 'missing';
+      }],
+    ];
+    for (const [label, mutate] of malformedCases) {
+      const bad = JSON.parse(JSON.stringify(configured));
+      mutate(bad);
+      writeContent(CLIENT, bad);
+      const b = build(CLIENT);
+      if (b.ok) failures.push(`malformed ${label} configuration built successfully`);
+      if (!fs.existsSync(sentinel)) failures.push(`malformed ${label} configuration touched the previous dist`);
+      if (fallbackValidate(bad).ok) failures.push(`the no-AJV fallback accepted malformed ${label} configuration`);
+    }
+    const missing = JSON.parse(JSON.stringify(configured));
+    missing.site.integrations.clientScript = 'js/missing.js';
+    writeContent(CLIENT, missing);
+    const missingBuild = build(CLIENT);
+    if (missingBuild.ok) failures.push('a configured but missing client script built successfully');
+    if (!fs.existsSync(sentinel)) failures.push('a missing client script touched the previous dist');
+
+    writeContent(CLIENT, configured);
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(candDir, { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — a developer can opt one client into fixed, id-validated Google and Meta');
+    console.log('       tags, with the Meta fallback first in <body> and one verified client-local');
+    console.log('       script last; configured forms in BOTH block shapes share every field type,');
+    console.log('       consent, honeypot, source, status and progressive conditional hook through');
+    console.log('       the existing renderer. Unconfigured clients emit/copy nothing, owner previews');
+    console.log('       execute nothing, the integration container is absent from all owner doors,');
+    console.log('       and malformed ids, paths, missing assets and conditions fail before dist.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);

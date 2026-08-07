@@ -20,7 +20,8 @@
 
 'use strict';
 
-const { SAFE_TOKENS, creatableFieldsFor, developerOnlyFieldsFor } = require('./patch');
+const { SAFE_TOKENS, creatableFieldsFor, developerOnlyFieldsFor,
+        DEVELOPER_ONLY_SITE_FIELDS } = require('./patch');
 
 const PREVIEW_LEN = 200;
 
@@ -64,6 +65,7 @@ function siteFields(site) {
     for (const k of Object.keys(obj)) {
       if (k === 'id' || k === 'type') continue;
       if (!prefix && k === 'themeOverrides') continue;
+      if (!prefix && DEVELOPER_ONLY_SITE_FIELDS.has(k)) continue;
       const v    = obj[k];
       const path = prefix ? `${prefix}.${k}` : k;
       if (Array.isArray(v)) continue;                 // nav/footer arrays: developer-managed

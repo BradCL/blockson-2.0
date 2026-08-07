@@ -2,14 +2,16 @@
 
 const { esc } = require('../lib/escape');
 const { IMG_RE } = require('../lib/scaffold');
+const { renderHeadTags } = require('../lib/integrations');
 
-/* LOCAL-FIRST: built pages reference no external network resources —
-   no CDN fonts, no remote scripts. Font tokens are self-contained
-   stacks; a theme that wants a specific face ships it in its own css/
-   via @font-face. (Remote Google Fonts links were removed in v4 to
-   honor this invariant; tokens may no longer declare googleFontsUrl.) */
+/* LOCAL-FIRST BY DEFAULT: themes reference no external network resources —
+   no CDN fonts, remote theme scripts, or off-site @imports. Font tokens are
+   self-contained stacks; a theme that wants a specific face ships it in its
+   own css/ via @font-face. A developer can explicitly opt one client into
+   the narrow provider-id allowlist in lib/integrations.js; this partial never
+   accepts raw tags or a remote script URL. */
 
-module.exports = function head(page, site, tokens) {
+module.exports = function head(page, site, tokens, includeIntegrations = true) {
   const title       = esc(page.meta.title);
   const description = esc(page.meta.description);
   const canonical   = `${site.baseUrl}/${page.slug === 'index' ? '' : page.slug + '.html'}`;
@@ -49,7 +51,7 @@ module.exports = function head(page, site, tokens) {
 
   <!-- Theme stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
-${rootBlock}</head>`;
+${rootBlock}${includeIntegrations ? renderHeadTags(site) : ''}</head>`;
 };
 
 function buildRootBlock(tokens) {

@@ -231,6 +231,11 @@ const DEVELOPER_ONLY_FIELDS = {
   'gallery':      new Set(['value', 'allShows']),
 };
 
+// Global build wiring is no more owner content than a form's hidden source.
+// Keep the container closed as one unit: none of its current or future leaves
+// can appear in the edit map, be described, or be reached by a dotted patch.
+const DEVELOPER_ONLY_SITE_FIELDS = new Set(['integrations']);
+
 // The developer-only field names for a block TYPE, as a Set — the one source
 // the edit map reads, so the two gates can never drift apart.
 function developerOnlyFieldsFor(blockType) {
@@ -239,6 +244,10 @@ function developerOnlyFieldsFor(blockType) {
 
 function isDeveloperOnlyField(blockType, field) {
   return developerOnlyFieldsFor(blockType).has(String(field).split('.').pop());
+}
+
+function isDeveloperOnlySiteField(field) {
+  return DEVELOPER_ONLY_SITE_FIELDS.has(String(field).split('.')[0]);
 }
 
 /* ── SAFE TOKENS ─────────────────────────────────────────────
@@ -557,6 +566,9 @@ function applyPatch(content, patch, presetTokens) {
   if (patch.block === 'site' && /^themeOverrides(\.|$)/.test(patch.field)) {
     return { ok: false, error: 'theme tokens are edited with action "set-token", not "set"' };
   }
+  if (patch.block === 'site' && isDeveloperOnlySiteField(patch.field)) {
+    return { ok: false, error: `"${patch.field}" is part of how this site is wired up, not content — a developer changes it in content.json` };
+  }
   // Rendered markup configuration is refused outright, for every action — the
   // write half of DEVELOPER_ONLY_FIELDS (the edit map omits the same fields, so
   // nothing should ever address one; this is what makes that a guarantee rather
@@ -679,6 +691,7 @@ function applyPatch(content, patch, presetTokens) {
 module.exports = {
   applyPatch, indexHosts, findItemById, blockTypeById, CREATABLE_FIELDS, creatableFieldsFor,
   DEVELOPER_ONLY_FIELDS, developerOnlyFieldsFor, isDeveloperOnlyField,
+  DEVELOPER_ONLY_SITE_FIELDS, isDeveloperOnlySiteField,
   SAFE_TOKENS, validateTokenValue, normalizeTokenName,
   FIELD_FORMATS, validateFieldValue,
   TOKEN_PAIRS, MIN_CONTRAST, parseCssColor, contrastRatio,

@@ -109,6 +109,7 @@
         },
         "copyright":      { "type": "string" },
         "tagline":        { "type": "string" },
+        "integrations":   { "$ref": "#/$defs/integrations" },
         "themeOverrides": {
           "type": "object",
           "additionalProperties": { "type": "string" }
@@ -269,6 +270,26 @@
       "type": "string",
       "pattern": "^(?:(?:https?://|mailto:|tel:|sms:|#).*|[^:]*)$"
     },
+    "integrations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "googleTagId": {
+          "type": "string",
+          "pattern": "^(?:G|GT|AW|DC)-[A-Z0-9]+$"
+        },
+        "metaPixelId": {
+          "type": "string",
+          "pattern": "^[0-9]{5,20}$"
+        },
+        "clientScript": {
+          "type": "string",
+          "pattern": "^js/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\\.js$",
+          "not": { "const": "js/main.js" }
+        }
+      }
+    },
     "action": {
       "type": "object",
       "required": ["label", "href", "style"],
@@ -287,9 +308,20 @@
       "properties": {
         "name":        { "type": "string" },
         "label":       { "type": "string" },
-        "type":        { "type": "string", "enum": ["text","email","tel","textarea","select"] },
+        "type":        { "type": "string", "enum": ["text","email","tel","url","number","date","textarea","select","checkbox"] },
         "required":    { "type": "boolean" },
         "placeholder": { "type": "string" },
+        "autocomplete": { "type": "string", "pattern": "^[A-Za-z0-9 -]+$" },
+        "value":       { "type": "string" },
+        "showWhen": {
+          "type": "object",
+          "required": ["field", "equals"],
+          "additionalProperties": false,
+          "properties": {
+            "field":  { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+            "equals": { "type": "string" }
+          }
+        },
         "options": {
           "type": "array",
           "items": { "type": "string" }
