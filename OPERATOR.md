@@ -429,32 +429,53 @@ owner editing; change it only in `content.json`.
 
 ```json
 "integrations": {
-  "googleTagId": "G-EXAMPLE123",
+  "searchConsoleVerification": "example_Search-token_1234567890",
+  "google": {
+    "analyticsId": "G-EXAMPLE123",
+    "adsId": "AW-123456789"
+  },
+  "clarityProjectId": "example123",
   "metaPixelId": "123456789012345",
+  "ospreyTenant": "example-contractor",
   "clientScript": "js/crm-bridge.js"
 }
 ```
 
-- `googleTagId` accepts a Google tag beginning `G-`, `GT-`, `AW-`, or `DC-`.
-  Blockson generates the fixed loader/config tags in `<head>`; raw tags are not
-  accepted.
+- `searchConsoleVerification` accepts only a Search Console token and generates
+  the fixed verification `<meta>` tag.
+- `google.analyticsId` accepts `G-...`; `google.adsId` accepts `AW-...` followed
+  by digits. Blockson emits one loader (keyed by GA4) and both `gtag('config')`
+  calls. The legacy single `googleTagId` remains valid for existing configured
+  clients but cannot be combined with `google`.
+- `clarityProjectId` accepts 8-20 lowercase letters/digits and generates the
+  fixed Microsoft Clarity loader.
 - `metaPixelId` accepts 5–20 digits. Blockson generates the fixed Meta script in
   `<head>` and its noscript image as the first node after `<body>`.
+- `ospreyTenant` accepts a 3-63 character lowercase tenant slug. Blockson alone
+  derives `https://cms.osprey.solutions/api/track/<tenant>.js`; the async loader
+  is the last integration immediately before `</head>`. There is no arbitrary
+  attribution URL or Osprey SDK surface in the engine.
 - `clientScript` is one relative `js/*.js` path inside that client's directory.
   The build verifies the file before touching `dist/`, copies only that file,
   forbids replacing shared `js/main.js`, and loads it after the shared runtime as
   the final script before `</body>`. Remote script URLs and traversal fail the
   build.
 
-Live pages alone execute integrations. Annotated owner previews retain the form
-markup but omit all Google/Meta/client script tags, so preview visits cannot be
-counted and preview submissions cannot cross the CRM bridge.
+The generated head order is Search Console, Google, Clarity, Meta, Osprey. It is
+emitted once per live page immediately before `</head>`. Live pages alone execute
+integrations. Annotated owner previews retain form markup but omit every provider
+and client script tag, so preview visits cannot be counted and preview submissions
+cannot cross the CRM bridge.
 
-When `clientScript` is configured, every `contact-form` and `hero-form` receives
-the same `data-crm-form` hook and one empty live region
-`[data-form-status][role=status]`. The shared `fields` contract accepts
+When `clientScript` is configured, every `contact-form` and `hero-form` requires
+developer-set `formId` and `statusId`. It receives the same `data-crm-form` hook
+and one empty live region `[data-form-status][role=status]` bearing that stable
+status id. `honeypotName` may be `_gotcha` or `_company_url`; omitting it preserves
+the historical `_gotcha` output. These three fields and `source` are unavailable
+to ordinary owner editing. The shared `fields` contract accepts
 `text`, `email`, `tel`, `url`, `number`, `date`, `textarea`, `select`, and
-`checkbox`; a required checkbox is the consent control. A field may add:
+`checkbox`. A consent checkbox can exist without `required`; set `required` only
+when the visitor must opt in. A field may add:
 
 ```json
 "showWhen": { "field": "enquiry", "equals": "Sales" }
@@ -465,8 +486,8 @@ The named field must exist in the same form (and a selected value must be one of
 its options). Conditional fields remain visible and submittable in plain HTML;
 the client script progressively hides/disables them. If that script fails, the
 form is longer and less polished, but no sales field or lead becomes unreachable.
-The existing `_gotcha` honeypot and optional developer-only `source` input remain
-part of the same shared renderer in both block types.
+The selected honeypot and optional developer-only `source` input remain part of
+the same shared renderer in both block types.
 
 ---
 

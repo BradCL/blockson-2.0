@@ -138,11 +138,14 @@ Pending:
 - **Approved marketing/CRM integration without a raw-markup escape hatch**
   (2026-08-07) — the system map, validation, rendering, and forms chapters should
   add `site.integrations` / `lib/integrations.js`: fixed tags generated from
-  provider-id allowlists, Meta's first-body fallback, one verified client-local
-  script loaded last, live-only execution, and a site-level developer-only
-  container. The forms chapter should add checkbox/url/number/date,
-  autocomplete/value, the status live region, and validated progressive
-  `showWhen` hooks shared by contact-form and hero-form. The teaching point is
+  Search Console, dual Google, Clarity, Meta, and Osprey-tenant allowlists in
+  provider order; Meta's first-body fallback; one verified client-local script
+  loaded last; live-only execution; and a site-level developer-only container.
+  The forms chapter should add checkbox/url/number/date, autocomplete/value,
+  stable developer-only form/status ids, selectable `_company_url` with `_gotcha`
+  as the historical default, the status live region, optional visitor consent,
+  and validated progressive `showWhen` hooks shared by contact-form and hero-form.
+  The teaching point is
   why visible-by-default conditional fields satisfy “ugly, never broken.”
 
 Reconciled (prose/counts, 2026-06-30 pass):

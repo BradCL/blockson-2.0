@@ -29,10 +29,13 @@
 
 const { esc } = require('./escape');
 
-// Honeypot field name. "_gotcha" is Formspree's reserved honeypot field, so
+// Historical honeypot field name. "_gotcha" is Formspree's reserved name, so
 // endpoint-mode relays that recognise it drop bot submissions with no extra
 // setup; the same name is wired into netlify-honeypot below and into the
-// Cloudflare Worker template (extras/cloudflare-form-worker/). The input is
+// Cloudflare Worker template (extras/cloudflare-form-worker/). It remains the
+// default; an approved CRM contract may select the one other allowlisted name,
+// `_company_url`. Stable form/status ids and honeypot selection are developer-
+// only wiring. The input is
 // rendered markup, never schema content — it must never appear in the edit
 // map and never carry a data-bk-* annotation.
 const HONEYPOT_NAME = '_gotcha';
@@ -102,8 +105,9 @@ function renderRows(list, base) {
 
 /* Render one complete <form> element from a form spec.
 
-   `spec` carries formAction / delivery / subjectLine / submitLabel /
-   source / fields — the same shape wherever it lives. `bk` is the block's
+   `spec` carries formAction / delivery / subjectLine / submitLabel / source /
+   formId / statusId / honeypotName / fields — the same shape wherever it lives.
+   `bk` is the block's
    annotator and `prefix` the path its fields sit behind ('' at a block
    root, 'form.' when nested). `className` is the form's class list, so a
    block can hang its own styling hook off the shared markup. */
@@ -117,6 +121,8 @@ function renderForm(spec, bk, opts) {
   const closeForm = pad(base - 2);
   const at        = (field) => bk.f(prefix + field);
   const enhanced  = o.enhanced === true;
+  const formId    = spec.formId ? ` id="${esc(spec.formId)}"` : '';
+  const honeypotName = spec.honeypotName || HONEYPOT_NAME;
 
   const subject = spec.subjectLine
     ? `<input type="hidden" name="_subject" value="${esc(spec.subjectLine)}"${at('subjectLine')}>` : '';
@@ -136,17 +142,17 @@ function renderForm(spec, bk, opts) {
     // action so Netlify redirects there after a submission; without one,
     // Netlify's built-in success page answers the POST.
     const action = delivery.successPath ? ` action="${esc(delivery.successPath)}"` : '';
-    formOpen = `<form class="${className}" method="POST" name="${esc(formName)}" data-netlify="true" netlify-honeypot="${HONEYPOT_NAME}"${action}${enhanced ? ' data-crm-form' : ''}>`;
+    formOpen = `<form${formId} class="${className}" method="POST" name="${esc(formName)}" data-netlify="true" netlify-honeypot="${esc(honeypotName)}"${action}${enhanced ? ' data-crm-form' : ''}>`;
     netlifyName = `<input type="hidden" name="form-name" value="${esc(formName)}">\n${body}`;
   } else {
-    formOpen = `<form class="${className}" method="POST" action="${esc(spec.formAction)}"${at('formAction')}${enhanced ? ' data-crm-form' : ''}>`;
+    formOpen = `<form${formId} class="${className}" method="POST" action="${esc(spec.formAction)}"${at('formAction')}${enhanced ? ' data-crm-form' : ''}>`;
   }
 
   // Visually hidden honeypot, rendered in BOTH modes: offscreen via
   // .form-hp, hidden from assistive tech, and not focusable — only a bot
-  // that fills every field touches it. Netlify, the Worker template, and
-  // Formspree all drop submissions where it is filled.
-  const honeypot = `${netlifyName}<div class="form-hp" aria-hidden="true"><input type="text" name="${HONEYPOT_NAME}" tabindex="-1" autocomplete="off"></div>`;
+  // that fills every field touches it. The selected delivery handler is wired
+  // to the same allowlisted name (including Netlify's attribute above).
+  const honeypot = `${netlifyName}<div class="form-hp" aria-hidden="true"><input type="text" name="${esc(honeypotName)}" tabindex="-1" autocomplete="off"></div>`;
 
   // Origin tag (optional, developer-tier, rendered in BOTH delivery modes).
   // Once a site has two forms, the owner needs to know which one fired — the
@@ -164,8 +170,9 @@ function renderForm(spec, bk, opts) {
     ? `<input type="hidden" name="source" value="${esc(spec.source)}">\n${body}` : '';
 
   const rows = renderRows(spec.fields || [], base);
+  const statusId = spec.statusId ? ` id="${esc(spec.statusId)}"` : '';
   const status = enhanced
-    ? `\n${body}<div class="form-status" data-form-status role="status" aria-live="polite"></div>`
+    ? `\n${body}<div${statusId} class="form-status" data-form-status role="status" aria-live="polite"></div>`
     : '';
 
   return `${formOpen}

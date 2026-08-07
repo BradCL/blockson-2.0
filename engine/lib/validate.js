@@ -89,9 +89,15 @@ const FORM_FIELD_TYPES = new Set([
   'text', 'email', 'tel', 'url', 'number', 'date', 'textarea', 'select', 'checkbox',
 ]);
 const GOOGLE_TAG_RE = /^(?:G|GT|AW|DC)-[A-Z0-9]+$/;
+const GOOGLE_ANALYTICS_RE = /^G-[A-Z0-9]+$/;
+const GOOGLE_ADS_RE = /^AW-[0-9]+$/;
+const SEARCH_CONSOLE_RE = /^[A-Za-z0-9_-]{10,100}$/;
 const META_PIXEL_RE = /^[0-9]{5,20}$/;
+const CLARITY_PROJECT_RE = /^[a-z0-9]{8,20}$/;
+const OSPREY_TENANT_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CLIENT_SCRIPT_RE = /^js\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.js$/;
 const FORM_NAME_RE = /^[A-Za-z][A-Za-z0-9_-]*$/;
+const HONEYPOT_NAMES = new Set(['_gotcha', '_company_url']);
 
 // The AJV-free build path still renders integrations and enhanced forms, so
 // their narrow allowlists cannot depend on AJV being installed. These checks
@@ -104,7 +110,10 @@ function validateExtendedContracts(content) {
     if (!integrations || typeof integrations !== 'object' || Array.isArray(integrations)) {
       errors.push('site.integrations must be an object');
     } else {
-      const allowed = new Set(['googleTagId', 'metaPixelId', 'clientScript']);
+      const allowed = new Set([
+        'searchConsoleVerification', 'googleTagId', 'google', 'clarityProjectId',
+        'metaPixelId', 'ospreyTenant', 'clientScript',
+      ]);
       const keys = Object.keys(integrations);
       if (!keys.length) errors.push('site.integrations must configure at least one integration');
       for (const key of keys) {
@@ -114,9 +123,47 @@ function validateExtendedContracts(content) {
           && (typeof integrations.googleTagId !== 'string' || !GOOGLE_TAG_RE.test(integrations.googleTagId))) {
         errors.push('site.integrations.googleTagId must be a Google tag id beginning G-, GT-, AW-, or DC-');
       }
+      if (integrations.searchConsoleVerification !== undefined
+          && (typeof integrations.searchConsoleVerification !== 'string'
+            || !SEARCH_CONSOLE_RE.test(integrations.searchConsoleVerification))) {
+        errors.push('site.integrations.searchConsoleVerification must be a 10-100 character Search Console token containing only letters, digits, _ or -');
+      }
+      if (integrations.google !== undefined) {
+        const google = integrations.google;
+        if (!google || typeof google !== 'object' || Array.isArray(google)) {
+          errors.push('site.integrations.google must be an object');
+        } else {
+          for (const key of Object.keys(google)) {
+            if (key !== 'analyticsId' && key !== 'adsId') {
+              errors.push(`site.integrations.google has unknown property "${key}"`);
+            }
+          }
+          if (typeof google.analyticsId !== 'string' || !GOOGLE_ANALYTICS_RE.test(google.analyticsId)) {
+            errors.push('site.integrations.google.analyticsId must be a GA4 id beginning G-');
+          }
+          if (typeof google.adsId !== 'string' || !GOOGLE_ADS_RE.test(google.adsId)) {
+            errors.push('site.integrations.google.adsId must be a Google Ads id beginning AW- followed by digits');
+          }
+        }
+      }
+      if (integrations.googleTagId !== undefined && integrations.google !== undefined) {
+        errors.push('site.integrations must use either legacy googleTagId or google, not both');
+      }
       if (integrations.metaPixelId !== undefined
           && (typeof integrations.metaPixelId !== 'string' || !META_PIXEL_RE.test(integrations.metaPixelId))) {
         errors.push('site.integrations.metaPixelId must be 5–20 digits');
+      }
+      if (integrations.clarityProjectId !== undefined
+          && (typeof integrations.clarityProjectId !== 'string'
+            || !CLARITY_PROJECT_RE.test(integrations.clarityProjectId))) {
+        errors.push('site.integrations.clarityProjectId must be 8-20 lowercase letters or digits');
+      }
+      if (integrations.ospreyTenant !== undefined
+          && (typeof integrations.ospreyTenant !== 'string'
+            || integrations.ospreyTenant.length < 3
+            || integrations.ospreyTenant.length > 63
+            || !OSPREY_TENANT_RE.test(integrations.ospreyTenant))) {
+        errors.push('site.integrations.ospreyTenant must be a 3-63 character lowercase tenant slug');
       }
       if (integrations.clientScript !== undefined
           && (typeof integrations.clientScript !== 'string'
@@ -128,15 +175,40 @@ function validateExtendedContracts(content) {
   }
 
   for (const [pi, page] of (content.pages || []).entries()) {
+    const formIds = new Set();
+    const statusIds = new Set();
     for (const [bi, block] of (page.blocks || []).entries()) {
       if (!block || (block.type !== 'contact-form' && block.type !== 'hero-form')) continue;
       const spec = block.type === 'hero-form'
         ? block.fields && block.fields.form
         : block.fields;
       const fields = spec && Array.isArray(spec.fields) ? spec.fields : [];
-      const where = `pages[${pi}].blocks[${bi}].fields${block.type === 'hero-form' ? '.form' : ''}.fields`;
+      const specWhere = `pages[${pi}].blocks[${bi}].fields${block.type === 'hero-form' ? '.form' : ''}`;
+      const where = `${specWhere}.fields`;
       const names = new Map();
       const crmConfigured = !!(integrations && integrations.clientScript);
+      if (!spec || typeof spec !== 'object') continue;
+      if (crmConfigured && !spec.formId) {
+        errors.push(`${specWhere}.formId is required when site.integrations.clientScript is configured`);
+      } else if (spec.formId !== undefined && (typeof spec.formId !== 'string' || !FORM_NAME_RE.test(spec.formId))) {
+        errors.push(`${specWhere}.formId must begin with a letter and contain only letters, digits, _ or -`);
+      } else if (spec.formId && formIds.has(spec.formId)) {
+        errors.push(`${specWhere}.formId duplicates "${spec.formId}" on this page`);
+      } else if (spec.formId) {
+        formIds.add(spec.formId);
+      }
+      if (crmConfigured && !spec.statusId) {
+        errors.push(`${specWhere}.statusId is required when site.integrations.clientScript is configured`);
+      } else if (spec.statusId !== undefined && (typeof spec.statusId !== 'string' || !FORM_NAME_RE.test(spec.statusId))) {
+        errors.push(`${specWhere}.statusId must begin with a letter and contain only letters, digits, _ or -`);
+      } else if (spec.statusId && statusIds.has(spec.statusId)) {
+        errors.push(`${specWhere}.statusId duplicates "${spec.statusId}" on this page`);
+      } else if (spec.statusId) {
+        statusIds.add(spec.statusId);
+      }
+      if (spec.honeypotName !== undefined && !HONEYPOT_NAMES.has(spec.honeypotName)) {
+        errors.push(`${specWhere}.honeypotName must be _gotcha or _company_url`);
+      }
       for (const [fi, field] of fields.entries()) {
         if (!field || typeof field !== 'object') continue;
         if (crmConfigured && (typeof field.name !== 'string' || !FORM_NAME_RE.test(field.name))) {

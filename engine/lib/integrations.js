@@ -30,15 +30,34 @@ function renderHeadTags(site) {
   if (!cfg) return '';
   const tags = [];
 
-  if (cfg.googleTagId) {
-    const id = esc(cfg.googleTagId);
-    const jsId = JSON.stringify(cfg.googleTagId);
-    tags.push(`<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script>
+  if (cfg.searchConsoleVerification) {
+    tags.push(`<meta name="google-site-verification" content="${esc(cfg.searchConsoleVerification)}">`);
+  }
+
+  const googleIds = cfg.google
+    ? [cfg.google.analyticsId, cfg.google.adsId]
+    : (cfg.googleTagId ? [cfg.googleTagId] : []);
+  if (googleIds.length) {
+    const loaderId = esc(googleIds[0]);
+    const configLines = googleIds
+      .map(id => `    gtag('config', ${JSON.stringify(id)});`)
+      .join('\n');
+    tags.push(`<script async src="https://www.googletagmanager.com/gtag/js?id=${loaderId}"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', ${jsId});
+${configLines}
+  </script>`);
+  }
+
+  if (cfg.clarityProjectId) {
+    const jsId = JSON.stringify(cfg.clarityProjectId);
+    tags.push(`<script>
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})
+    (window, document, "clarity", "script", ${jsId});
   </script>`);
   }
 
@@ -53,6 +72,10 @@ function renderHeadTags(site) {
     fbq('init', ${jsId});
     fbq('track', 'PageView');
   </script>`);
+  }
+
+  if (cfg.ospreyTenant) {
+    tags.push(`<script async src="https://cms.osprey.solutions/api/track/${esc(cfg.ospreyTenant)}.js"></script>`);
   }
 
   return tags.length

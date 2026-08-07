@@ -194,19 +194,20 @@ function creatableCheck(content, blockId, item, key, value) {
    the leaf name so a dotted path cannot slip past.
 
    The honeypot in engine/blocks/contact-form.js is the same idea taken further
-   (fixed value, no schema surface at all); this table is for the ones that need
-   a per-site value. Today: a contact-form's `source` tag. Two forms sharing one
+   (a historical default with one developer-selectable CRM name); this table is
+   for values that need per-client wiring. Today: a contact-form's `source`,
+   stable form/status ids, and honeypot name. Two forms sharing one
    inbox tell themselves apart by it, which is how ad spend gets attributed —
    retarget it silently and a working form looks exactly like a dead one.
 
    A developer edits these in content.json, where the change is reviewable in a
    diff; that is the tier they belong to. */
 const DEVELOPER_ONLY_FIELDS = {
-  'contact-form': new Set(['source']),
+  'contact-form': new Set(['source', 'formId', 'statusId', 'honeypotName']),
   // hero-form keeps its form spec one level down (`form.source`), which is why
   // the match below is on the LEAF name — the field is the same field wherever
   // the block chooses to put it.
-  'hero-form':    new Set(['source']),
+  'hero-form':    new Set(['source', 'formId', 'statusId', 'honeypotName']),
   // Two gallery fields, both wiring rather than content.
   //
   // `value` is the JOIN KEY between a filter and its albums (an album belongs

@@ -122,7 +122,8 @@ before they can act. The layout ad traffic lands on.
   - `heading?` string — a heading above the form ("Request a quote")
   - `formAction` url — required unless `delivery.mode` is `netlify` (same rule as
     `contact-form`)
-  - `delivery?`, `subjectLine?`, `submitLabel?`, `source?`, `fields` — **exactly**
+  - `delivery?`, `subjectLine?`, `submitLabel?`, `source?`, `formId?`,
+    `statusId?`, `honeypotName?`, `fields` — **exactly**
     the `contact-form` shapes, because they are the same schema definitions
     (`$defs/formField`, `$defs/formDelivery`) and the same renderer
 - **The form is `contact-form`'s form.** Field markup, escaping, the half-width row
@@ -150,8 +151,9 @@ photo on light and dark themes alike.
 **Maintenance:** tag/headline/subhead/`form.heading` editable; background
 replaceable with focal point + zoom; `variant` offered in the Section panel as the
 section's style. Form fields and delivery wiring: developer (no ids — structural).
-`form.source`: developer only and unreachable from the owner tier, exactly as
-`contact-form`'s is — the guard matches the leaf name, so nesting changes nothing.
+`form.source`, `form.formId`, `form.statusId`, and `form.honeypotName`: developer
+only and unreachable from the owner tier, exactly as `contact-form`'s are — the
+guard matches the leaf name, so nesting changes nothing.
 
 ### `page-header`
 Sub-hero band used at the top of interior pages (about/services/gallery/contact).
@@ -377,10 +379,10 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
 - **netlify mode**: the form renders `name`, `data-netlify="true"`, a hidden
   `form-name` input, and `netlify-honeypot` wiring — Netlify's edge handles
   delivery; nothing to deploy.
-- **Honeypot:** every form renders a visually hidden text input named `_gotcha`
-  (both modes). Netlify, the Worker template, and Formspree all drop submissions
-  that fill it. It is rendered markup, not schema content — it never appears in
-  the edit map and carries no annotations.
+- **Honeypot:** every form renders a visually hidden text input. Omitted
+  `honeypotName` preserves the historical `_gotcha`; a developer may select the
+  narrowly allowlisted `_company_url` for an approved CRM contract (both modes,
+  including `netlify-honeypot`). It never appears in the edit map or annotations.
 - `source?` string — an origin tag rendered as a hidden `source` input in **both**
   delivery modes. Once a site has two forms, this is how one inbox tells them
   apart (`"home-hero"` vs `"contact-page"`), which is what a marketing company
@@ -400,14 +402,17 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
   required?, placeholder?, autocomplete?, value?, options?[], half?, showWhen?}`.
   On a CRM-configured client, names begin with a letter and are unique within
   the form. `value` supplies a checkbox's submitted value (default `yes`); a
-  required checkbox is the consent control. `showWhen` is `{field, equals}` and
+  consent checkbox may omit `required` when opt-in is optional. `showWhen` is
+  `{field, equals}` and
   emits progressive-enhancement data hooks on the wrapper. The named sibling
   must exist; when it is a select,
-  `equals` must be one of its options. Conditional sales fields stay visible
+  `equals` must be one of its options. A consent checkbox may omit `required` so
+  it exists without forcing visitor consent. Conditional sales fields stay visible
   without JavaScript — ugly but usable rather than silently missing.
-- When `site.integrations.clientScript` is configured, the form also carries
-  `data-crm-form` and one empty `.form-status[data-form-status]` live region for
-  the client script. The client asset and provider tags are global developer
+- When `site.integrations.clientScript` is configured, the form requires stable
+  developer-set `formId` and `statusId`, carries `data-crm-form`, and renders one
+  empty `.form-status[data-form-status]` live region with that status id for the
+  client script. The client asset and provider tags are global developer
   configuration described in OPERATOR.md; neither this status nor the integration
   object is emitted for an unconfigured client.
 CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
@@ -416,8 +421,9 @@ CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
 `[data-show-when-field]`.
 **Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields and the
 delivery wiring (`formAction`, `delivery.*`): developer (fields carry no ids —
-structural by design). `source`: developer only, and unreachable from the owner
-tier by construction rather than by convention.
+structural by design). `source`, `formId`, `statusId`, and `honeypotName`:
+developer only, and unreachable from the owner tier by construction rather than
+by convention.
 
 ### `cta`
 Centered closing banner with a statement and a button.

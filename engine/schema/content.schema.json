@@ -275,13 +275,36 @@
       "minProperties": 1,
       "additionalProperties": false,
       "properties": {
+        "searchConsoleVerification": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{10,100}$"
+        },
         "googleTagId": {
           "type": "string",
           "pattern": "^(?:G|GT|AW|DC)-[A-Z0-9]+$"
         },
+        "google": {
+          "type": "object",
+          "required": ["analyticsId", "adsId"],
+          "additionalProperties": false,
+          "properties": {
+            "analyticsId": { "type": "string", "pattern": "^G-[A-Z0-9]+$" },
+            "adsId":       { "type": "string", "pattern": "^AW-[0-9]+$" }
+          }
+        },
         "metaPixelId": {
           "type": "string",
           "pattern": "^[0-9]{5,20}$"
+        },
+        "clarityProjectId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]{8,20}$"
+        },
+        "ospreyTenant": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 63,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
         },
         "clientScript": {
           "type": "string",
@@ -361,6 +384,9 @@
         "subjectLine": { "type": "string" },
         "submitLabel": { "type": "string" },
         "source":      { "type": "string" },
+        "formId":      { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "statusId":    { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "honeypotName": { "type": "string", "enum": ["_gotcha", "_company_url"] },
         "fields": {
           "type": "array",
           "minItems": 1,
@@ -648,6 +674,9 @@
         "subjectLine": { "type": "string" },
         "submitLabel": { "type": "string" },
         "source":      { "type": "string" },
+        "formId":      { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "statusId":    { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "honeypotName": { "type": "string", "enum": ["_gotcha", "_company_url"] },
         "fields": {
           "type": "array",
           "minItems": 1,

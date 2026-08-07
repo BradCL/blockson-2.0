@@ -170,9 +170,11 @@ hidden honeypot. The per-host story is "Contact form delivery" in
 [OPERATOR.md](OPERATOR.md).
 
 Approved marketing/CRM work is an explicit developer opt-in through the closed
-`site.integrations` contract: validated Google/Meta ids generate fixed global
-tags, one verified client-local JS file is copied and loaded last, and both form
-blocks share checkbox, status, source, honeypot, and conditional-field hooks.
+`site.integrations` contract: validated Search Console, dual Google, Clarity,
+Meta, and Osprey-tenant values generate fixed global tags in provider order;
+one verified client-local JS file is copied and loaded last; and both form blocks
+share stable ids, optional consent, status, source, selectable honeypot, and
+conditional-field hooks.
 There is no raw-tag escape hatch, owner previews execute no integration code,
 and a client that omits the object follows the historical build path.
 

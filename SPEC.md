@@ -127,10 +127,12 @@ engine/
     validate.js         Validates content.json against the schema; clear error messages
     escape.js           HTML-escaping helpers
     formfields.js       Shared lead-form renderer (fields + escaping, half-width
-                        rows, delivery modes, honeypot, origin tag, CRM hooks) — rendered by
+                        rows, delivery modes, stable ids, selectable honeypot,
+                        origin tag, CRM hooks) — rendered by
                         BOTH contact-form and hero-form so the two cannot drift
-    integrations.js     Fixed Google/Meta tag renderers + global body/script positions;
-                        accepts validated ids/one local client asset, never raw tags
+    integrations.js     Fixed Search/Google/Clarity/Meta/Osprey renderers + global
+                        positions; accepts validated provider values/one local client
+                        asset, never raw tags or generic remote URLs
     heroimage.js        The site hero image, derived once: which block types can
                         supply it, read by build.js + owner.js + host-browser.js
     icons.js            Named inline-SVG set (icon blocks reference these by name)
@@ -499,12 +501,15 @@ the same 3:4 frame with no `<img>` at all, the frame never circled, the narrow
 layout always reading face → story whichever side the developer-tier `variant`
 picks, every paragraph individually addressable, the portrait opening the image
 picker by its path shape, and both block contracts still refusing each other's
-fields, and (44) the opt-in integration contract: validated Google/Meta ids render
-only in their global live-document positions, Meta's noscript fallback is the
-first body node, one verified client-local asset is copied and loaded last, both
-form blocks share checkbox/status/conditional CRM markup, owner previews execute
-no integrations, the config is absent from every owner door, and malformed or
-unconfigured clients fail safely or remain unchanged respectively. All 44 must
+fields, and (44) the opt-in integration contract: validated Search Console,
+dual-config Google, Clarity, Meta, and Osprey-tenant values render once in their
+PDF-supplied global order, Osprey is immediately before `</head>`, Meta's
+noscript fallback is the first body node, one verified client-local asset is
+copied and loaded last, and both form blocks share stable form/status ids, an
+optional consent checkbox, selectable honeypot, source and conditional CRM markup.
+Owner previews execute no integrations, the config/form wiring is absent from
+every owner door, and malformed or unconfigured clients fail safely or remain
+unchanged respectively. All 44 must
 pass on a clean tree.
 
 ---

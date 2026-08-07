@@ -11,9 +11,10 @@ the major version.
 
 ### Added
 - **Developer-controlled marketing and CRM integrations** — an optional,
-  schema-closed `site.integrations` object accepts validated Google/Meta ids and
-  one client-local `js/*.js` asset, never raw markup or a remote script URL. The
-  engine owns the global positions: provider scripts in `<head>`, Meta's
+  schema-closed `site.integrations` object accepts validated Search Console,
+  dual-config Google, Clarity, Meta, and Osprey tenant values plus one client-local
+  `js/*.js` asset, never raw markup or a remote script URL. The engine derives the
+  fixed Osprey loader and owns the PDF-supplied global order in `<head>`; Meta's
   noscript fallback first in `<body>`, and the copied client asset after shared
   `main.js` as the last script before `</body>`. Missing/malformed assets fail
   before `dist/` is touched; annotated owner previews execute no integration
@@ -21,9 +22,11 @@ the major version.
 
   The shared lead-form contract now accepts checkbox/url/number/date fields,
   autocomplete and submitted checkbox values, plus validated `showWhen` hooks
-  for conditional sales fields. A configured client script gives both
-  `hero-form` and `contact-form` the same scoped CRM hook and live status region,
-  alongside their existing honeypot and developer-only hidden source. Conditions
+  for conditional sales fields. A configured client script requires both
+  `hero-form` and `contact-form` to declare stable developer-only form/status ids,
+  gives them the same scoped CRM hook and live status region, and allows the
+  developer to select `_company_url` while unconfigured forms retain `_gotcha`.
+  Consent checkboxes may remain optional for the visitor. Conditions
   are progressive enhancement: fields stay visible if client JS fails. The
   entire integration container is absent from the owner edit map and refused by
   the read and write paths. Proof 44 covers configured, malformed, missing-asset,

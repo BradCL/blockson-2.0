@@ -274,8 +274,9 @@
 //             original register when absent and remain outside owner set-token;
 //             both block contracts still refuse each other's fields.
 // Proof 44:   opt-in marketing + CRM integration: a schema-closed site object
-//             renders fixed Google/Meta tags from validated ids, Meta's
-//             noscript image first in body, and one verified client-local JS
+//             renders fixed Search/Google/Clarity/Meta/Osprey tags from validated
+//             values in provider order, Meta's noscript image first in body,
+//             and one verified client-local JS
 //             asset last; annotated previews execute none of them. The shared
 //             form renderer supplies checkbox/url/number/date fields, consent,
 //             status, source, honeypot and validated visible-by-default
@@ -5953,8 +5954,13 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
   const distDir = path.join(ROOT, 'dist', CLIENT);
   const annDir = path.join(ROOT, 'dist', CLIENT + '__annotated');
   const failures = [];
-  const GOOGLE_ID = 'G-PROOF123';
+  const SEARCH_TOKEN = 'proof_Search-Console_token_1234567890';
+  const GA4_ID = 'G-PROOF123';
+  const ADS_ID = 'AW-18227178329';
+  const CLARITY_ID = 'proof1234';
   const META_ID = '123456789012345';
+  const OSPREY_TENANT = 'proof-contracting';
+  const OSPREY_URL = `https://cms.osprey.solutions/api/track/${OSPREY_TENANT}.js`;
   const SCRIPT = 'js/crm-bridge.js';
 
   const formSpec = (source) => ({
@@ -5972,8 +5978,8 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
       { name: 'startDate', label: 'Preferred start', type: 'date',
         showWhen: { field: 'enquiry', equals: 'Sales' } },
       { name: 'details', label: 'Project details', type: 'textarea', required: true },
-      { name: 'consent', label: 'I agree to be contacted about this request', type: 'checkbox',
-        value: 'accepted', required: true },
+      { name: 'smsConsent', label: 'I agree to receive calls or texts about this request',
+        type: 'checkbox', value: 'true' },
     ],
   });
 
@@ -6007,9 +6013,13 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
     if (!plainBuild.ok) failures.push(`the unconfigured client failed to build:\n${plainBuild.out}`);
     else {
       const plain = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
-      for (const marker of ['googletagmanager.com', 'connect.facebook.net', 'facebook.com/tr?',
-        'data-crm-form', 'data-form-status', SCRIPT]) {
+      for (const marker of ['google-site-verification', 'googletagmanager.com', 'clarity.ms',
+        'connect.facebook.net', 'facebook.com/tr?', 'cms.osprey.solutions',
+        'data-crm-form', 'data-form-status', '_company_url', SCRIPT]) {
         if (plain.includes(marker)) failures.push(`an unconfigured client emitted integration marker ${marker}`);
+      }
+      if ((plain.match(/name="_gotcha"/g) || []).length !== 1) {
+        failures.push('an unconfigured form did not retain exactly one historical _gotcha honeypot');
       }
       if (fs.existsSync(path.join(distDir, SCRIPT))) failures.push('an unconfigured client copied the dormant client script');
     }
@@ -6020,19 +6030,57 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
     //     asset loads after main.js and immediately before </body>.
     const configured = JSON.parse(JSON.stringify(base));
     configured.site.integrations = {
-      googleTagId: GOOGLE_ID, metaPixelId: META_ID, clientScript: SCRIPT,
+      searchConsoleVerification: SEARCH_TOKEN,
+      google: { analyticsId: GA4_ID, adsId: ADS_ID },
+      clarityProjectId: CLARITY_ID,
+      metaPixelId: META_ID,
+      ospreyTenant: OSPREY_TENANT,
+      clientScript: SCRIPT,
     };
+    const configuredHero = configured.pages.find(p => p.slug === 'index')
+      .blocks.find(b => b.type === 'hero-form').fields.form;
+    Object.assign(configuredHero, {
+      formId: 'hero-lead-form', statusId: 'hero-form-status', honeypotName: '_company_url',
+    });
+    const configuredContact = configured.pages.flatMap(p => p.blocks)
+      .find(b => b.type === 'contact-form').fields;
+    Object.assign(configuredContact, {
+      formId: 'contact-lead-form', statusId: 'contact-form-status', honeypotName: '_company_url',
+    });
     writeContent(CLIENT, configured);
     const liveBuild = build(CLIENT);
     if (!liveBuild.ok) failures.push(`the configured integration failed to build:\n${liveBuild.out}`);
     else {
       for (const page of configured.pages) {
         const html = fs.readFileSync(path.join(distDir, pageFile(page.slug)), 'utf8');
-        if (!html.includes(`gtag/js?id=${GOOGLE_ID}`) || !html.includes(`gtag('config', "${GOOGLE_ID}")`)) {
-          failures.push(`${page.slug}: the validated Google tag is missing from <head>`);
+        const head = html.slice(html.indexOf('<head>'), html.indexOf('</head>') + 7);
+        const searchTag = `<meta name="google-site-verification" content="${SEARCH_TOKEN}">`;
+        const googleLoader = `https://www.googletagmanager.com/gtag/js?id=${GA4_ID}`;
+        const ga4Config = `gtag('config', "${GA4_ID}")`;
+        const adsConfig = `gtag('config', "${ADS_ID}")`;
+        const clarityLoader = 'https://www.clarity.ms/tag/';
+        const metaLoader = 'https://connect.facebook.net/en_US/fbevents.js';
+        const ospreyTag = `<script async src="${OSPREY_URL}"></script>`;
+        for (const [label, marker] of [
+          ['Search Console', searchTag], ['Google loader', googleLoader],
+          ['GA4 config', ga4Config], ['Google Ads config', adsConfig],
+          ['Clarity loader', clarityLoader], ['Meta loader', metaLoader],
+          ['Meta config', `fbq('init', "${META_ID}")`], ['Osprey loader', ospreyTag],
+        ]) {
+          if ((head.split(marker).length - 1) !== 1) {
+            failures.push(`${page.slug}: ${label} does not occur exactly once in <head>`);
+          }
         }
-        if (!html.includes('connect.facebook.net/en_US/fbevents.js') || !html.includes(`fbq('init', "${META_ID}")`)) {
-          failures.push(`${page.slug}: the validated Meta script is missing from <head>`);
+        if ((head.split(`"${CLARITY_ID}"`).length - 1) !== 1) {
+          failures.push(`${page.slug}: the configured Clarity project id does not occur exactly once`);
+        }
+        const ordered = [searchTag, googleLoader, clarityLoader, metaLoader, ospreyTag]
+          .map(marker => head.indexOf(marker));
+        if (ordered.some(i => i === -1) || ordered.some((value, i) => i && value <= ordered[i - 1])) {
+          failures.push(`${page.slug}: global head integrations are not in PDF-supplied Search, Google, Clarity, Meta, Osprey order`);
+        }
+        if (!head.endsWith(`${ospreyTag}</head>`)) {
+          failures.push(`${page.slug}: the Osprey loader is not immediately before </head>`);
         }
         if (!new RegExp(`<body>\\n<noscript><img[^>]+tr\\?id=${META_ID}`).test(html)) {
           failures.push(`${page.slug}: the Meta noscript fallback is not immediately after <body>`);
@@ -6040,18 +6088,17 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
         if (!html.includes(`<script src="js/main.js"></script>\n<script src="${SCRIPT}"></script>\n</body>`)) {
           failures.push(`${page.slug}: the client script is not last, immediately before </body>`);
         }
-        if (html.indexOf('googletagmanager.com') > html.indexOf('</head>')
-            || html.indexOf('connect.facebook.net') > html.indexOf('</head>')) {
-          failures.push(`${page.slug}: a marketing script escaped the global <head>`);
-        }
       }
       const copied = path.join(distDir, SCRIPT);
       if (!fs.existsSync(copied)) failures.push('the configured client script was not copied');
       else if (fs.readFileSync(copied, 'utf8') !== 'window.__crmProof = true;\n') failures.push('the copied client script changed bytes');
 
-      // Both form blocks travel the SAME renderer. Each gets the CRM hook and
-      // live status, while the established honeypot/source remain one apiece.
-      for (const [file, source] of [['index.html', 'hero'], ['contact.html', 'contact']]) {
+      // Both form blocks travel the SAME renderer. Each gets stable script
+      // targets, the selected CRM honeypot/source, and one live status region.
+      for (const [file, source, formId, statusId] of [
+        ['index.html', 'hero', 'hero-lead-form', 'hero-form-status'],
+        ['contact.html', 'contact', 'contact-lead-form', 'contact-form-status'],
+      ]) {
         const html = fs.readFileSync(path.join(distDir, file), 'utf8');
         const start = html.indexOf('data-crm-form');
         const form = start === -1 ? '' : html.slice(html.lastIndexOf('<form ', start), html.indexOf('</form>', start) + 7);
@@ -6060,12 +6107,23 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
           'type="number"', 'type="date"', '<textarea ', '<select ', 'type="checkbox"']) {
           if (!form.includes(marker)) failures.push(`${file}: missing required field shape ${marker}`);
         }
-        if ((form.match(/name="_gotcha"/g) || []).length !== 1) failures.push(`${file}: honeypot count is not one`);
+        if (!form.startsWith(`<form id="${formId}" `)
+            || (form.match(new RegExp(`id="${formId}"`, 'g')) || []).length !== 1) {
+          failures.push(`${file}: stable form id is missing or duplicated`);
+        }
+        if ((form.match(/name="_company_url"/g) || []).length !== 1
+            || form.includes('name="_gotcha"')) failures.push(`${file}: Osprey honeypot is not exactly one _company_url`);
         if ((form.match(new RegExp(`name="source" value="${source}"`, 'g')) || []).length !== 1) failures.push(`${file}: hidden source count is not one`);
         if ((form.match(/data-form-status/g) || []).length !== 1
-            || !form.includes('role="status" aria-live="polite"')) failures.push(`${file}: live form status is missing or duplicated`);
+            || !form.includes(`id="${statusId}" class="form-status"`)
+            || !form.includes('role="status" aria-live="polite"')) failures.push(`${file}: stable live form status is missing or duplicated`);
         if (!form.includes('data-show-when-field="enquiry" data-show-when-value="Sales"')) failures.push(`${file}: conditional sales hooks are missing`);
-        if (!form.includes('value="accepted"') || !/type="checkbox"[^>]+ required/.test(form)) failures.push(`${file}: required consent checkbox contract is missing`);
+        const consent = form.match(/<input[^>]+name="smsConsent"[^>]*>/);
+        if (!consent || !consent[0].includes('type="checkbox"') || !consent[0].includes('value="true"')) {
+          failures.push(`${file}: the SMS consent checkbox is missing`);
+        } else if (/\srequired(?:\s|>)/.test(consent[0])) {
+          failures.push(`${file}: the visitor-optional SMS consent checkbox was rendered required`);
+        }
         if (/data-show-when[^>]+ hidden/.test(form)) failures.push(`${file}: conditional fields are hidden before progressive enhancement`);
       }
     }
@@ -6076,7 +6134,8 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
     if (!annBuild.ok) failures.push(`the annotated configured client failed to build:\n${annBuild.out}`);
     else {
       const ann = fs.readFileSync(path.join(annDir, 'index.html'), 'utf8');
-      for (const marker of ['googletagmanager.com', 'connect.facebook.net', 'facebook.com/tr?', SCRIPT]) {
+      for (const marker of ['google-site-verification', 'googletagmanager.com', 'clarity.ms',
+        'connect.facebook.net', 'facebook.com/tr?', 'cms.osprey.solutions', SCRIPT]) {
         if (ann.includes(marker)) failures.push(`the owner preview executes integration marker ${marker}`);
       }
       if (!ann.includes('data-crm-form') || !ann.includes('data-form-status')) failures.push('the owner preview lost the enhanced form markup');
@@ -6086,11 +6145,13 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
     //     allowlist drives map omission and write/read refusal, including
     //     dotted leaves; form field arrays/conditions remain structural.
     const map = buildEditMap(configured, loadTokens(configured));
-    if (JSON.stringify(map.site).includes('integrations') || JSON.stringify(map.site).includes(GOOGLE_ID)
-        || JSON.stringify(map.site).includes(META_ID) || JSON.stringify(map.site).includes(SCRIPT)) {
+    if (JSON.stringify(map.site).includes('integrations') || JSON.stringify(map.site).includes(GA4_ID)
+        || JSON.stringify(map.site).includes(ADS_ID) || JSON.stringify(map.site).includes(META_ID)
+        || JSON.stringify(map.site).includes(OSPREY_TENANT) || JSON.stringify(map.site).includes(SCRIPT)) {
       failures.push('integration wiring leaked into the owner edit map');
     }
-    for (const field of ['integrations', 'integrations.googleTagId', 'integrations.clientScript']) {
+    for (const field of ['integrations', 'integrations.google.analyticsId',
+      'integrations.ospreyTenant', 'integrations.clientScript']) {
       const probe = JSON.parse(JSON.stringify(configured));
       const before = JSON.stringify(probe);
       const r = applyPatch(probe, { action: 'set', block: 'site', field, value: 'G-CHANGED' });
@@ -6101,31 +6162,55 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
     if (owner.describeField(session, { block: 'site', field: 'integrations.metaPixelId' }).ok) {
       failures.push('the owner read API described the Meta pixel id');
     }
+    for (const [block, field] of [['home-crm', 'form.formId'], ['home-crm', 'form.honeypotName'],
+      [contact.id, 'formId'], [contact.id, 'statusId']]) {
+      const probe = JSON.parse(JSON.stringify(configured));
+      const before = JSON.stringify(probe);
+      const r = applyPatch(probe, { action: 'set', block, field, value: 'owner-change' });
+      if (r.ok || JSON.stringify(probe) !== before) {
+        failures.push(`owner patch reached developer-only enhanced form field ${block}.${field}`);
+      }
+      if (owner.describeField(session, { block, field }).ok) {
+        failures.push(`owner read API described developer-only enhanced form field ${block}.${field}`);
+      }
+    }
 
-    // (d) MALFORMED CONFIGURATION FAILS BEFORE DIST IS TOUCHED. Cover provider
-    //     ids, script traversal/missing files, and conditional field references;
-    //     the reduced no-AJV validator carries the same guards.
+    // (d) MALFORMED CONFIGURATION FAILS BEFORE DIST IS TOUCHED. Every new
+    //     provider/form control fails with a named error; raw markup and generic
+    //     attribution URLs are not schema doors. The no-AJV path agrees.
     const sentinel = path.join(distDir, 'proof-sentinel.txt');
     fs.writeFileSync(sentinel, 'keep', 'utf8');
     const malformedCases = [
-      ['Google id', c => { c.site.integrations.googleTagId = '\"><script>alert(1)</script>'; }],
-      ['Meta id', c => { c.site.integrations.metaPixelId = '12&bad'; }],
-      ['script path', c => { c.site.integrations.clientScript = 'js/../escape.js'; }],
-      ['duplicate field name', c => {
+      ['Search token', 'searchConsoleVerification', c => { c.site.integrations.searchConsoleVerification = 'bad token!'; }],
+      ['GA4 id', 'analyticsId', c => { c.site.integrations.google.analyticsId = 'AW-123'; }],
+      ['Google Ads id', 'adsId', c => { c.site.integrations.google.adsId = 'G-NOTADS'; }],
+      ['Google contract collision', 'either legacy googleTagId or google', c => { c.site.integrations.googleTagId = 'G-LEGACY123'; }],
+      ['Clarity id', 'clarityProjectId', c => { c.site.integrations.clarityProjectId = 'BAD-ID'; }],
+      ['Meta id', 'metaPixelId', c => { c.site.integrations.metaPixelId = '12&bad'; }],
+      ['Osprey tenant', 'ospreyTenant', c => { c.site.integrations.ospreyTenant = 'https://evil.test/x.js'; }],
+      ['raw markup escape hatch', 'rawMarkup', c => { c.site.integrations.rawMarkup = '<script>alert(1)</script>'; }],
+      ['generic attribution URL', 'attributionUrl', c => { c.site.integrations.attributionUrl = 'https://evil.test/x.js'; }],
+      ['script path', 'clientScript', c => { c.site.integrations.clientScript = 'js/../escape.js'; }],
+      ['missing form id', 'formId', c => { delete c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form').fields.form.formId; }],
+      ['malformed form id', 'formId', c => { c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form').fields.form.formId = 'bad id'; }],
+      ['missing status id', 'statusId', c => { delete c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form').fields.form.statusId; }],
+      ['honeypot name', 'honeypotName', c => { c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form').fields.form.honeypotName = '_anything'; }],
+      ['duplicate field name', 'duplicates', c => {
         c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form')
-          .fields.form.fields.find(f => f.name === 'consent').name = 'email';
+          .fields.form.fields.find(f => f.name === 'smsConsent').name = 'email';
       }],
-      ['condition target', c => {
+      ['condition target', 'showWhen.field', c => {
         c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form')
           .fields.form.fields.find(f => f.name === 'budget').showWhen.field = 'missing';
       }],
     ];
-    for (const [label, mutate] of malformedCases) {
+    for (const [label, expected, mutate] of malformedCases) {
       const bad = JSON.parse(JSON.stringify(configured));
       mutate(bad);
       writeContent(CLIENT, bad);
       const b = build(CLIENT);
       if (b.ok) failures.push(`malformed ${label} configuration built successfully`);
+      if (!b.out.includes(expected)) failures.push(`malformed ${label} failure did not clearly name ${expected}`);
       if (!fs.existsSync(sentinel)) failures.push(`malformed ${label} configuration touched the previous dist`);
       if (fallbackValidate(bad).ok) failures.push(`the no-AJV fallback accepted malformed ${label} configuration`);
     }
@@ -6148,13 +6233,14 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
   }
 
   if (failures.length === 0) {
-    console.log('PASS — a developer can opt one client into fixed, id-validated Google and Meta');
-    console.log('       tags, with the Meta fallback first in <body> and one verified client-local');
-    console.log('       script last; configured forms in BOTH block shapes share every field type,');
-    console.log('       consent, honeypot, source, status and progressive conditional hook through');
-    console.log('       the existing renderer. Unconfigured clients emit/copy nothing, owner previews');
-    console.log('       execute nothing, the integration container is absent from all owner doors,');
-    console.log('       and malformed ids, paths, missing assets and conditions fail before dist.');
+    console.log('PASS — a developer can opt one client into fixed Search, dual-config Google,');
+    console.log('       Clarity, Meta and tenant-derived Osprey tags in the supplied global order,');
+    console.log('       with Osprey last in <head>, Meta first in <body>, and one verified local');
+    console.log('       CRM script last. BOTH form blocks share stable ids/status, every field type,');
+    console.log('       optional consent, selected honeypot, source and conditional hooks.');
+    console.log('       Unconfigured clients retain _gotcha and emit/copy nothing; previews execute');
+    console.log('       nothing, owner doors stay shut, and malformed ids, URLs, markup, paths,');
+    console.log('       missing assets and form contracts fail clearly before dist is touched.');
     passed++;
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
