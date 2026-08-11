@@ -151,7 +151,8 @@
                     "contact-form","cta",
                     "pricing-table","team-grid","faq","hours-table","before-after",
                     "stats-bar","process-steps","video-embed","booking-cta",
-                    "photo-strip","reviews-link","hero-form","founder-note"
+                    "photo-strip","reviews-link","hero-form","founder-note",
+                    "legal-content"
                   ]
                 },
                 "fields": { "type": "object" }
@@ -256,6 +257,10 @@
                 {
                   "if":   { "properties": { "type": { "const": "founder-note" } },  "required": ["type"] },
                   "then": { "properties": { "fields": { "$ref": "#/$defs/founderNoteFields" } } }
+                },
+                {
+                  "if":   { "properties": { "type": { "const": "legal-content" } }, "required": ["type"] },
+                  "then": { "properties": { "fields": { "$ref": "#/$defs/legalContentFields" } } }
                 }
               ]
             }
@@ -269,6 +274,84 @@
     "safeHref": {
       "type": "string",
       "pattern": "^(?:(?:https?://|mailto:|tel:|sms:|#).*|[^:]*)$"
+    },
+    "inlineRun": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "href": {
+          "allOf": [
+            { "$ref": "#/$defs/safeHref" },
+            { "minLength": 1 }
+          ]
+        }
+      }
+    },
+    "inlineText": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/inlineRun" }
+    },
+    "linkedInlineText": {
+      "type": "array",
+      "minItems": 1,
+      "contains": {
+        "type": "object",
+        "required": ["href"]
+      },
+      "items": { "$ref": "#/$defs/inlineRun" }
+    },
+    "legalContentNode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "level", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "heading" },
+            "level": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "text": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "content"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "paragraph" },
+            "content": { "$ref": "#/$defs/inlineText" }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "style", "items"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "list" },
+            "style": { "type": "string", "enum": ["ordered", "unordered"] },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/inlineText" }
+            }
+          }
+        }
+      ]
+    },
+    "legalContentFields": {
+      "type": "object",
+      "required": ["content"],
+      "additionalProperties": false,
+      "properties": {
+        "hidden": { "type": "boolean" },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/legalContentNode" }
+        }
+      }
     },
     "integrations": {
       "type": "object",
@@ -387,6 +470,7 @@
         "formId":      { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "statusId":    { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "honeypotName": { "type": "string", "enum": ["_gotcha", "_company_url"] },
+        "privacyNotice": { "$ref": "#/$defs/linkedInlineText" },
         "fields": {
           "type": "array",
           "minItems": 1,
@@ -677,6 +761,7 @@
         "formId":      { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "statusId":    { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "honeypotName": { "type": "string", "enum": ["_gotcha", "_company_url"] },
+        "privacyNotice": { "$ref": "#/$defs/linkedInlineText" },
         "fields": {
           "type": "array",
           "minItems": 1,

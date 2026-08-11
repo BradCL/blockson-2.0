@@ -28,6 +28,7 @@
    ============================================================ */
 
 const { esc } = require('./escape');
+const { renderInline } = require('./structuredtext');
 
 // Historical honeypot field name. "_gotcha" is Formspree's reserved name, so
 // endpoint-mode relays that recognise it drop bot submissions with no extra
@@ -175,6 +176,14 @@ function renderForm(spec, bk, opts) {
     ? `\n${body}<div${statusId} class="form-status" data-form-status role="status" aria-live="polite"></div>`
     : '';
 
+  // Optional linked notice, outside and immediately after the form. It is
+  // rendered here so hero-form and contact-form cannot drift. The schema
+  // requires at least one linked run; every run uses the same escaped helper
+  // as policy/legal content. Absent means no bytes are appended.
+  const privacyNotice = spec.privacyNotice
+    ? `\n${closeForm}<p class="form-privacy-notice form-optional">${renderInline(spec.privacyNotice)}</p>`
+    : '';
+
   return `${formOpen}
 ${body}${subject}
 ${body}${source}${honeypot}
@@ -182,7 +191,7 @@ ${body}${rows.join('\n' + body)}
 ${body}<div class="form-submit">
 ${inner}<button type="submit" class="btn btn-primary"${at('submitLabel')}>${esc(submitLabel)}</button>
 ${body}</div>${status}
-${closeForm}</form>`;
+${closeForm}</form>${privacyNotice}`;
 }
 
 module.exports = { HONEYPOT_NAME, renderField, renderRows, renderForm };

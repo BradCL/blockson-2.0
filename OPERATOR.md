@@ -419,6 +419,74 @@ Until delivery is decided, set `formAction` to the documented placeholder
 `https://UNCONFIGURED` — the site builds (so form delivery never blocks a
 handover) and every build warns loudly until it's replaced.
 
+### Structured policy pages and linked form notices
+
+Use `legal-content` for provider-approved privacy/legal wording that needs real
+paragraphs, headings, lists, contact links, or external preference links. Do not
+put markup in `text`: the legal block is a closed JSON shape, and the renderer
+chooses and escapes every element and attribute.
+
+```json
+{
+  "slug": "privacy-policy",
+  "meta": {
+    "title": "Privacy Policy | Example Business",
+    "description": "How Example Business handles personal information."
+  },
+  "blocks": [{
+    "id": "privacy-policy-content",
+    "type": "legal-content",
+    "fields": {
+      "content": [
+        { "type": "heading", "level": 1, "text": "Privacy Policy" },
+        {
+          "type": "paragraph",
+          "content": [
+            { "text": "Questions? Email " },
+            { "text": "privacy@example.com", "href": "mailto:privacy@example.com" },
+            { "text": "." }
+          ]
+        },
+        {
+          "type": "list",
+          "style": "unordered",
+          "items": [
+            [{ "text": "Ask us to correct your information." }],
+            [
+              { "text": "Open the " },
+              { "text": "preference centre", "href": "https://preferences.example.com" },
+              { "text": "." }
+            ]
+          ]
+        }
+      ]
+    }
+  }]
+}
+```
+
+Each paragraph/list item is an array of inline runs. Runs join exactly as written,
+so preserve approved spaces and punctuation in their `text`. A run may contain only
+`text` and an optional `href`; links use the normal safe-scheme guard. There is no
+`html`, `rawHtml`, attribute, script, cookie-banner, or CMP field.
+
+To put the same linked notice directly beneath a form, add `privacyNotice` to the
+form spec. It must contain at least one linked run:
+
+```json
+"privacyNotice": [
+  { "text": "Read our " },
+  { "text": "Privacy Policy", "href": "privacy-policy.html" },
+  { "text": " before submitting." }
+]
+```
+
+For `contact-form`, add it at the block's `fields` root. For `hero-form`, add it
+inside `fields.form`. Both block types call the same form renderer, which emits the
+notice immediately after `</form>`; omission adds no bytes. This notice does not
+create a cookie banner/CMP and does not alter any form field, including an existing
+optional SMS consent checkbox.
+
 ### Developer-controlled marketing and CRM integration
 
 `site.integrations` is an optional, closed allowlist for a client that has

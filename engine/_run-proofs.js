@@ -284,6 +284,12 @@
 //             omitted/refused at every owner door; malformed ids, paths,
 //             missing assets and conditions leave dist untouched; omission
 //             emits and copies nothing.
+// Proof 45:   structured legal content renders only schema-closed headings,
+//             paragraphs, ordered/unordered lists and escaped safe links; an
+//             optional linked privacy notice is emitted immediately after the
+//             form by the ONE renderer shared by contact-form and hero-form.
+//             Unsafe/unlinked/raw shapes fail, no cookie/CMP surface appears,
+//             omission stays byte-identical, and SMS consent markup is pinned.
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -377,7 +383,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 44;
+const TOTAL = 45;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -3671,6 +3677,18 @@ console.log('\n═══ PROOF 30 — Hostile content values render inert in eve
       }
     }
 
+    // legal-content is intentionally developer-managed structure: its nested
+    // inline runs never enter the owner edit map. It still belongs in this
+    // renderer-escaping proof, so inject through the reviewable content shape
+    // itself and let the ordinary schema/build gate accept it.
+    const legal = [...blockById.values()].find(block => block.type === 'legal-content');
+    const legalParagraph = legal && legal.fields.content.find(node => node.type === 'paragraph');
+    if (legalParagraph && legalParagraph.content && legalParagraph.content[0]) {
+      legalParagraph.content[0].text = PAYLOAD;
+      accepted++;
+      injectedTypes.add('legal-content');
+    }
+
     writeContent(CLIENT, content);
     const b = build(CLIENT);
     if (!b.ok) failures.push(`the live build refused hostile-but-accepted content — resolver and schema disagree:\n${b.out}`);
@@ -3709,7 +3727,8 @@ console.log('\n═══ PROOF 30 — Hostile content values render inert in eve
   if (failures.length === 0) {
     console.log('PASS — a payload carrying an unquoted-attribute breakout, a backtick, both');
     console.log('       quote kinds, and a full <img onerror> element was accepted into at least');
-    console.log('       one free-text field of every registered block type via applyPatch; the');
+    console.log('       one free-text field of every registered block type (via applyPatch where');
+    console.log('       owner-editable, or the schema-gated structure for legal-content); the');
     console.log('       live build succeeds, no built tag gains an event-handler attribute, the');
     console.log('       <img> probe never lands as markup, and the payload survives only as');
     console.log('       escaped visible text — quoted-and-escaped interpolation, proven at the');
@@ -6245,6 +6264,180 @@ console.log('\n═══ PROOF 44 — opt-in marketing + CRM integration stays v
   } else {
     console.log(`FAIL — ${failures.length} issue(s):`);
     failures.forEach(f => console.log(`       ✗ ${f}`));
+  }
+}
+
+// ── PROOF 45 ────────────────────────────────────────────────────────────────
+console.log('\n═══ PROOF 45 — structured legal content + one shared linked form privacy notice ═══');
+{
+  const { validate, fallbackValidate } = require('./lib/validate');
+  const { renderField } = require('./lib/formfields');
+  const CLIENT = '__proof-privacy-policy';
+  const liveDir = path.join(ROOT, 'clients', CLIENT);
+  const distDir = path.join(ROOT, 'dist', CLIENT);
+  const failures = [];
+
+  const notice = [
+    { text: 'Read our ' },
+    { text: 'Privacy Policy', href: 'privacy-policy.html' },
+    { text: ' before submitting.' },
+  ];
+  const legalBlock = {
+    id: 'privacy-policy-content', type: 'legal-content', fields: {
+      hidden: false,
+      content: [
+        { type: 'heading', level: 1, text: 'Privacy Policy' },
+        { type: 'paragraph', content: [
+          { text: 'We keep <approved> wording & punctuation. Contact ' },
+          { text: 'privacy@example.com', href: 'mailto:privacy@example.com' },
+          { text: ' with questions.' },
+        ] },
+        { type: 'heading', level: 2, text: 'Your choices' },
+        { type: 'list', style: 'unordered', items: [
+          [{ text: 'Ask us to correct your information.' }],
+          [{ text: 'Open the ' },
+            { text: 'external preference centre', href: 'https://preferences.example.test/choices' },
+            { text: '.' }],
+        ] },
+        { type: 'list', style: 'ordered', items: [
+          [{ text: 'Read this notice.' }],
+          [{ text: 'Choose your preferences.' }],
+        ] },
+      ],
+    },
+  };
+
+  try {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.mkdirSync(liveDir, { recursive: true });
+    const content = readContent('example-contractor');
+    content.site.name = 'Privacy proof';
+    content.site.baseUrl = 'https://privacy-proof.example.test';
+
+    const index = content.pages.find(p => p.slug === 'index');
+    const oldHero = index.blocks.find(b => b.type === 'hero');
+    index.blocks[index.blocks.indexOf(oldHero)] = {
+      id: 'privacy-hero-form', type: 'hero-form', fields: {
+        tag: oldHero.fields.tag, headline: oldHero.fields.headline,
+        subhead: oldHero.fields.subhead, background: oldHero.fields.background,
+        form: {
+          formAction: 'https://forms.example.test/leads', submitLabel: 'Send request',
+          privacyNotice: JSON.parse(JSON.stringify(notice)),
+          fields: [
+            { name: 'phone', label: 'Phone', type: 'tel' },
+            { name: 'smsConsent', label: 'I agree to receive calls or texts about this request',
+              type: 'checkbox', value: 'true' },
+          ],
+        },
+      },
+    };
+    const contact = content.pages.flatMap(p => p.blocks).find(b => b.type === 'contact-form');
+    contact.fields.privacyNotice = JSON.parse(JSON.stringify(notice));
+    content.pages.push({
+      slug: 'privacy-policy',
+      meta: { title: 'Privacy Policy | Privacy proof', description: 'How Privacy proof handles personal information.' },
+      blocks: [legalBlock],
+    });
+    content.site.nav.links.push({ label: 'Privacy Policy', href: 'privacy-policy.html' });
+
+    const valid = validate(content);
+    if (!valid.ok) failures.push(`schema rejected the structured policy fixture: ${valid.errors.join('; ')}`);
+    writeContent(CLIENT, content);
+    const built = build(CLIENT);
+    if (!built.ok) failures.push(`the privacy-policy fixture failed to build:\n${built.out}`);
+    else {
+      const policy = fs.readFileSync(path.join(distDir, 'privacy-policy.html'), 'utf8');
+      const home = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      const contactHtml = fs.readFileSync(path.join(distDir, 'contact.html'), 'utf8');
+
+      for (const marker of [
+        '<article class="about-intro-body legal-content">',
+        '<h1>Privacy Policy</h1>', '<h2>Your choices</h2>',
+        '<ul class="legal-list pricing-features"', '<ol class="legal-list"',
+        'href="mailto:privacy@example.com"',
+        'href="https://preferences.example.test/choices"',
+      ]) {
+        if (!policy.includes(marker)) failures.push(`privacy-policy.html is missing ${marker}`);
+      }
+      if (!policy.includes('We keep &lt;approved&gt; wording &amp; punctuation.')) {
+        failures.push('legal paragraph text was not escaped while preserving its content');
+      }
+      if (policy.includes('<approved>') || policy.includes('<script>alert')) {
+        failures.push('structured legal content emitted content-supplied markup');
+      }
+
+      const noticeAfterForm = html => {
+        const m = html.match(/<\/form>\n\s*(<p class="form-privacy-notice form-optional">.*?<\/p>)/s);
+        return m && m[1];
+      };
+      const heroNotice = noticeAfterForm(home);
+      const contactNotice = noticeAfterForm(contactHtml);
+      if (!heroNotice || !contactNotice) failures.push('one or both form blocks lack a notice immediately after </form>');
+      if (heroNotice !== contactNotice) failures.push('hero-form and contact-form privacy notices drifted');
+      const expectedNotice = '<p class="form-privacy-notice form-optional">Read our <a class="service-card-cue" href="privacy-policy.html">Privacy Policy</a> before submitting.</p>';
+      if (heroNotice && heroNotice !== expectedNotice) failures.push('the linked privacy notice markup is not the closed escaped shape');
+
+      const all = policy + home + contactHtml;
+      for (const marker of ['cookie-banner', 'cookie-consent', 'consent-manager', 'data-cmp', '__tcfapi']) {
+        if (all.includes(marker)) failures.push(`privacy capability unexpectedly emitted ${marker}`);
+      }
+    }
+
+    const variant = mutate => {
+      const probe = JSON.parse(JSON.stringify(content));
+      mutate(probe);
+      return { full: validate(probe), fallback: fallbackValidate(probe) };
+    };
+    const policyIn = c => c.pages.find(p => p.slug === 'privacy-policy').blocks[0].fields;
+    const noticeIn = c => c.pages.find(p => p.slug === 'index').blocks.find(b => b.type === 'hero-form').fields.form.privacyNotice;
+    if (variant(c => { policyIn(c).rawHtml = '<script>alert(1)</script>'; }).full.ok) {
+      failures.push('schema accepted a rawHtml escape hatch on legal-content');
+    }
+    if (variant(c => { policyIn(c).content[0].type = 'html'; }).full.ok) {
+      failures.push('schema accepted an arbitrary legal-content node type');
+    }
+    if (variant(c => { policyIn(c).content[3].style = 'bullets'; }).full.ok) {
+      failures.push('schema accepted an unknown legal list style');
+    }
+    if (variant(c => { noticeIn(c).splice(0, noticeIn(c).length, { text: 'No link.' }); }).full.ok) {
+      failures.push('schema accepted an unlinked form privacy notice');
+    }
+    for (const [label, mutate] of [
+      ['legal link', c => { policyIn(c).content[1].content[1].href = 'javascript:alert(1)'; }],
+      ['form notice link', c => { noticeIn(c)[1].href = 'data:text/html,bad'; }],
+    ]) {
+      const bad = variant(mutate);
+      if (bad.full.ok) failures.push(`schema accepted a hostile ${label}`);
+      if (bad.fallback.ok) failures.push(`no-AJV fallback accepted a hostile ${label}`);
+    }
+
+    const sms = renderField({
+      name: 'smsConsent', label: 'I agree to receive calls or texts about this request',
+      type: 'checkbox', value: 'true',
+    }, 6);
+    const smsGolden = '<div class="form-consent">\n'
+      + '        <label for="field-smsConsent"><input type="checkbox" name="smsConsent" id="field-smsConsent" value="true"> <span>I agree to receive calls or texts about this request <span class="form-optional">(optional)</span></span></label>\n'
+      + '      </div>';
+    if (sms !== smsGolden) failures.push('the existing optional SMS consent checkbox markup changed');
+  } catch (e) {
+    failures.push(`exception: ${e.message}`);
+  } finally {
+    fs.rmSync(liveDir, { recursive: true, force: true });
+    fs.rmSync(path.join(ROOT, 'clients', CLIENT + '__candidate'), { recursive: true, force: true });
+    for (const d of [CLIENT, CLIENT + '__annotated', CLIENT + '__candidate', CLIENT + '__candidate__annotated']) {
+      fs.rmSync(path.join(ROOT, 'dist', d), { recursive: true, force: true });
+    }
+  }
+
+  if (failures.length === 0) {
+    console.log('PASS — /privacy-policy preserves escaped headings, paragraphs, ordered/unordered');
+    console.log('       lists, contact and external-preference links through a closed schema; both');
+    console.log('       form blocks share one immediately-following linked notice renderer. Raw');
+    console.log('       HTML and hostile/unlinked shapes fail, no CMP appears, and SMS consent bytes stay fixed.');
+    passed++;
+  } else {
+    console.log(`FAIL — ${failures.length} issue(s):`);
+    failures.forEach(f => console.log(`       ✕ ${f}`));
   }
 }
 

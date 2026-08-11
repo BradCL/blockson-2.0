@@ -111,12 +111,12 @@ engine/
                         (npm run blueprints:check; see §10.2)
   validate-theme.js     Theme acceptance CLI (tokens → value safety → hard rules →
                         contrast pairs → coverage build; see THEME_AUTHORING.md)
-  _run-proofs.js        Proof suite (44 proofs)
+  _run-proofs.js        Proof suite (45 proofs)
   ui/                   Owner editor app: index.html + ui.js + ui.css, and overlay.js
                         (injected into annotated preview pages only). ui/demo/ is the
                         browser-demo bootstrap (entry.js + shell + Node-builtin shims)
                         the build-demo bundle is built from; ui.js drives both (§13)
-  blocks/               One template module per block type (see BLOCK_CATALOG.md, 25 types)
+  blocks/               One template module per block type (see BLOCK_CATALOG.md, 26 types)
   partials/
     head.js             <head> generator (meta, OG, canonical, favicon, token :root;
                         allowlisted opt-in marketing tags)
@@ -130,6 +130,8 @@ engine/
                         rows, delivery modes, stable ids, selectable honeypot,
                         origin tag, CRM hooks) — rendered by
                         BOTH contact-form and hero-form so the two cannot drift
+    structuredtext.js   Closed escaped inline runs + safe links, shared by the
+                        legal-content block and linked form privacy notices
     integrations.js     Fixed Search/Google/Clarity/Meta/Osprey renderers + global
                         positions; accepts validated provider values/one local client
                         asset, never raw tags or generic remote URLs
@@ -449,7 +451,7 @@ it, (27) hero CTA buttons are id-addressable, guarded, removable except for the
 last item, and addable from an empty state, (28) the same owner handlers drive
 an in-memory browser host for the no-install demo, and (29) photo-heavy gallery
 albums show a soft page-weight advisory without capping the edit, (30) hostile
-text renders inert in every one of the 24 block types, (31) the no-AJV fallback
+text renders inert in every one of the 26 block types, (31) the no-AJV fallback
 validator still builds and still guards, and (32) a linked photo-strip cell
 takes its accessible name from its owner-editable cue — image decorative inside
 the link, only the arrow hidden — with the cue visible by default off
@@ -509,7 +511,12 @@ copied and loaded last, and both form blocks share stable form/status ids, an
 optional consent checkbox, selectable honeypot, source and conditional CRM markup.
 Owner previews execute no integrations, the config/form wiring is absent from
 every owner door, and malformed or unconfigured clients fail safely or remain
-unchanged respectively. All 44 must
+unchanged respectively, and (45) `legal-content` preserves schema-closed headings,
+paragraphs, ordered/unordered lists, contact links, and external preference links
+without raw HTML, while the shared form renderer emits one optional linked privacy
+notice immediately beneath both `contact-form` and `hero-form`; unsafe/unlinked
+shapes fail, no cookie/CMP surface appears, omission adds no bytes, and the existing
+SMS consent checkbox remains byte-pinned. All 45 must
 pass on a clean tree.
 
 ---

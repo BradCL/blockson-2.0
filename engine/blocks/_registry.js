@@ -32,4 +32,6 @@ module.exports = {
   'hero-form':     require('./hero-form'),
   // owner-story addition: a portrait beside several paragraphs of prose
   'founder-note':  require('./founder-note'),
+  // structured policies/legal notices — typed nodes, never arbitrary HTML
+  'legal-content': require('./legal-content'),
 };

@@ -135,6 +135,13 @@ Pending:
   a new block explicitly decides which distinctive registers a first client is
   predictably likely to tune, exposing narrow developer/theme tokens without
   widening the owner allowlist.
+- **Structured legal content + linked form privacy notices** (2026-08-11) —
+  extend the block/rendering and validation chapters with `legal-content`,
+  `structuredtext.js`, its typed heading/paragraph/list nodes and escaped inline
+  safe links; the forms chapter should add the same linked inline runs as optional
+  `privacyNotice` output from the shared renderer, immediately after both form
+  block types. Counts now extend to 26 block types / 45 proofs. The safety lesson:
+  provider-approved structure does not require raw HTML, a cookie banner, or a CMP.
 - **Approved marketing/CRM integration without a raw-markup escape hatch**
   (2026-08-07) — the system map, validation, rendering, and forms chapters should
   add `site.integrations` / `lib/integrations.js`: fixed tags generated from
@@ -187,6 +194,10 @@ reconciled through proof 29.
 
 Pending:
 
+- **Structured legal content + linked form privacy notices** (2026-08-11) —
+  the block catalog/tutorial examples and captured proof/new-client output should
+  pick up `legal-content`, `privacyNotice`, 26 block types, and proof 45 during the
+  next bundled regeneration. No frozen file is edited for this change.
 - **Wren & Willow domains moved to the reserved `.example` TLD** (2026-07-02
   fictional-client scrub) — the README's `content.json` excerpts and
   `term/05-sitemap.txt` still show `wrenandwillow.ca`; refresh with the next

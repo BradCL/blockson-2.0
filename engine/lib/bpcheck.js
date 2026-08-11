@@ -317,6 +317,11 @@ const SHOWCASE_BLOCKS = [
   { id: 'show-contact-form', type: 'contact-form', fields: {
     tag: 'Message', heading: 'A contact form', formAction: 'https://formspree.io/f/sample',
     subjectLine: 'Showcase enquiry', submitLabel: 'Send',
+    privacyNotice: [
+      { text: 'See our ' },
+      { text: 'privacy policy', href: 'privacy-policy.html' },
+      { text: '.' },
+    ],
     fields: [
       { name: 'name', label: 'Full Name', type: 'text', required: true, half: true },
       { name: 'email', label: 'Email', type: 'email', required: true, half: true },
@@ -397,6 +402,11 @@ const SHOWCASE_BLOCKS = [
     form: {
       heading: 'Request a quote', formAction: 'https://formspree.io/f/sample',
       subjectLine: 'Showcase lead', submitLabel: 'Send request', source: 'showcase-hero',
+      privacyNotice: [
+        { text: 'See our ' },
+        { text: 'privacy policy', href: 'privacy-policy.html' },
+        { text: '.' },
+      ],
       fields: [
         { name: 'name', label: 'Name', type: 'text', required: true, half: true },
         { name: 'phone', label: 'Phone', type: 'tel', required: true, half: true },
@@ -417,6 +427,24 @@ const SHOWCASE_BLOCKS = [
     ],
     quote: 'The one sentence worth setting apart from the paragraphs.',
     signature: '— Sam, Founder' } },
+  { id: 'show-legal-content', type: 'legal-content', fields: {
+    content: [
+      { type: 'heading', level: 2, text: 'A structured legal notice' },
+      { type: 'paragraph', content: [
+        { text: 'Policy paragraphs may include an escaped ' },
+        { text: 'email link', href: 'mailto:privacy@example.com' },
+        { text: ' without accepting HTML.' },
+      ] },
+      { type: 'heading', level: 3, text: 'Your choices' },
+      { type: 'list', style: 'unordered', items: [
+        [{ text: 'Contact the privacy team.' }],
+        [{ text: 'Open the ' }, { text: 'preference centre', href: 'https://example.com/preferences' }, { text: '.' }],
+      ] },
+      { type: 'list', style: 'ordered', items: [
+        [{ text: 'Review the notice.' }],
+        [{ text: 'Choose your preferences.' }],
+      ] },
+    ] } },
 ];
 
 // Like every shipped client and blueprint (v4.2 Task 1), the showcase blocks

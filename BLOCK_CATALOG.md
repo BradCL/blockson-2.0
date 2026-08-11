@@ -132,6 +132,9 @@ before they can act. The layout ad traffic lands on.
   `engine/lib/formfields.js`, which both blocks render through — so a hero form
   and a contact-page form cannot drift apart, and there is one escaping path and
   one honeypot rather than two of each.
+- `privacyNotice?` uses the shared linked `inlineText` shape documented under
+  `contact-form`. In `hero-form` it lives inside `form`; the shared renderer emits
+  it immediately after the form element, exactly as on the contact page.
 - **Mobile order is fixed at copy-first**, whichever side `variant` picks for
   desktop: a visitor who has just landed needs to know what the business does
   before being asked for their phone number, and the `<h1>` lives in the copy
@@ -182,6 +185,28 @@ Prose region for mission/about/story content. The workhorse narrative block.
 - `body` richtext — array of paragraphs
 CSS: `.about-intro`, `.about-intro-body`, `.section-tag`.
 **Maintenance:** all fields; body paragraphs edited line-by-line via text match.
+
+### `legal-content`
+Structured long-form policy/legal copy for pages such as `privacy-policy`. Use this
+instead of `text` when approved wording includes real heading hierarchy, lists, or
+inline links. The renderer accepts no markup and chooses every element/attribute.
+- `content` — an ordered array of closed node shapes:
+  - heading: `{type: "heading", level: 1|2|3|4, text}`
+  - paragraph: `{type: "paragraph", content: inlineText}`
+  - list: `{type: "list", style: "ordered"|"unordered", items: inlineText[]}`
+- `inlineText` is a non-empty array of `{text, href?}` runs. Runs concatenate
+  exactly as authored, so include spaces/punctuation in `text` where the approved
+  copy requires them. `text` is always escaped. `href`, when present, is non-empty
+  and uses the same `$defs/safeHref` scheme guard as navigation and CTA links; this
+  supports relative policy links, `mailto:`/`tel:` contact links, and approved
+  `https://` external preference links without opening an attribute/HTML channel.
+- The schema rejects unknown node kinds, heading levels, list styles, run fields,
+  empty content, and properties such as `rawHtml`.
+CSS: `.about-intro`, `.about-intro-body`, `.legal-content-section`,
+`.legal-content`, `.legal-list`, `.pricing-features`, `.service-card-cue` (established
+theme hooks are reused, so clients without this block keep their theme asset bytes).
+**Maintenance:** developer-managed structure. Provider-approved legal hierarchy and
+wording change through a reviewable `content.json` diff.
 
 ### `card-grid`
 A grid of repeating cards. The single most reusable block: services, features, values,
@@ -409,6 +434,11 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
   `equals` must be one of its options. A consent checkbox may omit `required` so
   it exists without forcing visitor consent. Conditional sales fields stay visible
   without JavaScript — ugly but usable rather than silently missing.
+- `privacyNotice?` inlineText — a non-empty array of escaped `{text, href?}` runs
+  that must contain at least one link. When present, the shared form renderer emits
+  one `<p class="form-privacy-notice form-optional">` immediately after `</form>`.
+  Put it at the `contact-form` fields root, or inside a `hero-form`'s `form` object;
+  both paths use the same schema shape and renderer. Omit it and no bytes are added.
 - When `site.integrations.clientScript` is configured, the form requires stable
   developer-set `formId` and `statusId`, carries `data-crm-form`, and renders one
   empty `.form-status[data-form-status]` live region with that status id for the
@@ -417,7 +447,7 @@ Worker / plain endpoint) is "Contact form delivery" in [OPERATOR.md](OPERATOR.md
   object is emitted for an unconfigured client.
 CSS: `.contact-form-section`, `.contact-form`, `.form-row`, `.form-group`,
 `.form-hp`, `.btn-primary`. Integration markup hooks: `.form-consent`,
-`.form-status`, `[data-crm-form]`, `[data-form-status]`, and
+`.form-privacy-notice`, `.form-status`, `[data-crm-form]`, `[data-form-status]`, and
 `[data-show-when-field]`.
 **Maintenance:** tag/heading/subjectLine/submitLabel editable. Form fields and the
 delivery wiring (`formAction`, `delivery.*`): developer (fields carry no ids —

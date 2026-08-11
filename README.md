@@ -139,7 +139,7 @@ Design intent and full token reference: [themes/README.md](themes/README.md).
 
 ---
 
-## Block types (24)
+## Block types (26)
 
 Core: `hero`, `page-header`, `text`, `card-grid`, `gallery`, `testimonials`,
 `list-panel`, `service-area`, `contact-cards`, `contact-info`, `contact-form`, `cta`
@@ -162,6 +162,9 @@ prose, usually closing on a pull quote and a signature. The About-page shape an
 owner-led business actually needs, and the one `team-grid` cannot hold (it is a
 roster; its `bio` is a single string)
 
+Policy/legal: `legal-content` renders schema-closed headings, paragraphs, ordered
+or unordered lists, and escaped inline links for approved legal copy; no raw HTML.
+
 `contact-form` has a selectable, subscription-free delivery mode: the default
 endpoint mode POSTs to an `https://` `formAction` (the Cloudflare Worker shipped in
 `extras/cloudflare-form-worker/`, or a relay), while `delivery: { "mode": "netlify" }`
@@ -177,6 +180,10 @@ share stable ids, optional consent, status, source, selectable honeypot, and
 conditional-field hooks.
 There is no raw-tag escape hatch, owner previews execute no integration code,
 and a client that omits the object follows the historical build path.
+
+Both form blocks also accept the same optional linked `privacyNotice`, rendered
+by their shared form implementation immediately after the form. Omitting it keeps
+the existing output unchanged; it does not add a cookie banner or CMP.
 
 Fields, CSS classes, and per-block maintenance permissions: [BLOCK_CATALOG.md](BLOCK_CATALOG.md).
 
@@ -532,11 +539,11 @@ engine/
   validate-blueprint.js Blueprint acceptance CLI
   validate-theme.js     Theme acceptance CLI
   blueprints-check.js   Whole-registry blueprint check + gallery regeneration
-  _run-proofs.js        End-to-end proof suite (44 proofs)
+  _run-proofs.js        End-to-end proof suite (45 proofs)
   ui/                   Owner editor app: index.html, ui.js, ui.css, overlay.js
                         (overlay injected at serve time into preview pages only);
                         ui/demo/ is the static browser-demo bootstrap
-  blocks/               One module per block type (24 total)
+  blocks/               One module per block type (26 total)
   partials/             head, nav, footer
   lib/integrations.js   Allowlisted opt-in marketing + client-script renderer
   lib/                  render, validate, escape, icons, patch (allowlist + token
