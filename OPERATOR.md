@@ -487,6 +487,12 @@ notice immediately after `</form>`; omission adds no bytes. This notice does not
 create a cookie banner/CMP and does not alter any form field, including an existing
 optional SMS consent checkbox.
 
+A page whose first rendered block is `legal-content` automatically clears the
+fixed navigation at mobile and desktop widths. Do not add a blank spacer block or
+page-specific stylesheet; the engine scopes the clearance to that first-block state.
+Pages without it, and legal sections that follow another block, keep their previous
+markup and shared generated assets.
+
 ### Developer-controlled marketing and CRM integration
 
 `site.integrations` is an optional, closed allowlist for a client that has

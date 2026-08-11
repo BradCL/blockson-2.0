@@ -27,6 +27,7 @@ function renderPage(page, site, tokens, annotator) {
   }
   parts.push(nav(site, page.slug));
 
+  let renderedBlockCount = 0;
   for (const block of page.blocks) {
     const mod = BLOCKS[block.type];
     if (!mod) throw new Error(`Unknown block type "${block.type}" on block id "${block.id}"`);
@@ -36,9 +37,15 @@ function renderPage(page, site, tokens, annotator) {
     // stamped data-bk-hidden for the overlay's dimmed/badged treatment.
     if (hidden && !annotator) continue;
     const bk = annotator ? annotator.forBlock(block.id) : NOOP_BLOCK;
-    let html = mod(block.fields, site, bk);
+    // A block may need to know only whether it is the first section visitors
+    // actually see (fixed-navigation clearance is the motivating case). Extra
+    // arguments are ignored by every existing renderer, preserving their output.
+    let html = mod(block.fields, site, bk, {
+      isFirstRenderedBlock: renderedBlockCount === 0,
+    });
     if (hidden) html = html.replace(/^(\s*<[a-zA-Z][a-zA-Z0-9-]*)/, '$1 data-bk-hidden="true"');
     parts.push(html);
+    renderedBlockCount++;
   }
 
   parts.push(footer(site, siteBk));

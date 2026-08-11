@@ -205,6 +205,11 @@ inline links. The renderer accepts no markup and chooses every element/attribute
 CSS: `.about-intro`, `.about-intro-body`, `.legal-content-section`,
 `.legal-content`, `.legal-list`, `.pricing-features`, `.service-card-cue` (established
 theme hooks are reused, so clients without this block keep their theme asset bytes).
+When `legal-content` is the first actually rendered block, its section receives a
+renderer-owned `73px + 3.4rem` top clearance: the fixed navigation (including its
+border) plus the normal mobile section gap. The inline clearance appears only in
+that state, so later legal sections and every page without the capability keep
+their prior markup and the shared CSS/JS assets remain byte-identical.
 **Maintenance:** developer-managed structure. Provider-approved legal hierarchy and
 wording change through a reviewable `content.json` diff.
 

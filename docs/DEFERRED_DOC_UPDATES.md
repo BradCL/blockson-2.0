@@ -142,6 +142,8 @@ Pending:
   `privacyNotice` output from the shared renderer, immediately after both form
   block types. Counts now extend to 26 block types / 45 proofs. The safety lesson:
   provider-approved structure does not require raw HTML, a cookie banner, or a CMP.
+  The follow-up browser regression also pins first-block legal content below the
+  fixed navigation at 390px/desktop widths without changing shared theme assets.
 - **Approved marketing/CRM integration without a raw-markup escape hatch**
   (2026-08-07) — the system map, validation, rendering, and forms chapters should
   add `site.integrations` / `lib/integrations.js`: fixed tags generated from

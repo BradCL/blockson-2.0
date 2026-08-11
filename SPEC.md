@@ -516,7 +516,9 @@ paragraphs, ordered/unordered lists, contact links, and external preference link
 without raw HTML, while the shared form renderer emits one optional linked privacy
 notice immediately beneath both `contact-form` and `hero-form`; unsafe/unlinked
 shapes fail, no cookie/CMP surface appears, omission adds no bytes, and the existing
-SMS consent checkbox remains byte-pinned. All 45 must
+SMS consent checkbox remains byte-pinned. Its browser regression additionally pins
+a first-block legal heading below the fixed navigation at 390px and desktop widths,
+with no clearance added to a later legal block. All 45 must
 pass on a clean tree.
 
 ---

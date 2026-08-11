@@ -8,6 +8,8 @@ are the contract the code and the proof suite are written against.
 
 ## Build & test
 
+- `npm run test:legal` — browser geometry check for first-block legal-content
+  clearing the fixed navigation at mobile and desktop widths.
 - `npm test` — the proof suite (the quality gate; must stay green).
 - `npm run test:overlay` — browser smoke for the click-to-edit overlay.
 - `npm run test:editor` — browser smoke for the owner editor's keep-open flow.

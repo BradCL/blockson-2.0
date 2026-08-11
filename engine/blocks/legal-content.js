@@ -29,9 +29,18 @@ function renderNode(node) {
       </${tag}>`;
 }
 
-module.exports = function legalContent(fields) {
+module.exports = function legalContent(fields, site, bk, context) {
   const content = (fields.content || []).map(renderNode).join('\n      ');
-  return `<section class="about-intro legal-content-section fade-in">
+  // Ordinary sections begin behind the fixed 72px navigation. Heroes and page
+  // headers already own their larger top spacing; a standalone legal document
+  // does not. Add the bar's full 73px painted height (including its border) plus
+  // the normal 3.4rem mobile section gap only when this is the first rendered
+  // block. Inline, renderer-owned geometry keeps the shared stylesheet byte-
+  // identical for every client and page that does not use this state.
+  const navClearance = context && context.isFirstRenderedBlock
+    ? ' style="padding-top:calc(73px + 3.4rem)"'
+    : '';
+  return `<section class="about-intro legal-content-section fade-in"${navClearance}>
   <div class="container">
     <article class="about-intro-body legal-content">
       ${content}
