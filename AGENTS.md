@@ -53,3 +53,5 @@ raw delta if an entry was ever missed.
 - Imperative, owner-benefit-framed subject lines (see `git log`).
 - Do not add a `Co-Authored-By` trailer.
 - Commit/push only what the task calls for; leave unrelated untracked paths alone.
+
+Past Codex work sessions are in _history/blockson. Check its INDEX.md when a question depends on earlier decisions or context; open individual files only as needed.

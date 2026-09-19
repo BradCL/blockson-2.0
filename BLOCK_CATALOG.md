@@ -326,6 +326,8 @@ should be able to change it later. `value` and `allShows` are developer-only.
 Owners add albums through the shipped `gallery-album` item blueprint (tailor its
 `category` select options to this block's `filters[].value` set per client) and remove any
 but the last. Adding or removing filters themselves: developer.
+A possible future improvement that derives add-album choices from each gallery's
+configured filters is recorded in [`docs/GALLERY_EDITOR_FOLLOWUP.md`](docs/GALLERY_EDITOR_FOLLOWUP.md).
 
 ### `testimonials`
 Two-column quote cards with a star row.
