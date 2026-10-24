@@ -3,6 +3,10 @@
 const { esc } = require('../lib/escape');
 
 module.exports = function pageHeader(fields, site, bk) {
+  // Match hero actions: safe links, existing button styles and owner item annotations.
+  const actions = (fields.actions || []).map(a =>
+    `<a href="${esc(a.href)}" class="btn btn-${esc(a.style)}"${bk.i(a.id, 'label')}>${esc(a.label)}</a>`
+  ).join('\n          ');
   const bgClass   = fields.variant === 'light' ? 'page-header-bg about-page-bg' : 'page-header-bg';
   // Background falls back to the site hero image when omitted (see
   // BLOCK_CATALOG.md). site.heroImage is derived in build.js; the theme CSS
@@ -43,7 +47,7 @@ module.exports = function pageHeader(fields, site, bk) {
     <div class="page-header-content">
       <div class="section-tag"${bk.f('tag')}>${esc(fields.tag)}</div>
       <h1${bk.f('heading')}>${esc(fields.heading)}</h1>
-      ${subhead}
+      ${subhead}${actions ? `\n      <div class="hero-actions">${actions}</div>` : ''}
     </div>
   </div>
 </header>`;

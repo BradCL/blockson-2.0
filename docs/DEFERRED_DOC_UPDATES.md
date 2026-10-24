@@ -304,3 +304,5 @@ harness-produced artifacts, which is heavy and best done deliberately on a
 3. Write the current proof count into `02-atlas/12-testing-proofs.md` (+ any in
    `01-system-map.md`), then advance the three baselines to the then-current
    commit and clear the entries above.
+
+- Local header-actions proposal (2026-10-24): learning guide/tutorial header and Section-panel captures owe optional Header Button support if accepted.

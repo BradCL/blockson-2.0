@@ -666,3 +666,12 @@ configuration needed, and a strict improvement over a logo-only card. It is not
 owner-editable from the editor; to use a different image on a page, a developer sets
 that page's `meta.ogImage` to an in-site image path (`img/<file>`) in `content.json`
 and rebuilds. See SPEC.md §5 for the full precedence (`meta.ogImage` → hero → logo).
+
+### Interior page header buttons
+
+A page-header may carry optional `actions` with the same `{id, label, href, style}`
+shape as hero buttons. Use the Header Button item blueprint from the Section panel
+to add the first button; existing buttons open the standard button editor and can
+be removed through the scaffold path while another button remains (the existing
+last-item guard still applies). Only the label carries a click annotation.
+Links still pass the schema/build safety gate. No actions means unchanged markup.

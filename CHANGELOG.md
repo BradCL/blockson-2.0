@@ -259,3 +259,7 @@ predecessor; everything below is new in this line.
 
 [Unreleased]: https://github.com/BradCL/blockson-2.0/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/BradCL/blockson-2.0/releases/tag/v2.0.0
+
+## 2026-10-24 — Configured interior header buttons
+
+- Add optional declarative page-header actions and Header Button blueprint, using existing button validation, annotations and owner scaffold/patch paths. Pages without actions retain identical output.

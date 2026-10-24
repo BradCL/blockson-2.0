@@ -451,7 +451,21 @@
             "heading": "A page header band",
             "subhead": "The interior-page opener.",
             "variant": "default",
-            "hidden": false
+            "hidden": false,
+            "actions": [
+              {
+                "id": "button-3",
+                "label": "Get a free quote",
+                "href": "contact.html",
+                "style": "primary"
+              },
+              {
+                "id": "button-4",
+                "label": "Get a free quote",
+                "href": "contact.html",
+                "style": "secondary"
+              }
+            ]
           }
         },
         {

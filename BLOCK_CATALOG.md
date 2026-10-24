@@ -166,6 +166,7 @@ Sub-hero band used at the top of interior pages (about/services/gallery/contact)
 - `background?` image — defaults to the site hero image if omitted; an owner can set a per-page image from the editor even when it was omitted (an owner-creatable field — see "Owner-creatable fields" in OPERATOR.md), which overrides the inherited hero for that page
 - `bgPosition?` string — focal point of the background, `"<x>% <y>%"` (each 0–100; default `"50% 50%"`); painted as inline `background-position` on `.page-header-bg`. Absent → the theme CSS's `background-position:center` stands. Lets the cover crop anchor on the subject so a wide/short desktop viewport doesn't behead a header photo.
 - `bgZoom?` number — background zoom, 1–3 (default 1); painted as inline `transform: scale()` on `.page-header-bg`
+- `actions?` array of `{id?, label, href, style}` — optional buttons using the same safe-link schema and `.hero-actions` layout as hero buttons. Omitted/empty preserves existing output. Id-bearing actions are editable by item id; `page-header-button` adds/removes them through the standard scaffold path.
 - `variant?` string ∈ `default` | `light` — `light` uses the lighter gradient (`.about-page-bg`)
 CSS: `.page-header`, `.page-header-content`, `.section-tag`.
 **Theme tokens (opt-in):** `--page-header-width`, `--header-overlay`,

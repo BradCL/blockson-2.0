@@ -383,7 +383,7 @@ function annotationSets(content, tokens) {
 }
 
 let passed = 0;
-const TOTAL = 45;
+const TOTAL = 46;
 const DEFAULT_TOKENS = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'themes', 'default', 'tokens.json'), 'utf8'));
 
@@ -6440,6 +6440,12 @@ console.log('\n═══ PROOF 45 — structured legal content + one shared link
     failures.forEach(f => console.log(`       ✕ ${f}`));
   }
 }
+
+try {
+  require('./header-actions-test')();
+  console.log('PASS — declarative page-header actions: render, schema, owner edits, add/remove and safe-link build gate.');
+  passed++;
+} catch (e) { console.log(`FAIL — header actions: ${e.stack}`); }
 
 console.log(`\n${'═'.repeat(60)}`);
 console.log(`${passed}/${TOTAL} proofs passed.`);
